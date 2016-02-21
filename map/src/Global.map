@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "Global.js",
+  "sourceRoot": "../../src",
+  "sources": [
+    "Global.coffee"
+  ],
+  "names": [],
+  "mappings": "AACA,IAAA;;AAAA,SAAA,GAAY,OAAA,CAAQ,WAAR;;AAEZ,SAAA,CAAU,OAAA,CAAQ,SAAR,CAAV"
+}

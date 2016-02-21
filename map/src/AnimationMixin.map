@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "AnimationMixin.js",
+  "sourceRoot": "../../src",
+  "sources": [
+    "AnimationMixin.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

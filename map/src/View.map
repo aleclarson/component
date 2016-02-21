@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "View.js",
+  "sourceRoot": "../../src",
+  "sources": [
+    "View.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

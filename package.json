@@ -1,0 +1,31 @@
+{
+  "name": "component",
+  "description": "A base Component class for React Native",
+  "version": "1.0.0",
+  "dependencies": {
+    "ReactiveGetter": "aleclarson/ReactiveGetter#1.0.0",
+    "combine": "aleclarson/combine#1.0.0",
+    "define": "aleclarson/define#1.0.0",
+    "emptyFunction": "aleclarson/emptyFunction#1.0.0",
+    "factory": "aleclarson/factory#1.0.0",
+    "immutable": "^3.7.5",
+    "io": "aleclarson/io#1.0.0",
+    "lazy-var": "aleclarson/lazy-var#1.0.0",
+    "lotus-log": "aleclarson/lotus-log#1.0.0",
+    "named-function": "aleclarson/named-function#1.0.3",
+    "parseErrorStack": "aleclarson/parseErrorStack#1.0.0",
+    "random": "aleclarson/random#1.0.4",
+    "reaction": "aleclarson/reaction#1.0.0",
+    "report-failure": "aleclarson/report-failure#1.0.0",
+    "steal": "aleclarson/steal#0.0.1",
+    "tracker": "aleclarson/tracker#1.0.8",
+    "type-utils": "aleclarson/type-utils#1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aleclarson/component.git"
+  },
+  "licenses": [
+    "MIT"
+  ]
+}
