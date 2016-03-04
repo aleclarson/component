@@ -1,10 +1,12 @@
 
 ReactElement = require "ReactElement"
 
+{ throwFailure } = require "failure"
+
 { isType } = require "type-utils"
+
 { sync } = require "io"
 
-reportFailure = require "report-failure"
 combine = require "combine"
 define = require "define"
 steal = require "steal"
@@ -15,48 +17,21 @@ Component = require "./Component"
 module.exports =
 NativeComponent = (name, render) ->
 
-  return Component "NativeComponent_" + name,
-
-    statics:
-
-      propTypes: render.propTypes
+  component = Component "NativeComponent_" + name,
 
     initValues: ->
 
-      childView: null
+      child: null
 
       _nativeProps: NativeProps @props, render.propTypes, (newProps) =>
 
-        # if __DEV__
-        @_newValues.push newProps if @props.DEBUG
+        @_newValues.push newProps if @props.DEBUG # TODO: if __DEV__
 
-        try @childView.setNativeProps newProps
-        catch error then reportFailure error, { component: this }
+        try @child.setNativeProps newProps
+        catch error then throwFailure error, { component: this }
 
     init: ->
-
-      # if __DEV__
-
-      { props } = this
-
-      define this, ->
-
-        @options = { enumerable: no, frozen: yes }
-        @
-          _initialValues: props if props.DEBUG
-
-          _newValues: []
-
-          _findNewValue: (key) =>
-            newValues = []
-            key = key.split "."
-            sync.each @_newValues, (values) ->
-              index = 0
-              while index < key.length
-                values = values[key[index++]]
-                break unless values?
-              newValues.push values if values?
-            newValues
+      _initDebug.call this # if __DEV__
 
     componentWillReceiveProps: (props) ->
       @_nativeProps.attach props
@@ -66,5 +41,33 @@ NativeComponent = (name, render) ->
 
     render: ->
       props = @_nativeProps.values
-      props.ref = (view) => @childView = view
+      props.ref = (view) => @child = view
       ReactElement.createElement render, props
+
+  # Must be after class creation, else it gets overwritten.
+  component.propTypes = render.propTypes
+
+  component
+
+_initDebug = ->
+
+  { props } = this
+
+  define this, ->
+
+    @options = { enumerable: no, frozen: yes }
+    @
+      _initialValues: (props if props.DEBUG)
+
+      _newValues: []
+
+      _findNewValue: (key) ->
+        newValues = []
+        key = key.split "."
+        sync.each @_newValues, (values) ->
+          index = 0
+          while index < key.length
+            values = values[key[index++]]
+            break unless values?
+          newValues.push values if values?
+        newValues

@@ -2,15 +2,15 @@
 { setKind, setType, isType, isKind,
   assertType, validateTypes, Void } = require "type-utils"
 
+{ throwFailure } = require "failure"
+
 { sync } = require "io"
 
 ReactCurrentOwner = require "ReactCurrentOwner"
 ExceptionsManager = require "ExceptionsManager"
-parseErrorStack = require "parseErrorStack"
 ReactiveGetter = require "ReactiveGetter"
 ReactComponent = require "ReactComponent"
 NamedFunction = require "named-function"
-reportFailure = require "report-failure"
 emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 flattenStyle = require "flattenStyle"
@@ -48,14 +48,16 @@ Component = NamedFunction "Component", (name, config) ->
   assertType config, Object, "config"
 
   mixins = steal config, "mixins", []
-  sync.each mixins, (mixin) -> mixin config
+  sync.each mixins, (mixin) ->
+    assertType mixin, Function, { name, mixin, mixins }
+    mixin config
 
   validateTypes config, Config
 
   statics = steal config, "statics", {}
 
   styles = steal config, "styles"
-  statics.styles = StyleSheet.create styles if styles?
+  statics.styles = { value: StyleSheet.create styles } if styles?
 
   _enforcePropValidation name, config, statics
   _addPreventableRendering name, config
@@ -73,9 +75,15 @@ Component = NamedFunction "Component", (name, config) ->
     initNativeValues: steal config, "initNativeValues", emptyFunction
 
   statics = sync.map statics, (value, key) ->
-    value: value
-    frozen: yes
-    enumerable: key[0] isnt "_"
+    enumerable = key[0] isnt "_"
+    if isType value, Object
+      value.enumerable = enumerable
+      return value
+    return {
+      value
+      frozen: yes
+      enumerable
+    }
 
   prototype = sync.map config, (value, key) ->
     value: value
@@ -90,9 +98,7 @@ Component = NamedFunction "Component", (name, config) ->
   factory = _createFactory type
   define factory, statics
 
-setKind Component, ReactComponent
-
-module.exports = Component
+module.exports = setKind Component, ReactComponent
 
 #
 # Prototype
@@ -106,18 +112,26 @@ define Component.prototype, ->
       options.sync ?= yes
       key = Random.id()
       reaction = Reaction options
-      @_addReaction key, reaction
+      @__addReaction key, reaction
 
   @enumerable = no
   @
-    _addReaction: (key, reaction, listener) ->
+    __owners: get: ->
+      owners = []
+      instance = this
+      while instance?
+        owners.push instance
+        instance = instance._reactInternalInstance._currentElement._owner?._instance
+      owners
+
+    __addReaction: (key, reaction, listener) ->
       @_reactions ?= {}
       if @_reactions[key]
         throw Error "Conflicting reactions are both named '#{key}'."
       @_reactions[key] = { reaction, listener }
       reaction
 
-    _attachNativeValue: (key, nativeValue) ->
+    __attachNativeValue: (key, nativeValue) ->
       assertType nativeValue, NativeValue.Kind
       @_nativeValues[key] = nativeValue
       define this, key,
@@ -125,11 +139,11 @@ define Component.prototype, ->
         enumerable: key[0] isnt "_"
         frozen: yes
 
-    _createNativeValue: (key, value) ->
+    __createNativeValue: (key, value) ->
       return if value is undefined
       nativeValue = NativeValue value, @constructor.name + "." + key
-      @_attachNativeValue key, nativeValue
-      @_addReaction key, nativeValue._reaction if nativeValue.isReactive
+      @__attachNativeValue key, nativeValue
+      @__addReaction key, nativeValue._reaction if nativeValue.isReactive
 
 #
 # Internal
@@ -140,8 +154,7 @@ _createType = (name, config) ->
   type = NamedFunction name, _construct = (props) ->
     inst = setType { props }, type
     try _initComponent.call inst, config, props
-    catch error
-      reportFailure error, { method: "#{name}._initComponent", component: inst, props }
+    catch error then throwFailure error, { method: "#{name}._initComponent", component: inst, props }
     inst
   setKind type, Component
 
@@ -162,8 +175,6 @@ _createFactory = (type) -> (props = {}) ->
   ref = if props.ref? then props.ref else null
   delete props.ref
 
-  stack = parseErrorStack Error()
-
   define {}, ->
     @options = configurable: no
     @ {
@@ -171,10 +182,10 @@ _createFactory = (type) -> (props = {}) ->
       type
       key
       ref
-      props: { value: props }
-      _owner: { value: ReactCurrentOwner.current }
-      _store: { value: validated: no }
-      _stack: -> stack
+      props: value: props
+      _owner: value: ReactCurrentOwner.current
+      _store: value: { validated: no }
+      _initError: Error()
     }
 
 _initComponent = (config, props) ->
@@ -231,7 +242,7 @@ _initValues = (config) ->
   values = sync.filter values, (reaction, key) =>
     return yes unless isType reaction, Reaction
     error = Error "DEPRECATED: 'initValues' treats Reactions normally now!"
-    try reportFailure error, { reaction, key, component: this }
+    try throwFailure error, { reaction, key, component: this }
     no
 
   values = sync.map values, (value, key) ->
@@ -252,7 +263,7 @@ _initReactiveValues = (config) ->
 
   unless isType values, Object
     error = TypeError "'initReactiveValues' must return an Object or Array!"
-    reportFailure error, { values, component: this }
+    throwFailure error, { values, component: this }
 
   reactions = {}
   values = sync.filter values, (reaction, key) =>
@@ -267,7 +278,7 @@ _initReactiveValues = (config) ->
     value: value
 
   reactions = sync.map reactions, (reaction, key) =>
-    @_addReaction key, reaction
+    @__addReaction key, reaction
     enumerable: key[0] isnt "_"
     get: -> reaction.value
 
@@ -283,9 +294,9 @@ _initNativeValues = (config) ->
   @_nativeValues = {}
   sync.each nativeValues, (value, key) =>
     if isKind value, NativeValue
-      @_attachNativeValue key, value
+      @__attachNativeValue key, value
     else
-      @_createNativeValue key, value
+      @__createNativeValue key, value
 
 _initState = (config) ->
   state = config.initState.call this
@@ -296,7 +307,7 @@ _initState = (config) ->
     return unless isType value, Reaction
     value.keyPath ?= @constructor.name + ".state." + key
     @state[key] = value._value
-    @_addReaction "state.#{key}", value, (newValue) =>
+    @__addReaction "state.#{key}", value, (newValue) =>
       newProps = {}
       newProps[key] = newValue
       @setState newProps
@@ -306,9 +317,10 @@ _startReactionsWhenMounting = (config) ->
   config.componentWillMount = ->
     componentWillMount.call this
     return unless @_reactions?
-    sync.each @_reactions, ({ reaction, listener }) =>
+    sync.each @_reactions, ({ reaction, listener }, key) =>
       reaction.addListener listener if listener?
-      reaction.start()
+      try reaction.start()
+      catch error then throwFailure error, { key, reaction, component: this }
 
 _stopReactionsWhenUnmounting = (config) ->
   componentWillUnmount = steal config, "componentWillUnmount", emptyFunction
@@ -368,9 +380,11 @@ _catchErrorsWhenRendering = (config) ->
   renderSafely = ->
     try element = render.call this
     catch error
-      stack = _getElementStack error, @_reactInternalInstance._currentElement
-      try reportFailure error, { method: "#{@constructor.name}.render", component: this, stack }
-      _reportException error, stack
+      element = @_reactInternalInstance._currentElement
+      throwFailure error,
+        method: "#{@constructor.name}.render"
+        component: this
+        stack: [ "::   When component was constructed  ::", element._initError ]
     element or no
 
   renderSafely.toString = -> render.toString()
@@ -391,8 +405,8 @@ _enforcePropValidation = (name, config, statics) ->
       propTypes[event] = [ Function, Void ]
       propDefaults[event] = emptyFunction
 
-  statics.propTypes = propTypes
-  statics.propDefaults = propDefaults
+  statics.propTypes = { value: propTypes }
+  statics.propDefaults = { value: propDefaults }
   statics._processProps = (props) ->
     if propDefaults?
       if isType props, Object then _mergeDefaults props, propDefaults
@@ -403,8 +417,7 @@ _enforcePropValidation = (name, config, statics) ->
       try validateTypes props, propTypes
       catch error
         stack = _getElementStack error, this
-        try reportFailure error, { method: "#{name}._processProps", element: this, props, propTypes, stack }
-        _reportException error, stack
+        try throwFailure error, { method: "#{name}._processProps", element: this, props, propTypes, stack }
     props
 
 _mergeDefaults = (values, defaultValues) ->
@@ -418,15 +431,3 @@ _mergeDefaults = (values, defaultValues) ->
     else if value is undefined
       values[key] = defaultValue
   return
-
-_getElementStack = (error, element) ->
-  stack = parseErrorStack error
-  if element._stack?
-    stack.push "--- From when the component was constructed ---"
-    stack = stack.concat element._stack()
-  stack
-
-_reportException = (error, stack) ->
-  # return unless __DEV__
-  return if GLOBAL._fatalException?
-  ExceptionsManager.reportException error, yes, stack

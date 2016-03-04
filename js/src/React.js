@@ -1,6 +1,4 @@
-var LazyVar, NativeComponent, reportFailure;
-
-reportFailure = require("report-failure");
+var LazyVar, NativeComponent;
 
 LazyVar = require("lazy-var");
 
@@ -32,19 +30,16 @@ module.exports = {
     return NativeComponent("WebView", require("WebView"));
   }),
   Touchable: LazyVar(function() {
-    var ReactElement, Touchable;
+    var Touchable;
     Touchable = require("TouchableWithoutFeedback");
     Touchable.displayName = "Touchable";
-    ReactElement = require("ReactElement");
-    return ReactElement.createFactory(Touchable);
+    return (require("ReactElement")).createFactory(Touchable);
   }),
   StaticRenderer: LazyVar(function() {
-    var ReactElement;
-    ReactElement = require("ReactElement");
-    return ReactElement.createFactory(require("StaticRenderer"));
-  }),
-  PanResponder: LazyVar(function() {
-    return require("PanResponder");
+    var StaticRenderer;
+    StaticRenderer = require("StaticRenderer");
+    StaticRenderer.displayName = "StaticRenderer";
+    return (require("ReactElement")).createFactory(StaticRenderer);
   }),
   Easing: LazyVar(function() {
     return require("Easing");

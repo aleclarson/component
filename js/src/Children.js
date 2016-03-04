@@ -1,8 +1,8 @@
-var Children, ReactElement, Validator, Void, isType, ref, reportFailure;
+var Children, ReactElement, Validator, Void, isType, ref, throwFailure;
 
 ref = require("type-utils"), Void = ref.Void, Validator = ref.Validator, isType = ref.isType;
 
-reportFailure = require("report-failure");
+throwFailure = require("failure").throwFailure;
 
 ReactElement = require("ReactElement");
 
@@ -16,7 +16,7 @@ Children = Validator("Children", function() {
       return;
     }
     error = TypeError("'" + key + "' must be an Array or ReactElement.");
-    return reportFailure(error, {
+    return throwFailure(error, {
       key: key,
       value: value
     });

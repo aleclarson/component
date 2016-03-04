@@ -21,7 +21,6 @@ module.exports =
     "WebView"
     "TouchableWithoutFeedback"
     "InteractionManager"
-    "PanResponder"
     "Animated"
     "Easing"
     "Interpolation"

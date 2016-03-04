@@ -2,17 +2,19 @@
 # TODO Batch synchronous changes in an appropriate timeframe (eg: 16ms).
 
 { isType, validateTypes, assertType, assert, Void } = require "type-utils"
+
 { sync, async } = require "io"
 
-reportFailure = require "report-failure"
 emptyFunction = require "emptyFunction"
 Listenable = require "listenable"
 Immutable = require "immutable"
 Animated = require "Animated"
+Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
 combine = require "combine"
 steal = require "steal"
+hook = require "hook"
 
 module.exports =
 NativeValue = Factory "NativeValue",
@@ -42,31 +44,48 @@ NativeValue = Factory "NativeValue",
 
         if @isAnimated
           @_animated.setValue newValue
-
         else
           @_setValue newValue
 
-    getValue:
-      lazy: -> => @_value
+    getValue: lazy: ->
+      => @_value
 
-    toValue:
-      get: -> @_animated?._animation?._toValue or @_value
+    toValue: get: ->
+      @_animated?._animation?._toValue or @_value
 
     progress:
       get: -> @getProgress()
       set: (progress) ->
         @setProgress progress
 
-    isAnimated:
-      get: -> @_animated?
+    isAnimated: get: ->
+      @_animated?
 
-    isAnimating:
-      get: -> @_animating
+    isAnimating: get: ->
+      @_animating
 
-    isReactive:
-      get: -> @_reaction?
+    velocity: get: ->
+      @_animated?._animation?._lastVelocity
+
+    isReactive: get: ->
+      @_reaction?
+
+    reaction:
+      get: -> @_reaction
+      set: (newValue, oldValue) ->
+        return @_removeReaction() unless newValue?
+        newValue = Reaction.sync newValue if isType newValue, Function.Kind
+        assertType newValue, Reaction
+        if @isReactive then @_removeReaction()
+        else @_removeAnimated()
+        @_reaction = newValue
+        @_reaction.keyPath ?= @keyPath
+        @_reactionListener = @_setValue.bind this
+        @_reactionListener newValue.value
+        @_reaction.addListener @_reactionListener
 
   initValues: (value, keyPath) ->
+    type: null
     _keyPath: keyPath
     _inputRange: null
     _easing: null
@@ -87,15 +106,15 @@ NativeValue = Factory "NativeValue",
 
     if isType value, Reaction
       value.keyPath ?= keyPath
-      @setReaction value
+      @reaction = value
 
     else if isType value, Function.Kind
-      @setReaction Reaction.sync { keyPath, get: value, autoStart: no }
+      @reaction = Reaction.sync { keyPath, get: value, autoStart: no }
 
     else if isType value, Object
       value.keyPath ?= keyPath
       value.autoStart ?= no
-      @setReaction Reaction.sync value
+      @reaction = Reaction.sync value
 
     else
       @value = value
@@ -112,144 +131,117 @@ NativeValue = Factory "NativeValue",
       nativeValue.value = 0
     @value = newValue
 
-  setReaction: (reaction) ->
-    return @_removeReaction() unless reaction?
-    assertType reaction, Reaction
-    if @isReactive then @_removeReaction()
-    else @_removeAnimated()
-    @_reaction = reaction
-    @_reaction.keyPath ?= @keyPath
-    @_reactionListener = @_setValue.bind this
-    @_reactionListener reaction.value
-    @_reaction.addListener @_reactionListener
-
   animate: (config) ->
 
     assert not @isReactive,
       reason: "Cannot call 'animate' when 'isReactive' is true!"
       nativeValue: this
 
+    validateTypes config,
+      onUpdate: [ Function.Kind, Void ]
+      onEnd: [ Function.Kind, Void ]
+      onFinish: [ Function.Kind, Void ]
+
+    @stopAnimation()
+
     @_initAnimatedValue()
 
-    if config.effect?
-      effect = steal config, "effect"
-      combine config, effect
+    onUpdate = steal config, "onUpdate"
+    if onUpdate?
+      listener = @_animated.addListener (result) =>
+        onUpdate result.value
+
+    onEnd = steal config, "onEnd", emptyFunction
+    onFinish = steal config, "onFinish", emptyFunction
 
     @_fromValue = @_value
     @_toValue = config.toValue
 
-    onEnd = steal config, "onEnd", emptyFunction
-    assertType onEnd, Function, { config, onEnd, emptyFunction, key: "onEnd" }
+    # Create the Animation and start it.
+    (Animated[@_getAnimatedMethod config] @_animated, config).start()
 
-    onFinish = steal config, "onFinish", emptyFunction
-    assertType onFinish, Function, { config, key: "onFinish" }
+    # If the Animation finishes instantly, this value is undefined.
+    animation = @_animated._animation
 
-    method = @_getAnimatedMethod config
-    animation = Animated[method] @_animated, config
-    animation.start()
+    unless animation?
+      @_animated.removeListener listener if onUpdate?
+      finished = (not @_toValue?) or (@_value is @_toValue)
+      onFinish() if finished
+      onEnd finished
+      return
 
-    if @_animated._animation?
-      @_animating = yes
-      @onAnimationEnd (finished) =>
-        @_animating = no
-        onFinish() if finished
-        onEnd finished
+    @_animating = yes
 
-    else
-      finished = @_value is @_toValue
+    hook.after animation, "__onEnd", ({ finished }) =>
+      @_animating = no
+      @_animated.removeListener listener if onUpdate?
+      finished = @_value is @_toValue if @_toValue?
       onFinish() if finished
       onEnd finished
 
     return
 
-  stopAnimation: (callback) ->
-    unless @_animated?
-      callback? @_value
-    else if @_animated._animation?
-      @_animated.stopAnimation callback
-    else
-      callback? @_animated.__getValue()
+  finishAnimation: ->
+    return unless @isAnimated
+    @_animated._value = @_toValue
+    @_value = @_animated.__getValue()
+    @_animated.stopAnimation()
+
+  stopAnimation: ->
+    return unless @isAnimated
+    @_animated.stopAnimation()
     return
 
-  onAnimationUpdate: (callback) ->
-    assertType callback, Function
-    animated = @_animated
-    return unless animated?._animation?
-    id = animated.addListener (result) -> callback result.value
-    @onAnimationEnd -> animated.removeListener id
-    return
-
-  onAnimationEnd: (callback) ->
-    assertType callback, Function
-    animation = @_animated?._animation
-    return callback yes unless animation?
-    onEnd = animation.__onEnd
-    animation.__onEnd = (result) ->
-      onEnd.call this, result
-      callback result.finished
-    return
-
-  onAnimationFinish: (callback) ->
-    @onAnimationEnd (finished) ->
-      callback() if finished
-
-  getProgress: (config = {}) ->
+  getProgress: (options) ->
 
     assert not @isReactive,
       reason: "Cannot call 'getProgress' when 'isReactive' is true!"
       nativeValue: this
 
-    assertType config, Object
+    optionDefaults =
+      at: @_value
+      to: @_toValue
+      from: if @_fromValue? then @_fromValue else @_value
 
-    validateTypes config,
-      at: [ Number, Void ]
-      to: [ Number, Void ]
-      from: [ Number, Void ]
+    options = combine optionDefaults, options
+
+    validateTypes options,
+      at: Number
+      to: Number
+      from: Number
       clamp: [ Boolean, Void ]
 
-    { at, to, from, clamp } = config
+    value = steal options, "at"
+    Progress.fromValue value, options
 
-    at ?= @_value
-    to ?= @_toValue
-    from ?= @_fromValue
-    from ?= @_value
-
-    assert to?
-    assert from?
-
-    progress =
-      if to is from then 1
-      else (at - from) / (to - from)
-
-    if clamp then Math.max 0, Math.min 1, progress
-    else progress
-
-  setProgress: (config) ->
+  setProgress: (options) ->
 
     assert not @isReactive,
       reason: "Cannot call 'setProgress' when 'isReactive' is true!"
       nativeValue: this
 
-    if isType config, Number
-      config = { progress: config }
+    if isType options, Number
+      options = { progress: options }
 
-    config.from ?= @_fromValue
-    config.to ?= @_toValue
+    optionDefaults =
+      from: @_fromValue
+      to: @_toValue
 
-    validateTypes config,
+    options = combine optionDefaults, options
+
+    validateTypes options,
       progress: Number
       from: Number
       to: Number
+      clamp: [ Boolean, Void ]
 
-    { progress, from, to } = config
+    progress = steal options, "progress"
 
     progress = @_applyInputRange progress if @_inputRange?
 
     progress = @_easing progress if @_easing?
 
-    assertType progress, Number
-
-    @value = from + progress * (to - from)
+    @value = Progress.toValue progress, options
 
   willProgress: (config) ->
 
@@ -276,6 +268,7 @@ NativeValue = Factory "NativeValue",
     @_toValue = to
 
   _setValue: (newValue) ->
+    assertType newValue, @type if @type?
     @_value = newValue
     @_emit "didSet", newValue
 

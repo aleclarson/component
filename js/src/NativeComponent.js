@@ -1,12 +1,12 @@
-var Component, NativeComponent, NativeProps, ReactElement, combine, define, isType, reportFailure, steal, sync;
+var Component, NativeComponent, NativeProps, ReactElement, _initDebug, combine, define, isType, steal, sync, throwFailure;
 
 ReactElement = require("ReactElement");
+
+throwFailure = require("failure").throwFailure;
 
 isType = require("type-utils").isType;
 
 sync = require("io").sync;
-
-reportFailure = require("report-failure");
 
 combine = require("combine");
 
@@ -19,13 +19,11 @@ NativeProps = require("./NativeProps");
 Component = require("./Component");
 
 module.exports = NativeComponent = function(name, render) {
-  return Component("NativeComponent_" + name, {
-    statics: {
-      propTypes: render.propTypes
-    },
+  var component;
+  component = Component("NativeComponent_" + name, {
     initValues: function() {
       return {
-        childView: null,
+        child: null,
         _nativeProps: NativeProps(this.props, render.propTypes, (function(_this) {
           return function(newProps) {
             var error;
@@ -33,10 +31,10 @@ module.exports = NativeComponent = function(name, render) {
               _this._newValues.push(newProps);
             }
             try {
-              return _this.childView.setNativeProps(newProps);
+              return _this.child.setNativeProps(newProps);
             } catch (_error) {
               error = _error;
-              return reportFailure(error, {
+              return throwFailure(error, {
                 component: _this
               });
             }
@@ -45,40 +43,7 @@ module.exports = NativeComponent = function(name, render) {
       };
     },
     init: function() {
-      var props;
-      props = this.props;
-      return define(this, function() {
-        this.options = {
-          enumerable: false,
-          frozen: true
-        };
-        return this(props.DEBUG ? {
-          _initialValues: props
-        } : void 0, {
-          _newValues: [],
-          _findNewValue: (function(_this) {
-            return function(key) {
-              var newValues;
-              newValues = [];
-              key = key.split(".");
-              sync.each(_this._newValues, function(values) {
-                var index;
-                index = 0;
-                while (index < key.length) {
-                  values = values[key[index++]];
-                  if (values == null) {
-                    break;
-                  }
-                }
-                if (values != null) {
-                  return newValues.push(values);
-                }
-              });
-              return newValues;
-            };
-          })(this)
-        });
-      });
+      return _initDebug.call(this);
     },
     componentWillReceiveProps: function(props) {
       return this._nativeProps.attach(props);
@@ -91,11 +56,47 @@ module.exports = NativeComponent = function(name, render) {
       props = this._nativeProps.values;
       props.ref = (function(_this) {
         return function(view) {
-          return _this.childView = view;
+          return _this.child = view;
         };
       })(this);
       return ReactElement.createElement(render, props);
     }
+  });
+  component.propTypes = render.propTypes;
+  return component;
+};
+
+_initDebug = function() {
+  var props;
+  props = this.props;
+  return define(this, function() {
+    this.options = {
+      enumerable: false,
+      frozen: true
+    };
+    return this({
+      _initialValues: (props.DEBUG ? props : void 0),
+      _newValues: [],
+      _findNewValue: function(key) {
+        var newValues;
+        newValues = [];
+        key = key.split(".");
+        sync.each(this._newValues, function(values) {
+          var index;
+          index = 0;
+          while (index < key.length) {
+            values = values[key[index++]];
+            if (values == null) {
+              break;
+            }
+          }
+          if (values != null) {
+            return newValues.push(values);
+          }
+        });
+        return newValues;
+      }
+    });
   });
 };
 

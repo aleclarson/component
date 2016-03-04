@@ -1,6 +1,8 @@
-var Component, Config, ExceptionsManager, NamedFunction, NativeValue, Random, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactiveGetter, StyleSheet, Void, _addPreventableRendering, _catchErrorsWhenRendering, _createFactory, _createType, _detachNativeValuesWhenUnmounting, _enforcePropValidation, _getElementStack, _initBoundMethods, _initComponent, _initCustomValues, _initNativeValues, _initReactiveValues, _initState, _initValues, _mergeDefaults, _reportException, _startReactionsWhenMounting, _stopReactionsWhenUnmounting, assertType, combine, define, emptyFunction, flattenStyle, isKind, isType, log, parseErrorStack, ref1, reportFailure, setKind, setType, steal, sync, validateTypes;
+var Component, Config, ExceptionsManager, NamedFunction, NativeValue, Random, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactiveGetter, StyleSheet, Void, _addPreventableRendering, _catchErrorsWhenRendering, _createFactory, _createType, _detachNativeValuesWhenUnmounting, _enforcePropValidation, _initBoundMethods, _initComponent, _initCustomValues, _initNativeValues, _initReactiveValues, _initState, _initValues, _mergeDefaults, _startReactionsWhenMounting, _stopReactionsWhenUnmounting, assertType, combine, define, emptyFunction, flattenStyle, isKind, isType, log, ref1, setKind, setType, steal, sync, throwFailure, validateTypes;
 
 ref1 = require("type-utils"), setKind = ref1.setKind, setType = ref1.setType, isType = ref1.isType, isKind = ref1.isKind, assertType = ref1.assertType, validateTypes = ref1.validateTypes, Void = ref1.Void;
+
+throwFailure = require("failure").throwFailure;
 
 sync = require("io").sync;
 
@@ -8,15 +10,11 @@ ReactCurrentOwner = require("ReactCurrentOwner");
 
 ExceptionsManager = require("ExceptionsManager");
 
-parseErrorStack = require("parseErrorStack");
-
 ReactiveGetter = require("ReactiveGetter");
 
 ReactComponent = require("ReactComponent");
 
 NamedFunction = require("named-function");
-
-reportFailure = require("report-failure");
 
 emptyFunction = require("emptyFunction");
 
@@ -65,13 +63,20 @@ Component = NamedFunction("Component", function(name, config) {
   assertType(config, Object, "config");
   mixins = steal(config, "mixins", []);
   sync.each(mixins, function(mixin) {
+    assertType(mixin, Function, {
+      name: name,
+      mixin: mixin,
+      mixins: mixins
+    });
     return mixin(config);
   });
   validateTypes(config, Config);
   statics = steal(config, "statics", {});
   styles = steal(config, "styles");
   if (styles != null) {
-    statics.styles = StyleSheet.create(styles);
+    statics.styles = {
+      value: StyleSheet.create(styles)
+    };
   }
   _enforcePropValidation(name, config, statics);
   _addPreventableRendering(name, config);
@@ -88,10 +93,16 @@ Component = NamedFunction("Component", function(name, config) {
     initNativeValues: steal(config, "initNativeValues", emptyFunction)
   });
   statics = sync.map(statics, function(value, key) {
+    var enumerable;
+    enumerable = key[0] !== "_";
+    if (isType(value, Object)) {
+      value.enumerable = enumerable;
+      return value;
+    }
     return {
       value: value,
       frozen: true,
-      enumerable: key[0] !== "_"
+      enumerable: enumerable
     };
   });
   prototype = sync.map(config, function(value, key) {
@@ -109,9 +120,7 @@ Component = NamedFunction("Component", function(name, config) {
   return define(factory, statics);
 });
 
-setKind(Component, ReactComponent);
-
-module.exports = Component;
+module.exports = setKind(Component, ReactComponent);
 
 define(Component.prototype, function() {
   this.options = {
@@ -125,12 +134,24 @@ define(Component.prototype, function() {
       }
       key = Random.id();
       reaction = Reaction(options);
-      return this._addReaction(key, reaction);
+      return this.__addReaction(key, reaction);
     }
   });
   this.enumerable = false;
   return this({
-    _addReaction: function(key, reaction, listener) {
+    __owners: {
+      get: function() {
+        var instance, owners, ref2;
+        owners = [];
+        instance = this;
+        while (instance != null) {
+          owners.push(instance);
+          instance = (ref2 = instance._reactInternalInstance._currentElement._owner) != null ? ref2._instance : void 0;
+        }
+        return owners;
+      }
+    },
+    __addReaction: function(key, reaction, listener) {
       if (this._reactions == null) {
         this._reactions = {};
       }
@@ -143,7 +164,7 @@ define(Component.prototype, function() {
       };
       return reaction;
     },
-    _attachNativeValue: function(key, nativeValue) {
+    __attachNativeValue: function(key, nativeValue) {
       assertType(nativeValue, NativeValue.Kind);
       this._nativeValues[key] = nativeValue;
       return define(this, key, {
@@ -152,15 +173,15 @@ define(Component.prototype, function() {
         frozen: true
       });
     },
-    _createNativeValue: function(key, value) {
+    __createNativeValue: function(key, value) {
       var nativeValue;
       if (value === void 0) {
         return;
       }
       nativeValue = NativeValue(value, this.constructor.name + "." + key);
-      this._attachNativeValue(key, nativeValue);
+      this.__attachNativeValue(key, nativeValue);
       if (nativeValue.isReactive) {
-        return this._addReaction(key, nativeValue._reaction);
+        return this.__addReaction(key, nativeValue._reaction);
       }
     }
   });
@@ -177,7 +198,7 @@ _createType = function(name, config) {
       _initComponent.call(inst, config, props);
     } catch (_error) {
       error = _error;
-      reportFailure(error, {
+      throwFailure(error, {
         method: name + "._initComponent",
         component: inst,
         props: props
@@ -190,7 +211,7 @@ _createType = function(name, config) {
 
 _createFactory = function(type) {
   return function(props) {
-    var key, mixins, ref, stack;
+    var key, mixins, ref;
     if (props == null) {
       props = {};
     }
@@ -206,7 +227,6 @@ _createFactory = function(type) {
     delete props.key;
     ref = props.ref != null ? props.ref : null;
     delete props.ref;
-    stack = parseErrorStack(Error());
     return define({}, function() {
       this.options = {
         configurable: false
@@ -227,9 +247,7 @@ _createFactory = function(type) {
             validated: false
           }
         },
-        _stack: function() {
-          return stack;
-        }
+        _initError: Error()
       });
     });
   };
@@ -315,7 +333,7 @@ _initValues = function(config) {
       }
       error = Error("DEPRECATED: 'initValues' treats Reactions normally now!");
       try {
-        reportFailure(error, {
+        throwFailure(error, {
           reaction: reaction,
           key: key,
           component: _this
@@ -349,7 +367,7 @@ _initReactiveValues = function(config) {
   }
   if (!isType(values, Object)) {
     error = TypeError("'initReactiveValues' must return an Object or Array!");
-    reportFailure(error, {
+    throwFailure(error, {
       values: values,
       component: this
     });
@@ -376,7 +394,7 @@ _initReactiveValues = function(config) {
   });
   reactions = sync.map(reactions, (function(_this) {
     return function(reaction, key) {
-      _this._addReaction(key, reaction);
+      _this.__addReaction(key, reaction);
       return {
         enumerable: key[0] !== "_",
         get: function() {
@@ -405,9 +423,9 @@ _initNativeValues = function(config) {
   return sync.each(nativeValues, (function(_this) {
     return function(value, key) {
       if (isKind(value, NativeValue)) {
-        return _this._attachNativeValue(key, value);
+        return _this.__attachNativeValue(key, value);
       } else {
-        return _this._createNativeValue(key, value);
+        return _this.__createNativeValue(key, value);
       }
     };
   })(this));
@@ -430,7 +448,7 @@ _initState = function(config) {
         value.keyPath = _this.constructor.name + ".state." + key;
       }
       _this.state[key] = value._value;
-      return _this._addReaction("state." + key, value, function(newValue) {
+      return _this.__addReaction("state." + key, value, function(newValue) {
         var newProps;
         newProps = {};
         newProps[key] = newValue;
@@ -449,13 +467,22 @@ _startReactionsWhenMounting = function(config) {
       return;
     }
     return sync.each(this._reactions, (function(_this) {
-      return function(arg) {
-        var listener, reaction;
+      return function(arg, key) {
+        var error, listener, reaction;
         reaction = arg.reaction, listener = arg.listener;
         if (listener != null) {
           reaction.addListener(listener);
         }
-        return reaction.start();
+        try {
+          return reaction.start();
+        } catch (_error) {
+          error = _error;
+          return throwFailure(error, {
+            key: key,
+            reaction: reaction,
+            component: _this
+          });
+        }
       };
     })(this));
   };
@@ -552,20 +579,17 @@ _catchErrorsWhenRendering = function(config) {
   var render, renderSafely;
   render = steal(config, "render");
   renderSafely = function() {
-    var element, error, stack;
+    var element, error;
     try {
       element = render.call(this);
     } catch (_error) {
       error = _error;
-      stack = _getElementStack(error, this._reactInternalInstance._currentElement);
-      try {
-        reportFailure(error, {
-          method: this.constructor.name + ".render",
-          component: this,
-          stack: stack
-        });
-      } catch (_error) {}
-      _reportException(error, stack);
+      element = this._reactInternalInstance._currentElement;
+      throwFailure(error, {
+        method: this.constructor.name + ".render",
+        component: this,
+        stack: ["::   When component was constructed  ::", element._initError]
+      });
     }
     return element || false;
   };
@@ -593,8 +617,12 @@ _enforcePropValidation = function(name, config, statics) {
       return propDefaults[event] = emptyFunction;
     });
   }
-  statics.propTypes = propTypes;
-  statics.propDefaults = propDefaults;
+  statics.propTypes = {
+    value: propTypes
+  };
+  statics.propDefaults = {
+    value: propDefaults
+  };
   return statics._processProps = function(props) {
     var error, stack;
     if (propDefaults != null) {
@@ -612,7 +640,7 @@ _enforcePropValidation = function(name, config, statics) {
         error = _error;
         stack = _getElementStack(error, this);
         try {
-          reportFailure(error, {
+          throwFailure(error, {
             method: name + "._processProps",
             element: this,
             props: props,
@@ -620,7 +648,6 @@ _enforcePropValidation = function(name, config, statics) {
             stack: stack
           });
         } catch (_error) {}
-        _reportException(error, stack);
       }
     }
     return props;
@@ -642,23 +669,6 @@ _mergeDefaults = function(values, defaultValues) {
       values[key] = defaultValue;
     }
   }
-};
-
-_getElementStack = function(error, element) {
-  var stack;
-  stack = parseErrorStack(error);
-  if (element._stack != null) {
-    stack.push("--- From when the component was constructed ---");
-    stack = stack.concat(element._stack());
-  }
-  return stack;
-};
-
-_reportException = function(error, stack) {
-  if (GLOBAL._fatalException != null) {
-    return;
-  }
-  return ExceptionsManager.reportException(error, true, stack);
 };
 
 //# sourceMappingURL=../../map/src/Component.map

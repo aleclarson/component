@@ -11,6 +11,8 @@ module.exports = Factory "NativeArray",
 
   create: -> {} # Just pretending to be a NativeValue.
 
+  disableStateHistory: yes
+
   optionTypes:
     keyPath: [ String, Void ]
     length: Number

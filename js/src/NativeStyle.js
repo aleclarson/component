@@ -1,6 +1,8 @@
-var Factory, NativeMap, NativeTransform, Style, assert, assertType, flattenStyle, isType, ref, sync;
+var Factory, NativeMap, NativeTransform, Style, assert, assertType, flattenStyle, isType, ref, sync, throwFailure;
 
 ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType, isType = ref.isType;
+
+throwFailure = require("failure").throwFailure;
 
 sync = require("io").sync;
 
@@ -35,7 +37,7 @@ module.exports = Factory("NativeStyle", {
     } catch (_error) {
       error = _error;
       try {
-        reportFailure(error, {
+        throwFailure(error, {
           newValues: newValues,
           style: this
         });
@@ -49,8 +51,9 @@ module.exports = Factory("NativeStyle", {
     sync.each(values, (function(_this) {
       return function(value, key) {
         return assert(value != null, {
-          style: _this,
           key: key,
+          values: values,
+          style: _this,
           reason: "Value must be defined!"
         });
       };

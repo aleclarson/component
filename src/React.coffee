@@ -1,5 +1,4 @@
 
-reportFailure = require "report-failure"
 LazyVar = require "lazy-var"
 
 NativeComponent = require "./NativeComponent"
@@ -32,15 +31,12 @@ module.exports =
   Touchable: LazyVar ->
     Touchable = require "TouchableWithoutFeedback"
     Touchable.displayName = "Touchable"
-    ReactElement = require "ReactElement"
-    ReactElement.createFactory Touchable
+    (require "ReactElement").createFactory Touchable
 
   StaticRenderer: LazyVar ->
-    ReactElement = require "ReactElement"
-    ReactElement.createFactory require "StaticRenderer"
-
-  PanResponder: LazyVar ->
-    require "PanResponder"
+    StaticRenderer = require "StaticRenderer"
+    StaticRenderer.displayName = "StaticRenderer"
+    (require "ReactElement").createFactory StaticRenderer
 
   Easing: LazyVar ->
     require "Easing"

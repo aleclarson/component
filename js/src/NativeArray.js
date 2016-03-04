@@ -11,6 +11,7 @@ module.exports = Factory("NativeArray", {
   create: function() {
     return {};
   },
+  disableStateHistory: true,
   optionTypes: {
     keyPath: [String, Void],
     length: Number

@@ -1,8 +1,8 @@
-var Style, Validator, Void, isType, ref, reportFailure;
+var Style, Validator, Void, isType, ref, throwFailure;
 
 ref = require("type-utils"), Void = ref.Void, Validator = ref.Validator, isType = ref.isType;
 
-reportFailure = require("report-failure");
+throwFailure = require("failure").throwFailure;
 
 Style = Validator("Style", function() {
   return function(value, key) {
@@ -11,7 +11,7 @@ Style = Validator("Style", function() {
       return;
     }
     error = TypeError("'" + key + "' must be a Style.");
-    return reportFailure(error, {
+    return throwFailure(error, {
       key: key,
       value: value
     });

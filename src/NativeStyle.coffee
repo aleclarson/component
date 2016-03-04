@@ -1,5 +1,8 @@
 
 { assert, assertType, isType } = require "type-utils"
+
+{ throwFailure } = require "failure"
+
 { sync } = require "io"
 
 flattenStyle = require "flattenStyle"
@@ -28,7 +31,7 @@ module.exports = Factory "NativeStyle",
     # if __DEV__
     try newValues = sync.filter newValues, (value, key) => value?
     catch error
-      try reportFailure error, { newValues, style: this }
+      try throwFailure error, { newValues, style: this }
 
     NativeMap::attach.call this, newValues
 
@@ -42,7 +45,7 @@ module.exports = Factory "NativeStyle",
 
     # if __DEV__
     sync.each values, (value, key) =>
-      assert value?, { style: this, key, reason: "Value must be defined!" }
+      assert value?, { key, values, style: this, reason: "Value must be defined!" }
 
     values
 
