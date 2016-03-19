@@ -28,7 +28,7 @@ module.exports = Factory "NativeProps",
 
   _didSet: (newValues) ->
     @_setNativeProps newValues
-    @_emit "didSet", newValues
+    @didSet.emit newValues
 
   _attachValue: (value, key) ->
 

@@ -28,7 +28,7 @@ module.exports = Factory("NativeProps", {
   },
   _didSet: function(newValues) {
     this._setNativeProps(newValues);
-    return this._emit("didSet", newValues);
+    return this.didSet.emit(newValues);
   },
   _attachValue: function(value, key) {
     var type;

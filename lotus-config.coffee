@@ -19,7 +19,6 @@ module.exports =
     "ListView"
     "ListViewDataSource"
     "WebView"
-    "TouchableWithoutFeedback"
     "InteractionManager"
     "Animated"
     "Easing"

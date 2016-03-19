@@ -27,8 +27,8 @@ NativeComponent = (name, render) ->
 
         @_newValues.push newProps if @props.DEBUG # TODO: if __DEV__
 
-        try @child.setNativeProps newProps
-        catch error then throwFailure error, { component: this }
+        try @child?.setNativeProps newProps
+        catch error then throwFailure error, { component: this, newProps }
 
     init: ->
       _initDebug.call this # if __DEV__

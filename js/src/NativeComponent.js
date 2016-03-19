@@ -26,16 +26,17 @@ module.exports = NativeComponent = function(name, render) {
         child: null,
         _nativeProps: NativeProps(this.props, render.propTypes, (function(_this) {
           return function(newProps) {
-            var error;
+            var error, ref;
             if (_this.props.DEBUG) {
               _this._newValues.push(newProps);
             }
             try {
-              return _this.child.setNativeProps(newProps);
+              return (ref = _this.child) != null ? ref.setNativeProps(newProps) : void 0;
             } catch (_error) {
               error = _error;
               return throwFailure(error, {
-                component: _this
+                component: _this,
+                newProps: newProps
               });
             }
           };

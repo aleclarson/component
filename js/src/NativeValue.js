@@ -1,4 +1,4 @@
-var Animated, Factory, Immutable, Listenable, NativeValue, Progress, Reaction, Void, assert, assertType, async, combine, emptyFunction, hook, isType, ref, ref1, steal, sync, validateTypes,
+var Animated, Event, Factory, Immutable, NativeValue, Progress, Reaction, Void, assert, assertType, async, combine, emptyFunction, hook, isType, ref, ref1, steal, sync, validateTypes,
   slice = [].slice;
 
 ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Void = ref.Void;
@@ -6,8 +6,6 @@ ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTy
 ref1 = require("io"), sync = ref1.sync, async = ref1.async;
 
 emptyFunction = require("emptyFunction");
-
-Listenable = require("listenable");
 
 Immutable = require("immutable");
 
@@ -21,6 +19,8 @@ Factory = require("factory");
 
 combine = require("combine");
 
+Event = require("event");
+
 steal = require("steal");
 
 hook = require("hook");
@@ -30,11 +30,11 @@ module.exports = NativeValue = Factory("NativeValue", {
     assertType(keyPath, [String, Void], "keyPath");
     return arguments;
   },
-  create: function(value) {
+  getFromCache: function(value) {
     if (isKind(value, NativeValue)) {
       return value;
     } else {
-      return {};
+      return void 0;
     }
   },
   customValues: {
@@ -136,6 +136,12 @@ module.exports = NativeValue = Factory("NativeValue", {
       }
     }
   },
+  initFrozenValues: function() {
+    return {
+      didSet: Event(),
+      didAnimationEnd: Event()
+    };
+  },
   initValues: function(value, keyPath) {
     return {
       type: null,
@@ -157,9 +163,6 @@ module.exports = NativeValue = Factory("NativeValue", {
     };
   },
   init: function(value, keyPath) {
-    Listenable(this, {
-      eventNames: true
-    });
     if (isType(value, Reaction)) {
       if (value.keyPath == null) {
         value.keyPath = keyPath;
@@ -226,30 +229,29 @@ module.exports = NativeValue = Factory("NativeValue", {
         this._animated.removeListener(listener);
       }
       finished = (this._toValue == null) || (this._value === this._toValue);
-      if (finished) {
-        onFinish();
-      }
-      onEnd(finished);
+      this._onAnimationEnd(finished, onFinish, onEnd);
       return;
     }
     this._animating = true;
     hook.after(animation, "__onEnd", (function(_this) {
-      return function(arg) {
-        var finished;
-        finished = arg.finished;
+      return function(_, result) {
         _this._animating = false;
         if (onUpdate != null) {
           _this._animated.removeListener(listener);
         }
         if (_this._toValue != null) {
-          finished = _this._value === _this._toValue;
+          result.finished = _this._value === _this._toValue;
         }
-        if (finished) {
-          onFinish();
-        }
-        return onEnd(finished);
+        return _this._onAnimationEnd(result.finished, onFinish, onEnd);
       };
     })(this));
+  },
+  _onAnimationEnd: function(finished, onFinish, onEnd) {
+    if (finished) {
+      onFinish();
+    }
+    onEnd(finished);
+    return this.didAnimationEnd.emit(finished);
   },
   finishAnimation: function() {
     if (!this.isAnimated) {
@@ -344,7 +346,7 @@ module.exports = NativeValue = Factory("NativeValue", {
       assertType(newValue, this.type);
     }
     this._value = newValue;
-    return this._emit("didSet", newValue);
+    return this.didSet.emit(newValue);
   },
   _applyInputRange: function(value) {
     var max, min, ref2;

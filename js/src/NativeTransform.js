@@ -20,7 +20,7 @@ module.exports = Factory("NativeTransform", {
     return this.attach(values);
   },
   _didSet: function(newValues) {
-    return this._emit("didSet", this.values);
+    return this.didSet.emit(this.values);
   },
   _getValues: function() {
     var values;

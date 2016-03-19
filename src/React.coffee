@@ -1,54 +1,36 @@
 
-LazyVar = require "lazy-var"
-
 NativeComponent = require "./NativeComponent"
 
 module.exports =
 
-  View: LazyVar ->
+  View: lazy: ->
     NativeComponent "View", require "View"
 
-  ImageView: LazyVar ->
+  ImageView: lazy: ->
     NativeComponent "ImageView", require "Image"
 
-  TextView: LazyVar ->
+  TextView: lazy: ->
     NativeComponent "TextView", require "Text"
 
-  TextInput: LazyVar ->
+  TextInput: lazy: ->
     NativeComponent "TextInput", require "TextInput"
 
-  ScrollView: LazyVar ->
-    NativeComponent "ScrollView", require "ScrollView"
-
-  ListView: LazyVar ->
-    ListView = NativeComponent "ListView", require "ListView"
-    ListView.DataSource = require "ListViewDataSource"
-    ListView
-
-  WebView: LazyVar ->
+  WebView: lazy: ->
     NativeComponent "WebView", require "WebView"
 
-  Touchable: LazyVar ->
-    Touchable = require "TouchableWithoutFeedback"
-    Touchable.displayName = "Touchable"
-    (require "ReactElement").createFactory Touchable
-
-  StaticRenderer: LazyVar ->
+  StaticRenderer: lazy: ->
     StaticRenderer = require "StaticRenderer"
     StaticRenderer.displayName = "StaticRenderer"
     (require "ReactElement").createFactory StaticRenderer
 
-  Easing: LazyVar ->
-    require "Easing"
+  Easing: lazy: ->
+    require "./Easing"
 
-  Interpolation: LazyVar ->
-    require "Interpolation"
+  Element: lazy: ->
+    require "./Element"
 
-  NativeModules: LazyVar ->
-    require "NativeModules"
-
-  Children: LazyVar ->
+  Children: lazy: ->
     require "./Children"
 
-  Style: LazyVar ->
+  Style: lazy: ->
     require "./Style"

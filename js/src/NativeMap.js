@@ -1,14 +1,14 @@
-var Factory, Immutable, Listenable, NativeMap, NativeValue, assert, assertType, isKind, isType, ref, setType, sync;
+var Event, Factory, Immutable, NativeMap, NativeValue, assert, assertType, isKind, isType, ref, setType, sync;
 
 ref = require("type-utils"), isType = ref.isType, isKind = ref.isKind, setType = ref.setType, assert = ref.assert, assertType = ref.assertType;
 
 sync = require("io").sync;
 
-Listenable = require("listenable");
-
 Immutable = require("immutable");
 
 Factory = require("factory");
+
+Event = require("event");
 
 NativeValue = require("./NativeValue");
 
@@ -20,6 +20,11 @@ module.exports = NativeMap = Factory("NativeMap", {
       }
     }
   },
+  initFrozenValues: function() {
+    return {
+      didSet: Event()
+    };
+  },
   initValues: function(values) {
     return {
       _values: values,
@@ -27,11 +32,6 @@ module.exports = NativeMap = Factory("NativeMap", {
       _nativeValues: {},
       _nativeListeners: {}
     };
-  },
-  init: function() {
-    return Listenable(this, {
-      eventNames: true
-    });
   },
   attach: function(newValues) {
     this._detachOldValues(newValues);
@@ -45,7 +45,7 @@ module.exports = NativeMap = Factory("NativeMap", {
     return this._nativeListeners = {};
   },
   _didSet: function(newValues) {
-    return this._emit("didSet", newValues);
+    return this.didSet.emit(newValues);
   },
   _getValues: function() {
     var values;
@@ -90,12 +90,17 @@ module.exports = NativeMap = Factory("NativeMap", {
     if (newValues == null) {
       return;
     }
-    return sync.each(newValues, this._attachValue.bind(this));
+    return sync.each(newValues, (function(_this) {
+      return function(value, key) {
+        return _this._attachValue(value, key);
+      };
+    })(this));
   },
   _detachOldValues: function(newValues) {
+    assertType(newValues, Object);
     sync.each(this._nativeValues, (function(_this) {
       return function(nativeValue, key) {
-        if (nativeValue !== (newValues != null ? newValues[key] : void 0)) {
+        if (nativeValue !== newValues[key]) {
           _this._detachNativeValue(nativeValue, key);
           return delete _this._nativeValues[key];
         }
@@ -103,7 +108,7 @@ module.exports = NativeMap = Factory("NativeMap", {
     })(this));
     return sync.each(this._nativeMaps, (function(_this) {
       return function(nativeMap, key) {
-        if (nativeMap !== (newValues != null ? newValues[key] : void 0)) {
+        if (nativeMap !== newValues[key]) {
           _this._detachNativeValue(nativeMap, key);
           return delete _this._nativeMaps[key];
         } else {
@@ -128,8 +133,7 @@ module.exports = NativeMap = Factory("NativeMap", {
     })(this));
   },
   _attachNativeValue: function(nativeValue, key) {
-    var base;
-    return nativeValue.addListener("didSet", (base = this._nativeListeners)[key] != null ? base[key] : base[key] = (function(_this) {
+    return this._nativeListeners[key] = nativeValue.didSet((function(_this) {
       return function(newValue) {
         var newValues;
         newValues = {};
@@ -139,7 +143,8 @@ module.exports = NativeMap = Factory("NativeMap", {
     })(this));
   },
   _detachNativeValue: function(nativeValue, key) {
-    return nativeValue.removeListener("didSet", this._nativeListeners[key]);
+    this._nativeListeners[key].stop();
+    return delete this._nativeListeners[key];
   }
 });
 

@@ -6,13 +6,13 @@
 { sync, async } = require "io"
 
 emptyFunction = require "emptyFunction"
-Listenable = require "listenable"
 Immutable = require "immutable"
 Animated = require "Animated"
 Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
 combine = require "combine"
+Event = require "event"
 steal = require "steal"
 hook = require "hook"
 
@@ -23,8 +23,8 @@ NativeValue = Factory "NativeValue",
     assertType keyPath, [ String, Void ], "keyPath"
     arguments
 
-  create: (value) ->
-    if isKind value, NativeValue then value else {}
+  getFromCache: (value) ->
+    if isKind value, NativeValue then value else undefined
 
   customValues:
 
@@ -84,25 +84,41 @@ NativeValue = Factory "NativeValue",
         @_reactionListener newValue.value
         @_reaction.addListener @_reactionListener
 
+  initFrozenValues: ->
+
+    didSet: Event()
+
+    didAnimationEnd: Event()
+
   initValues: (value, keyPath) ->
+
     type: null
+
     _keyPath: keyPath
+
     _inputRange: null
+
     _easing: null
+
     _reaction: null
+
     _reactionListener: null
+
     _animated: null
+
     _animatedListener: null
 
   initReactiveValues: ->
+
     _animating: no
+
     _fromValue: null
+
     _toValue: null
+
     _value: null
 
   init: (value, keyPath) ->
-
-    Listenable this, { eventNames: yes }
 
     if isType value, Reaction
       value.keyPath ?= keyPath
@@ -166,20 +182,23 @@ NativeValue = Factory "NativeValue",
     unless animation?
       @_animated.removeListener listener if onUpdate?
       finished = (not @_toValue?) or (@_value is @_toValue)
-      onFinish() if finished
-      onEnd finished
+      @_onAnimationEnd finished, onFinish, onEnd
       return
 
     @_animating = yes
 
-    hook.after animation, "__onEnd", ({ finished }) =>
+    hook.after animation, "__onEnd", (_, result) =>
       @_animating = no
       @_animated.removeListener listener if onUpdate?
-      finished = @_value is @_toValue if @_toValue?
-      onFinish() if finished
-      onEnd finished
+      result.finished = @_value is @_toValue if @_toValue?
+      @_onAnimationEnd result.finished, onFinish, onEnd
 
     return
+
+  _onAnimationEnd: (finished, onFinish, onEnd) ->
+    onFinish() if finished
+    onEnd finished
+    @didAnimationEnd.emit finished
 
   finishAnimation: ->
     return unless @isAnimated
@@ -270,7 +289,7 @@ NativeValue = Factory "NativeValue",
   _setValue: (newValue) ->
     assertType newValue, @type if @type?
     @_value = newValue
-    @_emit "didSet", newValue
+    @didSet.emit newValue
 
   _applyInputRange: (value) ->
     assert @_inputRange, Array

@@ -24,7 +24,7 @@ module.exports = Factory "NativeTransform",
 
   # All values are refreshed when attaching new values.
   _didSet: (newValues) ->
-    @_emit "didSet", @values
+    @didSet.emit @values
 
   _getValues: ->
 

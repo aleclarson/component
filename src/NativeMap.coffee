@@ -2,9 +2,9 @@
 { isType, isKind, setType, assert, assertType } = require "type-utils"
 { sync } = require "io"
 
-Listenable = require "listenable"
 Immutable = require "immutable"
 Factory = require "factory"
+Event = require "event"
 
 NativeValue = require "./NativeValue"
 
@@ -16,15 +16,14 @@ NativeMap = Factory "NativeMap",
     values: get: ->
       @_getValues()
 
+  initFrozenValues: ->
+    didSet: Event()
+
   initValues: (values) ->
     _values: values
     _nativeMaps: {}
     _nativeValues: {}
     _nativeListeners: {}
-
-  init: ->
-
-    Listenable this, { eventNames: yes }
 
   attach: (newValues) ->
     @_detachOldValues newValues
@@ -44,7 +43,7 @@ NativeMap = Factory "NativeMap",
   #
 
   _didSet: (newValues) ->
-    @_emit "didSet", newValues
+    @didSet.emit newValues
 
   _getValues: ->
 
@@ -84,17 +83,20 @@ NativeMap = Factory "NativeMap",
 
   _attachNewValues: (newValues) ->
     return unless newValues?
-    sync.each newValues, @_attachValue.bind this
+    sync.each newValues, (value, key) =>
+      @_attachValue value, key
 
   _detachOldValues: (newValues) ->
 
+    assertType newValues, Object
+
     sync.each @_nativeValues, (nativeValue, key) =>
-      if nativeValue isnt newValues?[key]
+      if nativeValue isnt newValues[key]
         @_detachNativeValue nativeValue, key
         delete @_nativeValues[key]
 
     sync.each @_nativeMaps, (nativeMap, key) =>
-      if nativeMap isnt newValues?[key]
+      if nativeMap isnt newValues[key]
         @_detachNativeValue nativeMap, key
         delete @_nativeMaps[key]
       else
@@ -114,11 +116,11 @@ NativeMap = Factory "NativeMap",
   #
 
   _attachNativeValue: (nativeValue, key) ->
-    nativeValue.addListener "didSet", @_nativeListeners[key] ?= (newValue) =>
-      # TODO Batch with 'setImmediate'?
+    @_nativeListeners[key] = nativeValue.didSet (newValue) =>
       newValues = {}
       newValues[key] = newValue
       @_didSet newValues
 
   _detachNativeValue: (nativeValue, key) ->
-    nativeValue.removeListener "didSet", @_nativeListeners[key]
+    @_nativeListeners[key].stop()
+    delete @_nativeListeners[key]
