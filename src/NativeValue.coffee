@@ -1,9 +1,7 @@
 
 # TODO Batch synchronous changes in an appropriate timeframe (eg: 16ms).
 
-{ isType, validateTypes, assertType, assert, Void } = require "type-utils"
-
-{ sync, async } = require "io"
+{ isType, validateTypes, assertType, assert, Maybe } = require "type-utils"
 
 emptyFunction = require "emptyFunction"
 Immutable = require "immutable"
@@ -14,13 +12,15 @@ Factory = require "factory"
 combine = require "combine"
 Event = require "event"
 steal = require "steal"
+isDev = require "isDev"
+sync = require "sync"
 hook = require "hook"
 
 module.exports =
 NativeValue = Factory "NativeValue",
 
   initArguments: (value, keyPath) ->
-    assertType keyPath, [ String, Void ], "keyPath"
+    assertType keyPath, String.Maybe, "keyPath"
     arguments
 
   getFromCache: (value) ->
@@ -73,16 +73,8 @@ NativeValue = Factory "NativeValue",
     reaction:
       get: -> @_reaction
       set: (newValue, oldValue) ->
-        return @_removeReaction() unless newValue?
-        newValue = Reaction.sync newValue if isType newValue, Function.Kind
-        assertType newValue, Reaction
-        if @isReactive then @_removeReaction()
-        else @_removeAnimated()
-        @_reaction = newValue
-        @_reaction.keyPath ?= @keyPath
-        @_reactionListener = @_setValue.bind this
-        @_reactionListener newValue.value
-        @_reaction.addListener @_reactionListener
+        return if newValue is oldValue
+        @_attachReaction newValue
 
   initFrozenValues: ->
 
@@ -91,8 +83,6 @@ NativeValue = Factory "NativeValue",
     didAnimationEnd: Event()
 
   initValues: (value, keyPath) ->
-
-    type: null
 
     _keyPath: keyPath
 
@@ -107,6 +97,8 @@ NativeValue = Factory "NativeValue",
     _animated: null
 
     _animatedListener: null
+
+    _animateStackTrace: null
 
   initReactiveValues: ->
 
@@ -125,11 +117,11 @@ NativeValue = Factory "NativeValue",
       @reaction = value
 
     else if isType value, Function.Kind
-      @reaction = Reaction.sync { keyPath, get: value, autoStart: no }
+      @reaction = Reaction.sync { keyPath, get: value } # , autoStart: no }
 
     else if isType value, Object
       value.keyPath ?= keyPath
-      value.autoStart ?= no
+      # value.autoStart ?= no
       @reaction = Reaction.sync value
 
     else
@@ -137,8 +129,8 @@ NativeValue = Factory "NativeValue",
 
   detach: ->
     # TODO This cleanup should involve a reference count.
-    # @_removeReaction()
-    # @_removeAnimated()
+    # @_detachReaction()
+    # @_detachAnimated()
 
   absorb: (nativeValues...) ->
     newValue = @value
@@ -154,16 +146,18 @@ NativeValue = Factory "NativeValue",
       nativeValue: this
 
     validateTypes config,
-      onUpdate: [ Function.Kind, Void ]
-      onEnd: [ Function.Kind, Void ]
-      onFinish: [ Function.Kind, Void ]
+      onUpdate: Maybe Function.Kind
+      onEnd: Maybe Function.Kind
+      onFinish: Maybe Function.Kind
 
     @stopAnimation()
 
-    @_initAnimatedValue()
+    @_attachAnimated()
+
+    @_animateStackTrace = Error() if isDev
 
     onUpdate = steal config, "onUpdate"
-    if onUpdate?
+    if onUpdate
       listener = @_animated.addListener (result) =>
         onUpdate result.value
 
@@ -174,19 +168,19 @@ NativeValue = Factory "NativeValue",
     @_toValue = config.toValue
 
     # Create the Animation and start it.
-    (Animated[@_getAnimatedMethod config] @_animated, config).start()
+    type = @_detectAnimationType config
+    animation = Animated[type] @_animated, config
+    animation.start()
 
     # If the Animation finishes instantly, this value is undefined.
     animation = @_animated._animation
-
-    unless animation?
-      @_animated.removeListener listener if onUpdate?
-      finished = (not @_toValue?) or (@_value is @_toValue)
+    unless animation
+      @_animated.removeListener listener if onUpdate
+      finished = (@_toValue is undefined) or (@_toValue is @_value)
       @_onAnimationEnd finished, onFinish, onEnd
       return
 
     @_animating = yes
-
     hook.after animation, "__onEnd", (_, result) =>
       @_animating = no
       @_animated.removeListener listener if onUpdate?
@@ -194,11 +188,6 @@ NativeValue = Factory "NativeValue",
       @_onAnimationEnd result.finished, onFinish, onEnd
 
     return
-
-  _onAnimationEnd: (finished, onFinish, onEnd) ->
-    onFinish() if finished
-    onEnd finished
-    @didAnimationEnd.emit finished
 
   finishAnimation: ->
     return unless @isAnimated
@@ -228,7 +217,7 @@ NativeValue = Factory "NativeValue",
       at: Number
       to: Number
       from: Number
-      clamp: [ Boolean, Void ]
+      clamp: Boolean.Maybe
 
     value = steal options, "at"
     Progress.fromValue value, options
@@ -252,7 +241,7 @@ NativeValue = Factory "NativeValue",
       progress: Number
       from: Number
       to: Number
-      clamp: [ Boolean, Void ]
+      clamp: Boolean.Maybe
 
     progress = steal options, "progress"
 
@@ -269,10 +258,10 @@ NativeValue = Factory "NativeValue",
       nativeValue: this
 
     validateTypes config,
-      from: [ Number, Void ]
+      from: Number.Maybe
       to: Number
-      within: [ Array, Void ]
-      easing: [ Function, Void ]
+      within: Array.Maybe
+      easing: Function.Maybe
 
     { to, from, within, easing } = config
 
@@ -287,7 +276,8 @@ NativeValue = Factory "NativeValue",
     @_toValue = to
 
   _setValue: (newValue) ->
-    assertType newValue, @type if @type?
+    assertType newValue, @type, { stack: @_animateStackTrace } if @type isnt undefined
+    return if @_value is newValue
     @_value = newValue
     @didSet.emit newValue
 
@@ -297,26 +287,44 @@ NativeValue = Factory "NativeValue",
     value = Math.max min, Math.min max, value
     (value - min) / (max - min)
 
-  _initAnimatedValue: ->
+  _attachReaction: (reaction) ->
+    return @_detachReaction() unless reaction
+    if isType reaction, [ Object, Function.Kind ]
+      reaction = Reaction.sync reaction
+    assertType reaction, Reaction
+    if @isReactive then @_detachReaction()
+    else @_detachAnimated()
+    @_reaction = reaction
+    @_reaction.keyPath ?= @keyPath
+    @_reactionListener = @_reaction.didSet (newValue) =>
+      @_setValue newValue
+    @_setValue reaction.value
+
+  _attachAnimated: ->
     return if @_animated?
     @_animated = new Animated.Value @_value
     listener = ({ value }) => @_setValue value
     @_animatedListener = @_animated.addListener listener
 
-  _getAnimatedMethod: (config) ->
-    if config.duration? then return "timing"
-    else if config.deceleration? then return "decay"
-    else if (config.bounciness? or config.speed?) or (config.tension? or config.friction?) then return "spring"
-    else throw Error "Unrecognized animation configuration"
+  _detectAnimationType: (config) ->
+    return "timing" if config.duration isnt undefined
+    return "decay" if config.deceleration isnt undefined
+    return "spring" if (config.speed isnt undefined) or (config.tension isnt undefined)
+    throw Error "Unrecognized animation configuration"
 
-  _removeReaction: ->
+  _onAnimationEnd: (finished, onFinish, onEnd) ->
+    onFinish() if finished
+    onEnd finished
+    @didAnimationEnd.emit finished
+
+  _detachReaction: ->
     return unless @isReactive
-    @_reaction.removeListener @_reactionListener
+    @_reactionListener.stop()
     @_reactionListener = null
     @_reaction = null
     return
 
-  _removeAnimated: ->
+  _detachAnimated: ->
     return unless @isAnimated
     @_animated.stopAnimation()
     @_animated.removeListener @_animatedListener

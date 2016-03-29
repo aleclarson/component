@@ -1,15 +1,14 @@
 
 ReactElement = require "ReactElement"
 
+{ isType, assertType } = require "type-utils"
 { throwFailure } = require "failure"
-
-{ isType } = require "type-utils"
-
-{ sync } = require "io"
 
 combine = require "combine"
 define = require "define"
 steal = require "steal"
+isDev = require "isDev"
+sync = require "sync"
 
 NativeProps = require "./NativeProps"
 Component = require "./Component"
@@ -17,21 +16,26 @@ Component = require "./Component"
 module.exports =
 NativeComponent = (name, render) ->
 
+  assertType name, String
+  assertType render, Function
+
   component = Component "NativeComponent_" + name,
 
     initValues: ->
 
       child: null
 
+      _newProps: null
+
       _nativeProps: NativeProps @props, render.propTypes, (newProps) =>
+        if isDev
+          try @setNativeProps newProps
+          catch error then throwFailure error, { component: this, newProps }
+        else @setNativeProps newProps
 
-        @_newValues.push newProps if @props.DEBUG # TODO: if __DEV__
-
-        try @child?.setNativeProps newProps
-        catch error then throwFailure error, { component: this, newProps }
-
-    init: ->
-      _initDebug.call this # if __DEV__
+    setNativeProps: (newProps) ->
+      return @child.setNativeProps newProps if @child?
+      @_newProps = newProps
 
     componentWillReceiveProps: (props) ->
       @_nativeProps.attach props
@@ -40,34 +44,18 @@ NativeComponent = (name, render) ->
       @_nativeProps.detach()
 
     render: ->
+
       props = @_nativeProps.values
-      props.ref = (view) => @child = view
+
+      props.ref = (view) =>
+        @child = view
+        if view and @_newProps
+          @child.setNativeProps @_newProps
+          @_newProps = null
+
       ReactElement.createElement render, props
 
   # Must be after class creation, else it gets overwritten.
   component.propTypes = render.propTypes
 
   component
-
-_initDebug = ->
-
-  { props } = this
-
-  define this, ->
-
-    @options = { enumerable: no, frozen: yes }
-    @
-      _initialValues: (props if props.DEBUG)
-
-      _newValues: []
-
-      _findNewValue: (key) ->
-        newValues = []
-        key = key.split "."
-        sync.each @_newValues, (values) ->
-          index = 0
-          while index < key.length
-            values = values[key[index++]]
-            break unless values?
-          newValues.push values if values?
-        newValues

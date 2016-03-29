@@ -1,28 +1,34 @@
-var Children, ReactElement, Validator, Void, isType, ref, throwFailure;
-
-ref = require("type-utils"), Void = ref.Void, Validator = ref.Validator, isType = ref.isType;
+var Children, ReactElement, Validator, throwFailure;
 
 throwFailure = require("failure").throwFailure;
 
+Validator = require("type-utils").Validator;
+
 ReactElement = require("ReactElement");
 
-Children = Validator("Children", function() {
-  return function(value, key) {
-    var error;
+module.exports = Children = Validator("Children", {
+  validate: function(value, key) {
     if (ReactElement.isValidElement(value)) {
-      return;
+      return true;
     }
-    if (isType(value, [Array, Void])) {
-      return;
+    if (Array.isArray(value)) {
+      return true;
     }
-    error = TypeError("'" + key + "' must be an Array or ReactElement.");
-    return throwFailure(error, {
+    return {
       key: key,
-      value: value
-    });
-  };
+      value: value,
+      type: Children
+    };
+  },
+  fail: function(values) {
+    var error;
+    if (values.key) {
+      error = TypeError("'" + values.key + "' must be an Array or ReactElement!");
+    } else {
+      error = TypeError("Expected an Array or ReactElement.");
+    }
+    return throwFailure(error, values);
+  }
 });
-
-module.exports = Children();
 
 //# sourceMappingURL=../../map/src/Children.map

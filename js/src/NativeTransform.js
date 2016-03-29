@@ -2,7 +2,7 @@ var Factory, NativeMap, NativeValue, assertType, isKind, isType, ref, sync;
 
 ref = require("type-utils"), isType = ref.isType, isKind = ref.isKind, assertType = ref.assertType;
 
-sync = require("io").sync;
+sync = require("sync");
 
 Factory = require("factory");
 

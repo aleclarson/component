@@ -3,7 +3,7 @@
 
 { throwFailure } = require "failure"
 
-{ sync } = require "io"
+sync = require "sync"
 
 flattenStyle = require "flattenStyle"
 Factory = require "factory"

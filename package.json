@@ -11,7 +11,7 @@
     "factory": "aleclarson/factory#1.0.0",
     "failure": "aleclarson/failure#1.0.0",
     "immutable": "^3.7.5",
-    "io": "aleclarson/io#1.0.0",
+    "injector": "aleclarson/injector#1.0.0",
     "lazy-var": "aleclarson/lazy-var#1.0.0",
     "lotus-log": "aleclarson/lotus-log#1.0.0",
     "named-function": "aleclarson/named-function#1.0.3",
@@ -19,6 +19,7 @@
     "random": "aleclarson/random#1.0.4",
     "reaction": "aleclarson/reaction#1.0.0",
     "steal": "aleclarson/steal#0.0.1",
+    "sync": "aleclarson/sync#1.0.0",
     "tracker": "aleclarson/tracker#1.0.8",
     "type-utils": "aleclarson/type-utils#1.0.0"
   },

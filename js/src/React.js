@@ -36,11 +36,6 @@ module.exports = {
       return (require("ReactElement")).createFactory(StaticRenderer);
     }
   },
-  Easing: {
-    lazy: function() {
-      return require("./Easing");
-    }
-  },
   Element: {
     lazy: function() {
       return require("./Element");
@@ -54,6 +49,11 @@ module.exports = {
   Style: {
     lazy: function() {
       return require("./Style");
+    }
+  },
+  InteractionManager: {
+    lazy: function() {
+      return require("InteractionManager");
     }
   }
 };

@@ -1,10 +1,14 @@
 
-{ setKind, setType, isType, isKind,
-  assertType, validateTypes, Void } = require "type-utils"
+{ Maybe
+  setKind
+  setType
+  isType
+  assertType
+  validateTypes } = require "type-utils"
 
 { throwFailure } = require "failure"
 
-{ sync } = require "io"
+sync = require "sync"
 
 ReactCurrentOwner = require "ReactCurrentOwner"
 ExceptionsManager = require "ExceptionsManager"
@@ -16,13 +20,17 @@ ReactElement = require "ReactElement"
 flattenStyle = require "flattenStyle"
 StyleSheet = require "StyleSheet"
 Reaction = require "reaction"
+Injector = require "injector"
 combine = require "combine"
 define = require "define"
 Random = require "random"
 Event = require "event"
+guard = require "guard"
+isDev = require "isDev"
 steal = require "steal"
 hook = require "hook"
-log = require "lotus-log"
+
+ReactionInjector = Injector "Reaction"
 
 NativeValue = require "./NativeValue"
 
@@ -31,387 +39,388 @@ Component = NamedFunction "Component", (name, config) ->
   assertType name, String, "name"
   assertType config, Object, "config"
 
-  mixins = steal config, "mixins", []
-  sync.each mixins, (mixin) ->
-    assertType mixin, Function, { name, mixin, mixins }
-    mixin config
+  Component.applyMixins config, name
 
   validateTypes config, Component.configTypes
 
-  statics = steal config, "statics", {}
+  type = Component.createType config, name
 
-  styles = steal config, "styles"
-  statics.styles = { value: StyleSheet.create styles } if styles?
-
-  Component.enforcePropValidation name, config, statics
-  Component.addPreventableRendering name, config
-  Component.catchErrorsWhenRendering config
-  Component.startReactionsWhenMounting config
-  Component.stopReactionsWhenUnmounting config
-  Component.stopListenersWhenUnmounting config
-  Component.detachNativeValuesWhenUnmounting config
-
-  type = Component.createType name,
-    boundMethods: steal config, "boundMethods", []
-    customValues: steal config, "customValues"
-    init: steal config, "init", emptyFunction
-    initState: steal config, "initState", emptyFunction
-    initValues: steal config, "initValues", emptyFunction
-    initReactiveValues: steal config, "initReactiveValues", emptyFunction
-    initNativeValues: steal config, "initNativeValues", emptyFunction
-    initListeners: steal config, "initListeners"
-
-  statics = sync.map statics, (value, key) ->
-    enumerable = key[0] isnt "_"
-    if isType value, Object
-      value.frozen ?= yes
-      value.enumerable ?= enumerable
-      return value
-    return {
-      value
-      frozen: yes
-      enumerable
-    }
-
-  prototype = sync.map config, (value, key) -> {
-    value
-    enumerable: key[0] isnt "_"
-    configurable: no
-  }
-
-  define type, statics
-  define type.prototype, "styles", statics.styles
-  define type.prototype, prototype
-
-  statics.type = type
   factory = Component.createFactory type
-  define factory, statics
+
+  styles = Component.createStyles config
+
+  define factory, Component.createStatics config, type, styles
+
+  define type.prototype, Component.createPrototype config, styles
+
+  return factory
 
 module.exports = setKind Component, ReactComponent
-
-define Component.prototype, ->
-  @options = enumerable: no
-  @
-    __owners: get: ->
-      owners = []
-      instance = this
-      while instance?
-        owners.push instance
-        instance = instance._reactInternalInstance._currentElement._owner?._instance
-      owners
-
-    __addReaction: (key, reaction, listener) ->
-      unless @__reactions?
-        define this, __reactions: { value: {}, enumerable: no }
-      if @__reactions[key]?
-        throw Error "Conflicting reactions are both named '#{key}'."
-      @__reactions[key] = { reaction, listener }
-      reaction
-
-    __attachNativeValue: (key, nativeValue) ->
-      assertType nativeValue, NativeValue.Kind
-      @__nativeValues[key] = nativeValue
-      define this, key,
-        value: nativeValue
-        enumerable: key[0] isnt "_"
-        frozen: yes
-
-    __createNativeValue: (key, value) ->
-      return if value is undefined
-      nativeValue = NativeValue value, @constructor.name + "." + key
-      @__attachNativeValue key, nativeValue
-      @__addReaction key, nativeValue._reaction if nativeValue.isReactive
 
 define Component,
 
   configTypes: value:
-    propTypes: [ Object, Void ]
-    propDefaults: [ Object, Void ]
-    events: [ Array, Void ]
-    boundMethods: [ Array, Void ]
-    customValues: [ Object, Void ]
-    init: [ Function, Void ]
-    initProps: [ Function, Void ]
-    initState: [ Function, Void ]
-    initValues: [ Function, Void ]
-    initReactiveValues: [ Function, Void ]
-    initNativeValues: [ Function, Void ]
-    initListeners: [ Function, Void ]
-    isRenderPrevented: [ Function.Kind, Void ]
+    propTypes: Object.Maybe
+    propDefaults: Object.Maybe
+    events: Array.Maybe
+    boundMethods: Array.Maybe
+    customValues: Object.Maybe
+    init: Function.Maybe
+    initProps: Function.Maybe
+    initState: Function.Maybe
+    initValues: Function.Maybe
+    initReactiveValues: Function.Maybe
+    initNativeValues: Function.Maybe
+    initListeners: Function.Maybe
+    isRenderPrevented: Maybe Function.Kind
     render: Function.Kind
-    styles: [ Object, Void ]
-    statics: [ Object, Void ]
-    mixins: [ Array, Void ]
+    styles: Object.Maybe
+    statics: Object.Maybe
+    mixins: Array.Maybe
 
-  # Constructs & initializes a ReactCompositeComponent.
-  createType: (name, config) ->
+  applyMixins: (config, name) ->
+
+    mixins = steal config, "mixins", []
+    sync.each mixins, (mixin, key) ->
+      assertType mixin, Function, { name, key, mixin, mixins }
+      mixin config, name
+
+    sync.each Component.mixins, (mixin, key) ->
+      assertType mixin, Function, { name, key, mixin, mixins }
+      mixin config, name
+
+  createStyles: (config) ->
+    return unless config.styles
+    StyleSheet.create steal config, "styles"
+
+  createStatics: (config, type, styles) ->
+    statics = steal config, "statics", {}
+    statics.type = type
+    statics.styles = { value: styles } if styles
+    return sync.map statics, (value, key) ->
+      enumerable = key[0] isnt "_"
+      if isType value, Object
+        value.frozen ?= yes
+        value.enumerable ?= enumerable
+        return value
+      return {
+        value
+        frozen: yes
+        enumerable
+      }
+
+  createPrototype: (config, styles) ->
+    config.styles = styles if styles
+    return sync.map config, (value, key) ->
+      configurable: no
+      enumerable: key[0] isnt "_"
+      value: value
+
+  # Returns a Function that creates a ReactCompositeComponent.
+  createType: (config, name) ->
+
+    initPhases = {}
+    sync.each Component.initPhases, (createPhase, key) ->
+      initPhase = createPhase config, name
+      initPhases[key] = initPhase if initPhase
+
     constructor = (props) ->
-      inst = setType { props }, type
-      try Component.initComponent.call inst, config, props
-      catch error then throwFailure error, { method: "initComponent", componentName: name, component: inst, props }
-      inst
+      component = setType { props }, type
+      guard -> Component.initialize component, initPhases
+      .fail (error) -> throwFailure error, { component, props, stack: (steal props, "__stack")() }
+      component
+
     type = NamedFunction name, constructor
     setKind type, Component
 
-  # Constructs a ReactElement.
+  # Returns a Function that creates a ReactElement.
   createFactory: (type) -> (props = {}) ->
 
     if isType props, Array
       props = combine.apply null, props
 
-    if props.mixins?
+    if props.mixins
       mixins = steal props, "mixins"
       assertType mixins, Array, "props.mixins"
       props = combine.apply null, [ {} ].concat mixins.concat props
 
-    key = if props.key? then "" + props.key else null
+    key = if props.key then "" + props.key else null
     delete props.key
 
-    ref = if props.ref? then props.ref else null
+    ref = if props.ref then props.ref else null
     delete props.ref
 
-    define {}, ->
-      @options = configurable: no
-      @ {
-        $$typeof: ReactElement.type
-        type
-        key
-        ref
-        props: value: props
-        _owner: value: ReactCurrentOwner.current
-        _store: value: { validated: no }
-        _initError: Error()
-      }
+    if isDev
+      stack = [ "::  When component was constructed  ::", Error() ]
+      props.__stack = -> stack
 
-  initComponent: (config, props) ->
-    prevAutoStart = Reaction.autoStart
-    Reaction.autoStart = no
-    Component.initBoundMethods.call this, config
-    Component.initCustomValues.call this, config
-    Component.initValues.call this, config
-    Component.initReactiveValues.call this, config
-    Component.initNativeValues.call this, config
-    Component.initState.call this, config
-    Component.initListeners.call this, config
-    Reaction.autoStart = prevAutoStart
-    config.init.call this
-
-  initCustomValues: ({ customValues }) ->
-    return unless isType customValues, Object
-    define this, ->
-      @options = configurable: no
-      @ customValues
-
-  initBoundMethods: (config) ->
-
-    boundMethods = {}
-    sync.each config.boundMethods, (key) =>
-      method = this[key]
-      unless isKind method, Function
-        throw Error "'#{@constructor.name}.#{key}' must be a Function" +
-          ", because you included it in the 'boundMethods' array."
-      boundMethod = method.bind this
-      boundMethod.toString = -> method.toString()
-      boundMethods[key] =
-        enumerable: key[0] isnt "_"
-        value: boundMethod
-
-    define this, ->
-      @options = frozen: yes
-      @ boundMethods
-
-  initValues: (config) ->
-
-    values = config.initValues.call this
-    return unless values?
-
-    values = sync.map values, (value, key) ->
-      enumerable: key[0] isnt "_"
-      value: value
-
-    define this, ->
-      @options = configurable: no
-      @ values
-
-  initReactiveValues: (config) ->
-
-    values = config.initReactiveValues.call this
-    return unless values?
-
-    if isType values, Array
-      values = combine.apply null, values
-
-    unless isType values, Object
-      error = TypeError "'initReactiveValues' must return an Object or Array!"
-      throwFailure error, { values, component: this }
-
-    reactions = {}
-    values = sync.filter values, (reaction, key) =>
-      return yes unless isType reaction, Reaction
-      reactions[key] = reaction
-      reaction.keyPath ?= @constructor.name + "." + key
-      no
-
-    values = sync.map values, (value, key) ->
-      enumerable: key[0] isnt "_"
-      reactive: yes
-      value: value
-
-    reactions = sync.map reactions, (reaction, key) =>
-      @__addReaction key, reaction
-      enumerable: key[0] isnt "_"
-      get: -> reaction.value
-
-    define this, ->
-      @options = configurable: no
-      @ values
-      @ reactions
-
-  initNativeValues: (config) ->
-    nativeValues = config.initNativeValues.call this
-    return unless nativeValues?
-    assertType nativeValues, Object, "nativeValues"
-    define this, __nativeValues: { value: {}, enumerable: no }
-    sync.each nativeValues, (value, key) =>
-      if isKind value, NativeValue
-        @__attachNativeValue key, value
-      else
-        @__createNativeValue key, value
-
-  initState: (config) ->
-    state = config.initState.call this
-    return unless state?
-    assertType state, Object, "state"
-    @state = state
-    sync.each state, (value, key) =>
-      return unless isType value, Reaction
-      value.keyPath ?= @constructor.name + ".state." + key
-      @state[key] = value._value
-      @__addReaction "state.#{key}", value, (newValue) =>
-        newProps = {}
-        newProps[key] = newValue
-        @setState newProps
-
-  initListeners: (config) ->
-    return unless config.initListeners?
-    define this, __listeners: { value: [], enumerable: no }
-    onListen = Event.didListen (event, listener) => @__listeners.push listener
-    config.initListeners.call this
-    onListen.stop()
-
-  startReactionsWhenMounting: (config) ->
-    hook.after config, "componentWillMount", ->
-      return unless @__reactions?
-      sync.each @__reactions, ({ reaction, listener }, key) =>
-        reaction.addListener listener if listener?
-        try reaction.start()
-        catch error then throwFailure error, { key, reaction, component: this }
-
-  stopReactionsWhenUnmounting: (config) ->
-    hook.after config, "componentWillUnmount", ->
-      return unless @__reactions?
-      sync.each @__reactions, ({ reaction, listener }) ->
-        reaction.stop()
-        reaction.removeListener listener if listener?
-
-  stopListenersWhenUnmounting: (config) ->
-    return unless config.initListeners?
-    hook.after config, "componentWillUnmount", ->
-      sync.each @__listeners, (listener) ->
-        listener.stop()
-
-  detachNativeValuesWhenUnmounting: (config) ->
-    hook.after config, "componentWillUnmount", ->
-      return unless @__nativeValues?
-      sync.each @__nativeValues, (value) ->
-        value.detach()
-
-  addPreventableRendering: (name, config) ->
-
-    isRenderPrevented = steal config, "isRenderPrevented"
-    return unless isRenderPrevented?
-
-    hook.after config, "init", (args, values) ->
-
-      shouldRender = Reaction.sync
-        get: => not isRenderPrevented.call this
-        didSet: (shouldRender) =>
-          return unless @__needsRender and shouldRender
-          @__needsRender = no
-          try @forceUpdate()
-
-      define this, ->
-        @options = enumerable: no
-        @ "__needsRender", value: no
-        @ "__shouldRender", get: -> shouldRender.value
-
-    shouldUpdate = steal config, "shouldComponentUpdate", emptyFunction.thatReturnsTrue
-    config.shouldComponentUpdate = ->
-      return shouldUpdate.apply this, arguments if @__shouldRender
-      @__needsRender = yes
-      return no
-
-    render = steal config, "render"
-    config.render = ->
-      return render.call this if @__shouldRender
-      @__needsRender = yes
-      return no
-
-  catchErrorsWhenRendering: (config) ->
-
-    # return unless __DEV__
-
-    render = steal config, "render"
-
-    renderSafely = ->
-      try element = render.call this
-      catch error
-        element = @_reactInternalInstance._currentElement
-        throwFailure error,
-          method: "#{@constructor.name}.render"
-          component: this
-          stack: [ "::   When component was constructed  ::", element._initError ]
-      element or no
-
-    renderSafely.toString = -> render.toString()
-
-    config.render = renderSafely
-
-  enforcePropValidation: (name, config, statics) ->
-
-    initProps = steal config, "initProps", emptyFunction
-    propTypes = steal config, "propTypes"
-    propDefaults = steal config, "propDefaults"
-
-    events = steal config, "events"
-    if events?.length > 0
-      propTypes ?= {}
-      propDefaults ?= {}
-      sync.each events, (event) ->
-        propTypes[event] = [ Function, Void ]
-        propDefaults[event] = emptyFunction
-
-    statics.propTypes = { value: propTypes, frozen: no }
-    statics.propDefaults = { value: propDefaults }
-    statics._processProps = (props) ->
-      if propDefaults?
-        if isType props, Object then Component.mergeDefaults props, propDefaults
-        else props = combine {}, propDefaults
-      initProps.call this, props
-      # if __DEV__
-      if propTypes? and isType props, Object
-        try validateTypes props, propTypes
-        catch error then throwFailure error, { method: "_processProps", element: this, props, propTypes }
+    return {
+      type
+      key
+      ref
       props
+      $$typeof: ReactElement.type
+      _owner: ReactCurrentOwner.current
+      _store: { validated: no }
+    }
 
-  mergeDefaults: (values, defaultValues) ->
-    for key, defaultValue of defaultValues
-      value = values[key]
-      if isType defaultValue, Object
-        if isType value, Object
-          Component.mergeDefaults value, defaultValue
-        else if value is undefined
-          values[key] = combine {}, defaultValue
-      else if value is undefined
-        values[key] = defaultValue
+  initialize: (component, initPhases) ->
+    sync.each initPhases, (init, key) ->
+      guard -> init.call component
+      .fail (error) -> throwFailure error, { component, key, init }
+
+  mixins: value:
+
+    enforcePropValidation: (config, name) ->
+
+      initProps = steal config, "initProps", emptyFunction
+      propTypes = steal config, "propTypes"
+      propDefaults = steal config, "propDefaults"
+
+      events = steal config, "events"
+      if events?.length > 0
+        propTypes ?= {}
+        propDefaults ?= {}
+        sync.each events, (event) ->
+          propTypes[event] = Function.Maybe
+          propDefaults[event] = emptyFunction
+
+      statics = config.statics ?= {}
+      statics.propTypes = { value: propTypes, frozen: no }
+      statics.propDefaults = { value: propDefaults }
+      statics._processProps = (props) ->
+        if propDefaults
+          if isType props, Object then mergeDefaults props, propDefaults
+          else props = combine {}, propDefaults
+        initProps.call this, props
+        if isDev and propTypes and isType props, Object
+          guard -> validateTypes props, propTypes
+          .fail (error) -> throwFailure error, { method: "_processProps", element: this, props, propTypes }
+        props
+
+    addPreventableRendering: (config, name) ->
+
+      isRenderPrevented = steal config, "isRenderPrevented"
+      return unless isRenderPrevented
+
+      hook.after config, "init", (args, values) ->
+
+        shouldRender = Reaction.sync
+          get: => not isRenderPrevented.call this
+          didSet: (shouldRender) =>
+            return unless @__needsRender and shouldRender
+            @__needsRender = no
+            try @forceUpdate()
+
+        define this, { enumerable: no },
+          __needsRender: { value: no }
+          __shouldRender: { get: -> shouldRender.value }
+
+      shouldUpdate = steal config, "shouldComponentUpdate", emptyFunction.thatReturnsTrue
+      config.shouldComponentUpdate = ->
+        return shouldUpdate.apply this, arguments if @__shouldRender
+        @__needsRender = yes
+        return no
+
+      render = steal config, "render"
+      config.render = ->
+        return render.call this if @__shouldRender
+        @__needsRender = yes
+        return no
+
+    catchErrorsWhenRendering: (config, name) ->
+
+      # return unless isDev
+
+      render = steal config, "render"
+
+      renderSafely = ->
+        guard => render.call this
+        .fail (error) =>
+          element = @_reactInternalInstance._currentElement
+          throwFailure error,
+            method: "#{@constructor.name}.render"
+            component: this
+            stack: element.props.__stack()
+          return no
+
+      renderSafely.toString = -> render.toString()
+
+      config.render = renderSafely
+
+    startReactionsWhenMounting: (config) ->
+      hook.after config, "componentWillMount", ->
+        return unless @__reactions
+        component = this
+        sync.each @__reactions, ({ reaction, listener }, key) ->
+          guard -> reaction.start()
+          .fail (error) -> throwFailure error, { key, reaction, component }
+
+    stopReactionsWhenUnmounting: (config) ->
+      hook.after config, "componentWillUnmount", ->
+        return unless @__reactions
+        sync.each @__reactions, ({ reaction, listener }) ->
+          listener.stop() if listener
+          reaction.release()
+
+    stopListenersWhenUnmounting: (config) ->
+      return unless config.initListeners
+      hook.after config, "componentWillUnmount", ->
+        sync.each @__listeners, (listener) ->
+          listener.stop()
+
+    detachNativeValuesWhenUnmounting: (config) ->
+      hook.after config, "componentWillUnmount", ->
+        return unless @__nativeValues
+        sync.each @__nativeValues, (value) ->
+          value.detach()
+
+  initPhases: value:
+
+    boundMethods: (config) ->
+      return unless config.boundMethods
+      boundMethods = steal config, "boundMethods"
+      return ->
+        values = {}
+        sync.each boundMethods, (key) =>
+          method = this[key]
+          return unless method and method.apply
+          values[key] =
+            enumerable: key[0] isnt "_"
+            value: => method.apply this, arguments
+        define this, values
+
+    customValues: (config) ->
+      return unless config.customValues
+      customValues = steal config, "customValues"
+      return -> define this, customValues
+
+    initValues: (config) ->
+      return unless config.initValues
+      initValues = steal config, "initValues"
+      return ->
+        values = initValues.call this
+        return unless values
+        assertType values, Object
+        define this, sync.map values, (value, key) ->
+          { value, enumerable: key[0] isnt "_" }
+
+    initReactiveValues: (config) ->
+      return unless config.initReactiveValues
+      initReactiveValues = steal config, "initReactiveValues"
+      return ->
+        values = initReactiveValues.call this
+        return unless values
+        assertType values, Object
+        define this, sync.map values, (value, key) ->
+          enumerable: key[0] isnt "_"
+          reactive: yes
+          value: value
+
+    initNativeValues: (config) ->
+      return unless config.initNativeValues
+      initNativeValues = steal config, "initNativeValues"
+      return ->
+        ReactionInjector.push "autoStart", no
+        values = initNativeValues.call this
+        ReactionInjector.pop "autoStart"
+        return unless values
+        assertType values, Object
+        define this, "__nativeValues", { value: {}, enumerable: no }
+        sync.each values, (value, key) =>
+          if isType value, NativeValue.Kind
+            @__attachNativeValue key, value
+          else @__createNativeValue key, value
+
+    initState: (config) ->
+      return unless config.initState
+      initState = steal config, "initState"
+      return ->
+        state = initState.call this
+        return unless state
+        assertType state, Object
+        @state = state
+
+    initReactions: (config) ->
+      return unless config.initReactions
+      initReactions = steal config, "initReactions"
+      optionCreators = initReactions()
+      assertType optionCreators, Object
+      return ->
+        values = {}
+        ReactionInjector.push "autoStart", no
+        sync.each optionCreators, (createOptions, key) =>
+          options = createOptions.call this
+          return unless options
+          if isType options, Function.Kind
+            options = { get: options }
+          if isType options, Object
+            options.sync ?= yes
+            value = Reaction options
+          else value = options
+          if isType value, Reaction
+            @__addReaction key, value
+          values[key] = { value, enumerable: key[0] isnt "_" }
+        ReactionInjector.pop "autoStart"
+        define this, values
+
+    initListeners: (config) ->
+      return unless config.initListeners
+      initListeners = steal config, "initListeners"
+      return ->
+        define this, "__listeners", { value: [], enumerable: no }
+        onListen = Event.didListen (event, listener) => @__listeners.push listener
+        initListeners.call this
+        onListen.stop()
+
+    init: (config) ->
+      steal config, "init"
+
+define Component.prototype, { enumerable: no },
+
+  __owners: get: ->
+    owners = []
+    instance = this
+    while instance?
+      owners.push instance
+      instance = instance._reactInternalInstance._currentElement._owner?._instance
+    owners
+
+  __addReaction: (key, reaction, listener) ->
+    define this, "__reactions", { value: {}, enumerable: no } unless @__reactions
+    assert @__reactions[key] is undefined, "Conflicting reactions are both named '#{key}'."
+    listener = reaction.didSet listener if listener
+    @__reactions[key] = { reaction, listener }
     return
+
+  __attachNativeValue: (key, nativeValue) ->
+    assertType nativeValue, NativeValue.Kind
+    @__nativeValues[key] = nativeValue
+    define this, key,
+      value: nativeValue
+      enumerable: key[0] isnt "_"
+      frozen: yes
+    return
+
+  __createNativeValue: (key, value) ->
+    return if value is undefined
+    nativeValue = NativeValue value, @constructor.name + "." + key
+    @__attachNativeValue key, nativeValue
+    @__addReaction key, nativeValue._reaction if nativeValue.isReactive
+    return
+
+#
+# Helpers
+#
+
+mergeDefaults = (values, defaultValues) ->
+  for key, defaultValue of defaultValues
+    value = values[key]
+    if isType defaultValue, Object
+      if isType value, Object
+        mergeDefaults value, defaultValue
+      else if value is undefined
+        values[key] = combine {}, defaultValue
+    else if value is undefined
+      values[key] = defaultValue
+  return

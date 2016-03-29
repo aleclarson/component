@@ -1,6 +1,6 @@
 
 { isType, isKind, assertType } = require "type-utils"
-{ sync } = require "io"
+sync = require "sync"
 
 Factory = require "factory"
 

@@ -23,9 +23,6 @@ module.exports =
     StaticRenderer.displayName = "StaticRenderer"
     (require "ReactElement").createFactory StaticRenderer
 
-  Easing: lazy: ->
-    require "./Easing"
-
   Element: lazy: ->
     require "./Element"
 
@@ -34,3 +31,6 @@ module.exports =
 
   Style: lazy: ->
     require "./Style"
+
+  InteractionManager: lazy: ->
+    require "InteractionManager"

@@ -4,7 +4,7 @@ ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType, i
 
 throwFailure = require("failure").throwFailure;
 
-sync = require("io").sync;
+sync = require("sync");
 
 flattenStyle = require("flattenStyle");
 

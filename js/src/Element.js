@@ -1,27 +1,31 @@
-var Element, ReactElement, Validator, isType, ref, throwFailure;
+var Element, ReactElement, Validator, throwFailure;
 
 throwFailure = require("failure").throwFailure;
 
-ref = require("type-utils"), Validator = ref.Validator, isType = ref.isType;
+Validator = require("type-utils").Validator;
 
 ReactElement = require("ReactElement");
 
-Element = Validator("Element", function() {
-  return function(value, key) {
-    var data, reason;
+module.exports = Element = Validator("Element", {
+  validate: function(value, key) {
     if (ReactElement.isValidElement(value)) {
-      return;
+      return true;
     }
-    data = isType(key, Object) ? key : {
-      key: key
+    return {
+      key: key,
+      value: value,
+      type: Element
     };
-    data.value = value;
-    data.type = type;
-    reason = data.key != null ? "'" + data.key + "' must be a ReactElement." : "Expected a ReactElement.";
-    return throwFailure(TypeError(reason), data);
-  };
+  },
+  fail: function(values) {
+    var error;
+    if (values.key) {
+      error = TypeError("'" + values.key + "' must be a ReactElement!");
+    } else {
+      error = TypeError("Expected a ReactElement.");
+    }
+    return throwFailure(error, values);
+  }
 });
-
-module.exports = Element();
 
 //# sourceMappingURL=../../map/src/Element.map

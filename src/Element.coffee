@@ -1,20 +1,17 @@
 
 { throwFailure } = require "failure"
-
-{ Validator, isType } = require "type-utils"
+{ Validator } = require "type-utils"
 
 ReactElement = require "ReactElement"
 
-Element = Validator "Element", -> (value, key) ->
+module.exports =
+Element = Validator "Element",
 
-  return if ReactElement.isValidElement value
+  validate: (value, key) ->
+    return yes if ReactElement.isValidElement value
+    return { key, value, type: Element }
 
-  data = if isType(key, Object) then key else { key }
-  data.value = value
-  data.type = type
-  reason =
-    if data.key? then "'#{data.key}' must be a ReactElement."
-    else "Expected a ReactElement."
-  throwFailure TypeError(reason), data
-
-module.exports = Element()
+  fail: (values) ->
+    if values.key then error = TypeError "'#{values.key}' must be a ReactElement!"
+    else error = TypeError "Expected a ReactElement."
+    throwFailure error, values

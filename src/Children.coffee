@@ -1,14 +1,18 @@
 
-{ Void, Validator, isType } = require "type-utils"
-
 { throwFailure } = require "failure"
+{ Validator } = require "type-utils"
 
 ReactElement = require "ReactElement"
 
-Children = Validator "Children", -> (value, key) ->
-  return if ReactElement.isValidElement value
-  return if isType value, [ Array, Void ]
-  error = TypeError "'#{key}' must be an Array or ReactElement."
-  throwFailure error, { key, value }
+module.exports =
+Children = Validator "Children",
 
-module.exports = Children()
+  validate: (value, key) ->
+    return yes if ReactElement.isValidElement value
+    return yes if Array.isArray value
+    return { key, value, type: Children }
+
+  fail: (values) ->
+    if values.key then error = TypeError "'#{values.key}' must be an Array or ReactElement!"
+    else error = TypeError "Expected an Array or ReactElement."
+    throwFailure error, values

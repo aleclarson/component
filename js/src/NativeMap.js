@@ -2,7 +2,7 @@ var Event, Factory, Immutable, NativeMap, NativeValue, assert, assertType, isKin
 
 ref = require("type-utils"), isType = ref.isType, isKind = ref.isKind, setType = ref.setType, assert = ref.assert, assertType = ref.assertType;
 
-sync = require("io").sync;
+sync = require("sync");
 
 Immutable = require("immutable");
 

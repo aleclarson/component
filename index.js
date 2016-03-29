@@ -1,8 +1,5 @@
 
 var define = require('define');
 
-define(exports, function() {
-  this.options = { frozen: true };
-  this(require('./js/src/index'));
-  this(require('./js/src/React'));
-});
+define(exports, require('./js/src/index'));
+define(exports, require('./js/src/React'));
