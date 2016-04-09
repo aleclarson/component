@@ -1,10 +1,10 @@
-var Component, Event, ExceptionsManager, Injector, Maybe, NamedFunction, NativeValue, Random, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactionInjector, ReactiveGetter, StyleSheet, assertType, combine, define, emptyFunction, flattenStyle, guard, hook, isDev, isType, mergeDefaults, ref1, setKind, setType, steal, sync, throwFailure, validateTypes;
+var Component, Event, ExceptionsManager, Injector, Maybe, NamedFunction, NativeValue, Random, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactionInjector, ReactiveGetter, StyleSheet, assertType, combine, define, emptyFunction, flattenStyle, guard, hook, isType, mergeDefaults, ref1, setKind, setType, steal, sync, throwFailure, validateTypes;
+
+require("isDev");
 
 ref1 = require("type-utils"), Maybe = ref1.Maybe, setKind = ref1.setKind, setType = ref1.setType, isType = ref1.isType, assertType = ref1.assertType, validateTypes = ref1.validateTypes;
 
 throwFailure = require("failure").throwFailure;
-
-sync = require("sync");
 
 ReactCurrentOwner = require("ReactCurrentOwner");
 
@@ -14,7 +14,7 @@ ReactiveGetter = require("ReactiveGetter");
 
 ReactComponent = require("ReactComponent");
 
-NamedFunction = require("named-function");
+NamedFunction = require("NamedFunction");
 
 emptyFunction = require("emptyFunction");
 
@@ -38,9 +38,9 @@ Event = require("event");
 
 guard = require("guard");
 
-isDev = require("isDev");
-
 steal = require("steal");
+
+sync = require("sync");
 
 hook = require("hook");
 
@@ -155,7 +155,7 @@ define(Component, {
     });
   },
   createType: function(config, name) {
-    var constructor, initPhases, type;
+    var initPhases, type;
     initPhases = {};
     sync.each(Component.initPhases, function(createPhase, key) {
       var initPhase;
@@ -164,7 +164,7 @@ define(Component, {
         return initPhases[key] = initPhase;
       }
     });
-    constructor = function(props) {
+    type = NamedFunction(name, function(props) {
       var component;
       component = setType({
         props: props
@@ -179,8 +179,7 @@ define(Component, {
         });
       });
       return component;
-    };
-    type = NamedFunction(name, constructor);
+    });
     return setKind(type, Component);
   },
   createFactory: function(type) {

@@ -1,13 +1,13 @@
-var Animated, Event, Factory, Immutable, Maybe, NativeValue, Progress, Reaction, assert, assertType, combine, emptyFunction, hook, isDev, isType, ref, steal, sync, validateTypes,
+var AnimatedValue, Animation, Event, Factory, Immutable, Kind, Maybe, NativeValue, Progress, Reaction, assert, assertType, combine, configTypes, emptyFunction, hook, isDev, isType, ref, ref1, steal, sync, validateTypes,
   slice = [].slice;
 
-ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Maybe = ref.Maybe;
+ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Maybe = ref.Maybe, Kind = ref.Kind;
+
+ref1 = require("Animated"), AnimatedValue = ref1.AnimatedValue, Animation = ref1.Animation;
 
 emptyFunction = require("emptyFunction");
 
 Immutable = require("immutable");
-
-Animated = require("Animated");
 
 Progress = require("progress");
 
@@ -27,6 +27,16 @@ sync = require("sync");
 
 hook = require("hook");
 
+if (isDev) {
+  configTypes = {};
+  configTypes.animate = {
+    type: Function.Kind,
+    onUpdate: Maybe(Function.Kind),
+    onEnd: Maybe(Function.Kind),
+    onFinish: Maybe(Function.Kind)
+  };
+}
+
 module.exports = NativeValue = Factory("NativeValue", {
   initArguments: function(value, keyPath) {
     assertType(keyPath, String.Maybe, "keyPath");
@@ -45,9 +55,9 @@ module.exports = NativeValue = Factory("NativeValue", {
         return this._keyPath;
       },
       set: function(keyPath) {
-        var ref1;
+        var ref2;
         this._keyPath = keyPath;
-        return (ref1 = this._reaction) != null ? ref1.keyPath = keyPath : void 0;
+        return (ref2 = this._reaction) != null ? ref2.keyPath = keyPath : void 0;
       }
     },
     value: {
@@ -60,10 +70,10 @@ module.exports = NativeValue = Factory("NativeValue", {
           nativeValue: this
         });
         if (this.isAnimated) {
-          return this._animated.setValue(newValue);
-        } else {
-          return this._setValue(newValue);
+          this._animated.setValue(newValue);
+          return;
         }
+        return this._setValue(newValue);
       }
     },
     getValue: {
@@ -77,8 +87,8 @@ module.exports = NativeValue = Factory("NativeValue", {
     },
     toValue: {
       get: function() {
-        var ref1, ref2;
-        return ((ref1 = this._animated) != null ? (ref2 = ref1._animation) != null ? ref2._toValue : void 0 : void 0) || this._value;
+        var ref2, ref3;
+        return ((ref2 = this._animated) != null ? (ref3 = ref2._animation) != null ? ref3._toValue : void 0 : void 0) || this._value;
       }
     },
     progress: {
@@ -87,6 +97,16 @@ module.exports = NativeValue = Factory("NativeValue", {
       },
       set: function(progress) {
         return this.setProgress(progress);
+      }
+    },
+    animation: {
+      get: function() {
+        var animated;
+        animated = this._animated;
+        if (!animated) {
+          return null;
+        }
+        return animated._animation || null;
       }
     },
     isAnimated: {
@@ -101,8 +121,20 @@ module.exports = NativeValue = Factory("NativeValue", {
     },
     velocity: {
       get: function() {
-        var ref1, ref2;
-        return (ref1 = this._animated) != null ? (ref2 = ref1._animation) != null ? ref2._lastVelocity : void 0 : void 0;
+        var animated, animation, velocity;
+        animated = this._animated;
+        if (!animated) {
+          return 0;
+        }
+        animation = animated._animation;
+        if (!animation) {
+          return 0;
+        }
+        velocity = animation._curVelocity;
+        if (!isType(velocity, Number)) {
+          return 0;
+        }
+        return velocity;
       }
     },
     isReactive: {
@@ -137,7 +169,7 @@ module.exports = NativeValue = Factory("NativeValue", {
       _reactionListener: null,
       _animated: null,
       _animatedListener: null,
-      _animateStackTrace: null
+      _lastStackTrace: null
     };
   },
   initReactiveValues: function() {
@@ -180,40 +212,33 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this.value = newValue;
   },
   animate: function(config) {
-    var animation, finished, listener, onEnd, onFinish, onUpdate, type;
+    var AnimationType, animation, finished, onEnd, onFinish, onUpdate, updateListener;
     assert(!this.isReactive, {
       reason: "Cannot call 'animate' when 'isReactive' is true!",
       nativeValue: this
     });
-    validateTypes(config, {
-      onUpdate: Maybe(Function.Kind),
-      onEnd: Maybe(Function.Kind),
-      onFinish: Maybe(Function.Kind)
-    });
+    if (isDev) {
+      validateTypes(config, configTypes.animate);
+    }
     this.stopAnimation();
     this._attachAnimated();
-    if (isDev) {
-      this._animateStackTrace = Error();
-    }
     onUpdate = steal(config, "onUpdate");
     if (onUpdate) {
-      listener = this._animated.addListener((function(_this) {
-        return function(result) {
-          return onUpdate(result.value);
-        };
-      })(this));
+      updateListener = this._animated.didSet(onUpdate);
     }
-    onEnd = steal(config, "onEnd", emptyFunction);
     onFinish = steal(config, "onFinish", emptyFunction);
+    onEnd = steal(config, "onEnd", emptyFunction);
+    if (isDev) {
+      this._lastStackTrace = ["*  NativeValue::animate  *", Error()];
+    }
     this._fromValue = this._value;
     this._toValue = config.toValue;
-    type = this._detectAnimationType(config);
-    animation = Animated[type](this._animated, config);
-    animation.start();
-    animation = this._animated._animation;
-    if (!animation) {
+    AnimationType = steal(config, "type");
+    animation = new AnimationType(config);
+    this._animated.animate(animation);
+    if (!animation.__active) {
       if (onUpdate) {
-        this._animated.removeListener(listener);
+        updateListener.stop();
       }
       finished = (this._toValue === void 0) || (this._toValue === this._value);
       this._onAnimationEnd(finished, onFinish, onEnd);
@@ -223,10 +248,10 @@ module.exports = NativeValue = Factory("NativeValue", {
     hook.after(animation, "__onEnd", (function(_this) {
       return function(_, result) {
         _this._animating = false;
-        if (onUpdate != null) {
-          _this._animated.removeListener(listener);
+        if (onUpdate) {
+          updateListener.stop();
         }
-        if (_this._toValue != null) {
+        if (_this._toValue !== void 0) {
           result.finished = _this._value === _this._toValue;
         }
         return _this._onAnimationEnd(result.finished, onFinish, onEnd);
@@ -324,7 +349,8 @@ module.exports = NativeValue = Factory("NativeValue", {
   _setValue: function(newValue) {
     if (this.type !== void 0) {
       assertType(newValue, this.type, {
-        stack: this._animateStack
+        nativeValue: this,
+        stack: this._lastStackTrace
       });
     }
     if (this._value === newValue) {
@@ -334,9 +360,9 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this.didSet.emit(newValue);
   },
   _applyInputRange: function(value) {
-    var max, min, ref1;
+    var max, min, ref2;
     assert(this._inputRange, Array);
-    ref1 = this._inputRange, min = ref1[0], max = ref1[1];
+    ref2 = this._inputRange, min = ref2[0], max = ref2[1];
     value = Math.max(min, Math.min(max, value));
     return (value - min) / (max - min);
   },
@@ -354,6 +380,7 @@ module.exports = NativeValue = Factory("NativeValue", {
     } else {
       this._detachAnimated();
     }
+    this._lastStackTrace = ["*  Reaction::init  *", reaction._initStackTrace];
     this._reaction = reaction;
     if ((base = this._reaction).keyPath == null) {
       base.keyPath = this.keyPath;
@@ -366,31 +393,15 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this._setValue(reaction.value);
   },
   _attachAnimated: function() {
-    var listener;
     if (this._animated != null) {
       return;
     }
-    this._animated = new Animated.Value(this._value);
-    listener = (function(_this) {
-      return function(arg) {
-        var value;
-        value = arg.value;
+    this._animated = new AnimatedValue(this._value);
+    return this._animatedListener = this._animated.didSet((function(_this) {
+      return function(value) {
         return _this._setValue(value);
       };
-    })(this);
-    return this._animatedListener = this._animated.addListener(listener);
-  },
-  _detectAnimationType: function(config) {
-    if (config.duration !== void 0) {
-      return "timing";
-    }
-    if (config.deceleration !== void 0) {
-      return "decay";
-    }
-    if ((config.speed !== void 0) || (config.tension !== void 0)) {
-      return "spring";
-    }
-    throw Error("Unrecognized animation configuration");
+    })(this));
   },
   _onAnimationEnd: function(finished, onFinish, onEnd) {
     if (finished) {
@@ -412,7 +423,7 @@ module.exports = NativeValue = Factory("NativeValue", {
       return;
     }
     this._animated.stopAnimation();
-    this._animated.removeListener(this._animatedListener);
+    this._animatedListener.stop();
     this._animatedListener = null;
     this._animated = null;
   }

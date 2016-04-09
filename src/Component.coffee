@@ -1,4 +1,6 @@
 
+require "isDev"
+
 { Maybe
   setKind
   setType
@@ -8,13 +10,11 @@
 
 { throwFailure } = require "failure"
 
-sync = require "sync"
-
 ReactCurrentOwner = require "ReactCurrentOwner"
 ExceptionsManager = require "ExceptionsManager"
 ReactiveGetter = require "ReactiveGetter"
 ReactComponent = require "ReactComponent"
-NamedFunction = require "named-function"
+NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 flattenStyle = require "flattenStyle"
@@ -26,8 +26,8 @@ define = require "define"
 Random = require "random"
 Event = require "event"
 guard = require "guard"
-isDev = require "isDev"
 steal = require "steal"
+sync = require "sync"
 hook = require "hook"
 
 ReactionInjector = Injector "Reaction"
@@ -124,13 +124,12 @@ define Component,
       initPhase = createPhase config, name
       initPhases[key] = initPhase if initPhase
 
-    constructor = (props) ->
+    type = NamedFunction name, (props) ->
       component = setType { props }, type
       guard -> Component.initialize component, initPhases
       .fail (error) -> throwFailure error, { component, props, stack: (steal props, "__stack")() }
       component
 
-    type = NamedFunction name, constructor
     setKind type, Component
 
   # Returns a Function that creates a ReactElement.

@@ -1,11 +1,12 @@
 
 # TODO Batch synchronous changes in an appropriate timeframe (eg: 16ms).
 
-{ isType, validateTypes, assertType, assert, Maybe } = require "type-utils"
+{ isType, validateTypes, assertType, assert, Maybe, Kind } = require "type-utils"
+
+{ AnimatedValue, Animation } = require "Animated"
 
 emptyFunction = require "emptyFunction"
 Immutable = require "immutable"
-Animated = require "Animated"
 Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
@@ -15,6 +16,14 @@ steal = require "steal"
 isDev = require "isDev"
 sync = require "sync"
 hook = require "hook"
+
+if isDev
+  configTypes = {}
+  configTypes.animate =
+    type: Function.Kind
+    onUpdate: Maybe Function.Kind
+    onEnd: Maybe Function.Kind
+    onFinish: Maybe Function.Kind
 
 module.exports =
 NativeValue = Factory "NativeValue",
@@ -44,8 +53,9 @@ NativeValue = Factory "NativeValue",
 
         if @isAnimated
           @_animated.setValue newValue
-        else
-          @_setValue newValue
+          return
+
+        @_setValue newValue
 
     getValue: lazy: ->
       => @_value
@@ -58,6 +68,11 @@ NativeValue = Factory "NativeValue",
       set: (progress) ->
         @setProgress progress
 
+    animation: get: ->
+      animated = @_animated
+      return null unless animated
+      return animated._animation or null
+
     isAnimated: get: ->
       @_animated?
 
@@ -65,7 +80,13 @@ NativeValue = Factory "NativeValue",
       @_animating
 
     velocity: get: ->
-      @_animated?._animation?._lastVelocity
+      animated = @_animated
+      return 0 unless animated
+      animation = animated._animation
+      return 0 unless animation
+      velocity = animation._curVelocity
+      return 0 unless isType velocity, Number
+      velocity
 
     isReactive: get: ->
       @_reaction?
@@ -98,7 +119,7 @@ NativeValue = Factory "NativeValue",
 
     _animatedListener: null
 
-    _animateStackTrace: null
+    _lastStackTrace: null
 
   initReactiveValues: ->
 
@@ -145,37 +166,30 @@ NativeValue = Factory "NativeValue",
       reason: "Cannot call 'animate' when 'isReactive' is true!"
       nativeValue: this
 
-    validateTypes config,
-      onUpdate: Maybe Function.Kind
-      onEnd: Maybe Function.Kind
-      onFinish: Maybe Function.Kind
+    validateTypes config, configTypes.animate if isDev
 
     @stopAnimation()
 
     @_attachAnimated()
 
-    @_animateStackTrace = Error() if isDev
-
     onUpdate = steal config, "onUpdate"
-    if onUpdate
-      listener = @_animated.addListener (result) =>
-        onUpdate result.value
+    updateListener = @_animated.didSet onUpdate if onUpdate
 
-    onEnd = steal config, "onEnd", emptyFunction
     onFinish = steal config, "onFinish", emptyFunction
+    onEnd = steal config, "onEnd", emptyFunction
+
+    @_lastStackTrace = [ "*  NativeValue::animate  *", Error() ] if isDev
 
     @_fromValue = @_value
     @_toValue = config.toValue
 
-    # Create the Animation and start it.
-    type = @_detectAnimationType config
-    animation = Animated[type] @_animated, config
-    animation.start()
+    AnimationType = steal config, "type"
+    animation = new AnimationType config
+    @_animated.animate animation
 
-    # If the Animation finishes instantly, this value is undefined.
-    animation = @_animated._animation
-    unless animation
-      @_animated.removeListener listener if onUpdate
+    # Detect instant animations.
+    unless animation.__active
+      updateListener.stop() if onUpdate
       finished = (@_toValue is undefined) or (@_toValue is @_value)
       @_onAnimationEnd finished, onFinish, onEnd
       return
@@ -183,8 +197,8 @@ NativeValue = Factory "NativeValue",
     @_animating = yes
     hook.after animation, "__onEnd", (_, result) =>
       @_animating = no
-      @_animated.removeListener listener if onUpdate?
-      result.finished = @_value is @_toValue if @_toValue?
+      updateListener.stop() if onUpdate
+      result.finished = @_value is @_toValue if @_toValue isnt undefined
       @_onAnimationEnd result.finished, onFinish, onEnd
 
     return
@@ -276,7 +290,7 @@ NativeValue = Factory "NativeValue",
     @_toValue = to
 
   _setValue: (newValue) ->
-    assertType newValue, @type, { stack: @_animateStackTrace } if @type isnt undefined
+    assertType newValue, @type, { nativeValue: this, stack: @_lastStackTrace } if @type isnt undefined
     return if @_value is newValue
     @_value = newValue
     @didSet.emit newValue
@@ -294,6 +308,7 @@ NativeValue = Factory "NativeValue",
     assertType reaction, Reaction
     if @isReactive then @_detachReaction()
     else @_detachAnimated()
+    @_lastStackTrace = [ "*  Reaction::init  *", reaction._initStackTrace ]
     @_reaction = reaction
     @_reaction.keyPath ?= @keyPath
     @_reactionListener = @_reaction.didSet (newValue) =>
@@ -302,15 +317,8 @@ NativeValue = Factory "NativeValue",
 
   _attachAnimated: ->
     return if @_animated?
-    @_animated = new Animated.Value @_value
-    listener = ({ value }) => @_setValue value
-    @_animatedListener = @_animated.addListener listener
-
-  _detectAnimationType: (config) ->
-    return "timing" if config.duration isnt undefined
-    return "decay" if config.deceleration isnt undefined
-    return "spring" if (config.speed isnt undefined) or (config.tension isnt undefined)
-    throw Error "Unrecognized animation configuration"
+    @_animated = new AnimatedValue @_value
+    @_animatedListener = @_animated.didSet (value) => @_setValue value
 
   _onAnimationEnd: (finished, onFinish, onEnd) ->
     onFinish() if finished
@@ -327,7 +335,7 @@ NativeValue = Factory "NativeValue",
   _detachAnimated: ->
     return unless @isAnimated
     @_animated.stopAnimation()
-    @_animated.removeListener @_animatedListener
+    @_animatedListener.stop()
     @_animatedListener = null
     @_animated = null
     return

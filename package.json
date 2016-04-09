@@ -14,7 +14,7 @@
     "injector": "aleclarson/injector#1.0.0",
     "lazy-var": "aleclarson/lazy-var#1.0.0",
     "lotus-log": "aleclarson/lotus-log#1.0.0",
-    "named-function": "aleclarson/named-function#1.0.3",
+    "NamedFunction": "aleclarson/NamedFunction#1.0.0",
     "parseErrorStack": "aleclarson/parseErrorStack#1.0.0",
     "random": "aleclarson/random#1.0.4",
     "reaction": "aleclarson/reaction#1.0.0",

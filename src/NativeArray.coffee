@@ -42,6 +42,3 @@ module.exports = Factory "NativeArray",
   detach: ->
     sync.each @_array, (nativeValue) ->
       nativeValue.detach()
-
-  addListener: ->
-    throw Error "Not yet supported!"
