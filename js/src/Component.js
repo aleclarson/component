@@ -18,6 +18,8 @@ NamedFunction = require("NamedFunction");
 
 emptyFunction = require("emptyFunction");
 
+mergeDefaults = require("mergeDefaults");
+
 ReactElement = require("ReactElement");
 
 flattenStyle = require("flattenStyle");
@@ -184,7 +186,7 @@ define(Component, {
   },
   createFactory: function(type) {
     return function(props) {
-      var key, mixins, ref, stack;
+      var key, mixins, ref, tracer;
       if (props == null) {
         props = {};
       }
@@ -201,9 +203,10 @@ define(Component, {
       ref = props.ref ? props.ref : null;
       delete props.ref;
       if (isDev) {
-        stack = ["::  When component was constructed  ::", Error()];
+        tracer = Error();
+        tracer.skip = 1;
         props.__stack = function() {
-          return stack;
+          return ["::  When component was constructed  ::", tracer];
         };
       }
       return {
@@ -262,11 +265,10 @@ define(Component, {
         };
         return statics._processProps = function(props) {
           if (propDefaults) {
-            if (isType(props, Object)) {
-              mergeDefaults(props, propDefaults);
-            } else {
-              props = combine({}, propDefaults);
+            if (props == null) {
+              props = {};
             }
+            mergeDefaults(props, propDefaults);
           }
           initProps.call(this, props);
           if (isDev && propTypes && isType(props, Object)) {
@@ -678,22 +680,5 @@ define(Component.prototype, {
     }
   }
 });
-
-mergeDefaults = function(values, defaultValues) {
-  var defaultValue, key, value;
-  for (key in defaultValues) {
-    defaultValue = defaultValues[key];
-    value = values[key];
-    if (isType(defaultValue, Object)) {
-      if (isType(value, Object)) {
-        mergeDefaults(value, defaultValue);
-      } else if (value === void 0) {
-        values[key] = combine({}, defaultValue);
-      }
-    } else if (value === void 0) {
-      values[key] = defaultValue;
-    }
-  }
-};
 
 //# sourceMappingURL=../../map/src/Component.map

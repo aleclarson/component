@@ -16,6 +16,7 @@ ReactiveGetter = require "ReactiveGetter"
 ReactComponent = require "ReactComponent"
 NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
+mergeDefaults = require "mergeDefaults"
 ReactElement = require "ReactElement"
 flattenStyle = require "flattenStyle"
 StyleSheet = require "StyleSheet"
@@ -150,8 +151,10 @@ define Component,
     delete props.ref
 
     if isDev
-      stack = [ "::  When component was constructed  ::", Error() ]
-      props.__stack = -> stack
+      tracer = Error()
+      tracer.skip = 1
+      props.__stack = ->
+        [ "::  When component was constructed  ::", tracer ]
 
     return {
       type
@@ -189,8 +192,8 @@ define Component,
       statics.propDefaults = { value: propDefaults }
       statics._processProps = (props) ->
         if propDefaults
-          if isType props, Object then mergeDefaults props, propDefaults
-          else props = combine {}, propDefaults
+          props ?= {}
+          mergeDefaults props, propDefaults
         initProps.call this, props
         if isDev and propTypes and isType props, Object
           guard -> validateTypes props, propTypes
@@ -407,19 +410,3 @@ define Component.prototype, { enumerable: no },
     @__attachNativeValue key, nativeValue
     @__addReaction key, nativeValue._reaction if nativeValue.isReactive
     return
-
-#
-# Helpers
-#
-
-mergeDefaults = (values, defaultValues) ->
-  for key, defaultValue of defaultValues
-    value = values[key]
-    if isType defaultValue, Object
-      if isType value, Object
-        mergeDefaults value, defaultValue
-      else if value is undefined
-        values[key] = combine {}, defaultValue
-    else if value is undefined
-      values[key] = defaultValue
-  return

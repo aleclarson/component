@@ -1,9 +1,11 @@
-var AnimatedValue, Animation, Event, Factory, Immutable, Kind, Maybe, NativeValue, Progress, Reaction, assert, assertType, combine, configTypes, emptyFunction, hook, isDev, isType, ref, ref1, steal, sync, validateTypes,
+var AnimatedValue, Animation, Event, Factory, Immutable, Kind, Maybe, NativeValue, Progress, Reaction, assert, assertType, combine, configTypes, emptyFunction, hook, isDev, isType, ref, roundToScreenScale, steal, sync, validateTypes,
   slice = [].slice;
 
 ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Maybe = ref.Maybe, Kind = ref.Kind;
 
-ref1 = require("Animated"), AnimatedValue = ref1.AnimatedValue, Animation = ref1.Animation;
+AnimatedValue = require("Animated").AnimatedValue;
+
+roundToScreenScale = require("device").roundToScreenScale;
 
 emptyFunction = require("emptyFunction");
 
@@ -26,6 +28,8 @@ isDev = require("isDev");
 sync = require("sync");
 
 hook = require("hook");
+
+Animation = require("./Animation");
 
 if (isDev) {
   configTypes = {};
@@ -55,9 +59,9 @@ module.exports = NativeValue = Factory("NativeValue", {
         return this._keyPath;
       },
       set: function(keyPath) {
-        var ref2;
+        var ref1;
         this._keyPath = keyPath;
-        return (ref2 = this._reaction) != null ? ref2.keyPath = keyPath : void 0;
+        return (ref1 = this._reaction) != null ? ref1.keyPath = keyPath : void 0;
       }
     },
     value: {
@@ -85,10 +89,14 @@ module.exports = NativeValue = Factory("NativeValue", {
         })(this);
       }
     },
+    fromValue: {
+      get: function() {
+        return this._fromValue;
+      }
+    },
     toValue: {
       get: function() {
-        var ref2, ref3;
-        return ((ref2 = this._animated) != null ? (ref3 = ref2._animation) != null ? ref3._toValue : void 0 : void 0) || this._value;
+        return this._toValue;
       }
     },
     progress: {
@@ -111,12 +119,12 @@ module.exports = NativeValue = Factory("NativeValue", {
     },
     isAnimated: {
       get: function() {
-        return this._animated != null;
+        return this._animated !== null;
       }
     },
     isAnimating: {
       get: function() {
-        return this._animating;
+        return this._animation !== null;
       }
     },
     velocity: {
@@ -168,16 +176,16 @@ module.exports = NativeValue = Factory("NativeValue", {
       _reaction: null,
       _reactionListener: null,
       _animated: null,
+      _animation: null,
       _animatedListener: null,
-      _lastStackTrace: null
+      _getStack: null
     };
   },
   initReactiveValues: function() {
     return {
-      _animating: false,
+      _value: null,
       _fromValue: null,
-      _toValue: null,
-      _value: null
+      _toValue: null
     };
   },
   init: function(value, keyPath) {
@@ -212,7 +220,7 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this.value = newValue;
   },
   animate: function(config) {
-    var AnimationType, animation, finished, onEnd, onFinish, onUpdate, updateListener;
+    var onEnd, onFinish, onUpdate, tracer;
     assert(!this.isReactive, {
       reason: "Cannot call 'animate' when 'isReactive' is true!",
       nativeValue: this
@@ -220,57 +228,37 @@ module.exports = NativeValue = Factory("NativeValue", {
     if (isDev) {
       validateTypes(config, configTypes.animate);
     }
-    this.stopAnimation();
+    if (this._animation) {
+      this._animation.stop();
+    }
     this._attachAnimated();
     onUpdate = steal(config, "onUpdate");
-    if (onUpdate) {
-      updateListener = this._animated.didSet(onUpdate);
-    }
     onFinish = steal(config, "onFinish", emptyFunction);
     onEnd = steal(config, "onEnd", emptyFunction);
     if (isDev) {
-      this._lastStackTrace = ["*  NativeValue::animate  *", Error()];
+      tracer = Error();
+      tracer.skip = 1;
+      this._getStack = function() {
+        return ["::  Where the Animation was started  ::", tracer];
+      };
     }
     this._fromValue = this._value;
     this._toValue = config.toValue;
-    AnimationType = steal(config, "type");
-    animation = new AnimationType(config);
-    this._animated.animate(animation);
-    if (!animation.__active) {
-      if (onUpdate) {
-        updateListener.stop();
-      }
-      finished = (this._toValue === void 0) || (this._toValue === this._value);
-      this._onAnimationEnd(finished, onFinish, onEnd);
-      return;
-    }
-    this._animating = true;
-    hook.after(animation, "__onEnd", (function(_this) {
-      return function(_, result) {
-        _this._animating = false;
-        if (onUpdate) {
-          updateListener.stop();
-        }
-        if (_this._toValue !== void 0) {
-          result.finished = _this._value === _this._toValue;
-        }
-        return _this._onAnimationEnd(result.finished, onFinish, onEnd);
-      };
-    })(this));
-  },
-  finishAnimation: function() {
-    if (!this.isAnimated) {
-      return;
-    }
-    this._animated._value = this._toValue;
-    this._value = this._animated.__getValue();
-    return this._animated.stopAnimation();
-  },
-  stopAnimation: function() {
-    if (!this.isAnimated) {
-      return;
-    }
-    this._animated.stopAnimation();
+    return this._animation = Animation({
+      animated: this._animated,
+      type: steal(config, "type"),
+      config: config,
+      onEnd: (function(_this) {
+        return function(finished) {
+          if (finished) {
+            onFinish();
+          }
+          onEnd(finished);
+          _this.didAnimationEnd.emit(finished);
+          return _this._animation = null;
+        };
+      })(this)
+    });
   },
   getProgress: function(options) {
     var optionDefaults, value;
@@ -294,7 +282,7 @@ module.exports = NativeValue = Factory("NativeValue", {
     return Progress.fromValue(value, options);
   },
   setProgress: function(options) {
-    var optionDefaults, progress;
+    var optionDefaults, progress, value;
     assert(!this.isReactive, {
       reason: "Cannot call 'setProgress' when 'isReactive' is true!",
       nativeValue: this
@@ -313,7 +301,8 @@ module.exports = NativeValue = Factory("NativeValue", {
       progress: Number,
       from: Number,
       to: Number,
-      clamp: Boolean.Maybe
+      clamp: Boolean.Maybe,
+      round: Boolean.Maybe
     });
     progress = steal(options, "progress");
     if (this._inputRange != null) {
@@ -322,7 +311,11 @@ module.exports = NativeValue = Factory("NativeValue", {
     if (this._easing != null) {
       progress = this._easing(progress);
     }
-    return this.value = Progress.toValue(progress, options);
+    value = Progress.toValue(progress, options);
+    if (options.round === true) {
+      value = roundToScreenScale(value);
+    }
+    return this.value = value;
   },
   willProgress: function(config) {
     var easing, from, to, within;
@@ -360,9 +353,9 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this.didSet.emit(newValue);
   },
   _applyInputRange: function(value) {
-    var max, min, ref2;
+    var max, min, ref1;
     assert(this._inputRange, Array);
-    ref2 = this._inputRange, min = ref2[0], max = ref2[1];
+    ref1 = this._inputRange, min = ref1[0], max = ref1[1];
     value = Math.max(min, Math.min(max, value));
     return (value - min) / (max - min);
   },
@@ -393,7 +386,7 @@ module.exports = NativeValue = Factory("NativeValue", {
     return this._setValue(reaction.value);
   },
   _attachAnimated: function() {
-    if (this._animated != null) {
+    if (this._animated) {
       return;
     }
     this._animated = new AnimatedValue(this._value);
@@ -402,13 +395,6 @@ module.exports = NativeValue = Factory("NativeValue", {
         return _this._setValue(value);
       };
     })(this));
-  },
-  _onAnimationEnd: function(finished, onFinish, onEnd) {
-    if (finished) {
-      onFinish();
-    }
-    onEnd(finished);
-    return this.didAnimationEnd.emit(finished);
   },
   _detachReaction: function() {
     if (!this.isReactive) {

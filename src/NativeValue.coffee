@@ -3,7 +3,9 @@
 
 { isType, validateTypes, assertType, assert, Maybe, Kind } = require "type-utils"
 
-{ AnimatedValue, Animation } = require "Animated"
+{ AnimatedValue } = require "Animated"
+
+{ roundToScreenScale } = require "device"
 
 emptyFunction = require "emptyFunction"
 Immutable = require "immutable"
@@ -16,6 +18,8 @@ steal = require "steal"
 isDev = require "isDev"
 sync = require "sync"
 hook = require "hook"
+
+Animation = require "./Animation"
 
 if isDev
   configTypes = {}
@@ -60,8 +64,11 @@ NativeValue = Factory "NativeValue",
     getValue: lazy: ->
       => @_value
 
+    fromValue: get: ->
+      @_fromValue
+
     toValue: get: ->
-      @_animated?._animation?._toValue or @_value
+      @_toValue
 
     progress:
       get: -> @getProgress()
@@ -74,10 +81,10 @@ NativeValue = Factory "NativeValue",
       return animated._animation or null
 
     isAnimated: get: ->
-      @_animated?
+      @_animated isnt null
 
     isAnimating: get: ->
-      @_animating
+      @_animation isnt null
 
     velocity: get: ->
       animated = @_animated
@@ -117,19 +124,19 @@ NativeValue = Factory "NativeValue",
 
     _animated: null
 
+    _animation: null
+
     _animatedListener: null
 
-    _lastStackTrace: null
+    _getStack: null
 
   initReactiveValues: ->
 
-    _animating: no
+    _value: null
 
     _fromValue: null
 
     _toValue: null
-
-    _value: null
 
   init: (value, keyPath) ->
 
@@ -138,11 +145,10 @@ NativeValue = Factory "NativeValue",
       @reaction = value
 
     else if isType value, Function.Kind
-      @reaction = Reaction.sync { keyPath, get: value } # , autoStart: no }
+      @reaction = Reaction.sync { keyPath, get: value }
 
     else if isType value, Object
       value.keyPath ?= keyPath
-      # value.autoStart ?= no
       @reaction = Reaction.sync value
 
     else
@@ -168,51 +174,32 @@ NativeValue = Factory "NativeValue",
 
     validateTypes config, configTypes.animate if isDev
 
-    @stopAnimation()
+    @_animation.stop() if @_animation
 
     @_attachAnimated()
 
     onUpdate = steal config, "onUpdate"
-    updateListener = @_animated.didSet onUpdate if onUpdate
-
     onFinish = steal config, "onFinish", emptyFunction
     onEnd = steal config, "onEnd", emptyFunction
 
-    @_lastStackTrace = [ "*  NativeValue::animate  *", Error() ] if isDev
+    if isDev
+      tracer = Error()
+      tracer.skip = 1
+      @_getStack = ->
+        [ "::  Where the Animation was started  ::", tracer ]
 
     @_fromValue = @_value
     @_toValue = config.toValue
 
-    AnimationType = steal config, "type"
-    animation = new AnimationType config
-    @_animated.animate animation
-
-    # Detect instant animations.
-    unless animation.__active
-      updateListener.stop() if onUpdate
-      finished = (@_toValue is undefined) or (@_toValue is @_value)
-      @_onAnimationEnd finished, onFinish, onEnd
-      return
-
-    @_animating = yes
-    hook.after animation, "__onEnd", (_, result) =>
-      @_animating = no
-      updateListener.stop() if onUpdate
-      result.finished = @_value is @_toValue if @_toValue isnt undefined
-      @_onAnimationEnd result.finished, onFinish, onEnd
-
-    return
-
-  finishAnimation: ->
-    return unless @isAnimated
-    @_animated._value = @_toValue
-    @_value = @_animated.__getValue()
-    @_animated.stopAnimation()
-
-  stopAnimation: ->
-    return unless @isAnimated
-    @_animated.stopAnimation()
-    return
+    @_animation = Animation
+      animated: @_animated
+      type: steal config, "type"
+      config: config
+      onEnd: (finished) =>
+        onFinish() if finished
+        onEnd finished
+        @didAnimationEnd.emit finished
+        @_animation = null
 
   getProgress: (options) ->
 
@@ -256,6 +243,7 @@ NativeValue = Factory "NativeValue",
       from: Number
       to: Number
       clamp: Boolean.Maybe
+      round: Boolean.Maybe
 
     progress = steal options, "progress"
 
@@ -263,7 +251,11 @@ NativeValue = Factory "NativeValue",
 
     progress = @_easing progress if @_easing?
 
-    @value = Progress.toValue progress, options
+    value = Progress.toValue progress, options
+
+    value = roundToScreenScale value if options.round is yes
+
+    @value = value
 
   willProgress: (config) ->
 
@@ -316,14 +308,9 @@ NativeValue = Factory "NativeValue",
     @_setValue reaction.value
 
   _attachAnimated: ->
-    return if @_animated?
+    return if @_animated
     @_animated = new AnimatedValue @_value
     @_animatedListener = @_animated.didSet (value) => @_setValue value
-
-  _onAnimationEnd: (finished, onFinish, onEnd) ->
-    onFinish() if finished
-    onEnd finished
-    @didAnimationEnd.emit finished
 
   _detachReaction: ->
     return unless @isReactive
