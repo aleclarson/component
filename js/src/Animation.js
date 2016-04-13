@@ -45,6 +45,17 @@ module.exports = Factory("Animation", {
           clamp: true
         });
       }
+    },
+    velocity: {
+      get: function() {
+        var velocity;
+        velocity = this._animation._curVelocity;
+        if (isType(velocity, Number)) {
+          return velocity;
+        } else {
+          return 0;
+        }
+      }
     }
   },
   initFrozenValues: function(options) {
@@ -84,16 +95,20 @@ module.exports = Factory("Animation", {
     })(this));
   },
   stop: function() {
+    if (!this.isActive) {
+      return;
+    }
     this._animated.stopAnimation();
-    this._onEnd(false);
   },
   finish: function() {
+    if (!this.isActive) {
+      return;
+    }
     if (this._toValue !== void 0) {
       this._animated.setValue(this._toValue);
     } else {
       this._animated.stopAnimation();
     }
-    this._onEnd(true);
   }
 });
 

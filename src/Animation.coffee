@@ -34,6 +34,10 @@ module.exports = Factory "Animation",
         to: @_toValue
         clamp: yes
 
+    velocity: get: ->
+      velocity = @_animation._curVelocity
+      if (isType velocity, Number) then velocity else 0
+
   initFrozenValues: (options) ->
 
     _animated: options.animated
@@ -69,13 +73,13 @@ module.exports = Factory "Animation",
       @_onEnd if (@_toValue isnt undefined) then (@_value is @_toValue) else result.finished
 
   stop: ->
+    return unless @isActive
     @_animated.stopAnimation()
-    @_onEnd no
     return
 
   finish: ->
+    return unless @isActive
     if @_toValue isnt undefined
       @_animated.setValue @_toValue
     else @_animated.stopAnimation()
-    @_onEnd yes
     return

@@ -13,6 +13,7 @@ Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
 combine = require "combine"
+Tracer = require "tracer"
 Event = require "event"
 steal = require "steal"
 isDev = require "isDev"
@@ -70,30 +71,22 @@ NativeValue = Factory "NativeValue",
     toValue: get: ->
       @_toValue
 
+    distance: get: ->
+      @_toValue - @_fromValue
+
     progress:
       get: -> @getProgress()
       set: (progress) ->
-        @setProgress progress
+        @setProgress { progress, clamp: yes, round: yes }
 
     animation: get: ->
-      animated = @_animated
-      return null unless animated
-      return animated._animation or null
+      @_animation
 
     isAnimated: get: ->
       @_animated isnt null
 
     isAnimating: get: ->
       @_animation isnt null
-
-    velocity: get: ->
-      animated = @_animated
-      return 0 unless animated
-      animation = animated._animation
-      return 0 unless animation
-      velocity = animation._curVelocity
-      return 0 unless isType velocity, Number
-      velocity
 
     isReactive: get: ->
       @_reaction?
@@ -108,7 +101,7 @@ NativeValue = Factory "NativeValue",
 
     didSet: Event()
 
-    didAnimationEnd: Event()
+    didAnimationEnd: Event { maxRecursion: 10 }
 
   initValues: (value, keyPath) ->
 
@@ -128,7 +121,7 @@ NativeValue = Factory "NativeValue",
 
     _animatedListener: null
 
-    _getStack: null
+    _tracer: emptyFunction
 
   initReactiveValues: ->
 
@@ -172,34 +165,49 @@ NativeValue = Factory "NativeValue",
       reason: "Cannot call 'animate' when 'isReactive' is true!"
       nativeValue: this
 
-    validateTypes config, configTypes.animate if isDev
+    @_tracer = Tracer "When the Animation was created" if isDev
 
     @_animation.stop() if @_animation
 
     @_attachAnimated()
 
-    onUpdate = steal config, "onUpdate"
+    validateTypes config, configTypes.animate if isDev
+
+    onUpdate = steal config, "onUpdate", emptyFunction
     onFinish = steal config, "onFinish", emptyFunction
     onEnd = steal config, "onEnd", emptyFunction
 
-    if isDev
-      tracer = Error()
-      tracer.skip = 1
-      @_getStack = ->
-        [ "::  Where the Animation was started  ::", tracer ]
+    hasEnded = no
 
-    @_fromValue = @_value
-    @_toValue = config.toValue
-
-    @_animation = Animation
+    animation = Animation
       animated: @_animated
       type: steal config, "type"
       config: config
+
+      onUpdate: (value) =>
+
+        assert not hasEnded, "Must be animating!"
+
+        assert @isAnimating, "Must be animating!"
+        # assert animation.isActive, "Animation must be active!"
+        onUpdate value
+
       onEnd: (finished) =>
+
+        assert not hasEnded, "Must be animating!"
+        hasEnded = yes
+
+        # Must set this before callbacks (in case they start another animation)!
+        @_animation = null
+
         onFinish() if finished
         onEnd finished
+
         @didAnimationEnd.emit finished
-        @_animation = null
+
+    @_fromValue = animation.fromValue
+    @_toValue = animation.toValue
+    @_animation = animation
 
   getProgress: (options) ->
 
@@ -282,7 +290,7 @@ NativeValue = Factory "NativeValue",
     @_toValue = to
 
   _setValue: (newValue) ->
-    assertType newValue, @type, { nativeValue: this, stack: @_lastStackTrace } if @type isnt undefined
+    assertType newValue, @type, { nativeValue: this, stack: @_tracer() } if @type isnt undefined
     return if @_value is newValue
     @_value = newValue
     @didSet.emit newValue
@@ -300,7 +308,7 @@ NativeValue = Factory "NativeValue",
     assertType reaction, Reaction
     if @isReactive then @_detachReaction()
     else @_detachAnimated()
-    @_lastStackTrace = [ "*  Reaction::init  *", reaction._initStackTrace ]
+    @_tracer = reaction._traceInit
     @_reaction = reaction
     @_reaction.keyPath ?= @keyPath
     @_reactionListener = @_reaction.didSet (newValue) =>
