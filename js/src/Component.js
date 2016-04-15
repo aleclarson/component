@@ -177,7 +177,7 @@ define(Component, {
         return throwFailure(error, {
           component: component,
           props: props,
-          stack: (steal(props, "__stack"))()
+          stack: isDev ? props.__trace() : void 0
         });
       });
       return component;
@@ -186,7 +186,7 @@ define(Component, {
   },
   createFactory: function(type) {
     return function(props) {
-      var key, mixins, ref, tracer;
+      var key, mixins, ref;
       if (props == null) {
         props = {};
       }
@@ -203,11 +203,7 @@ define(Component, {
       ref = props.ref ? props.ref : null;
       delete props.ref;
       if (isDev) {
-        tracer = Error();
-        tracer.skip = 1;
-        props.__stack = function() {
-          return ["::  When component was constructed  ::", tracer];
-        };
+        props.__trace = Tracer("When element was created");
       }
       return {
         type: type,
@@ -357,7 +353,7 @@ define(Component, {
               throwFailure(error, {
                 method: _this.constructor.name + ".render",
                 component: _this,
-                stack: element.props.__stack()
+                stack: isDev ? element.props.__trace() : void 0
               });
               return false;
             };

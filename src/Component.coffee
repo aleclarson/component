@@ -126,9 +126,19 @@ define Component,
       initPhases[key] = initPhase if initPhase
 
     type = NamedFunction name, (props) ->
+
       component = setType { props }, type
-      guard -> Component.initialize component, initPhases
-      .fail (error) -> throwFailure error, { component, props, stack: (steal props, "__stack")() }
+
+      guard ->
+        Component.initialize component, initPhases
+
+      .fail (error) ->
+        throwFailure error, {
+          component
+          props
+          stack: props.__trace() if isDev
+        }
+
       component
 
     setKind type, Component
@@ -150,11 +160,7 @@ define Component,
     ref = if props.ref then props.ref else null
     delete props.ref
 
-    if isDev
-      tracer = Error()
-      tracer.skip = 1
-      props.__stack = ->
-        [ "::  When component was constructed  ::", tracer ]
+    props.__trace = Tracer "When element was created" if isDev
 
     return {
       type
@@ -243,7 +249,7 @@ define Component,
           throwFailure error,
             method: "#{@constructor.name}.render"
             component: this
-            stack: element.props.__stack()
+            stack: element.props.__trace() if isDev
           return no
 
       renderSafely.toString = -> render.toString()
