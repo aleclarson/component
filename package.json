@@ -1,0 +1,49 @@
+{
+  "name": "component",
+  "version": "1.0.0",
+  "dependencies": {
+    "Animated": "aleclarson/Animated#1.0.0",
+    "NamedFunction": "aleclarson/NamedFunction#2.0.0",
+    "clampValue": "aleclarson/clampValue#1.0.0",
+    "combine": "aleclarson/combine#1.0.0",
+    "define": "aleclarson/define#1.0.0",
+    "emptyFunction": "aleclarson/emptyFunction#1.0.0",
+    "event": "aleclarson/event#1.0.0",
+    "factory": "aleclarson/factory#1.0.0",
+    "failure": "aleclarson/failure#1.0.0",
+    "injector": "aleclarson/injector#1.0.0",
+    "isDev": "aleclarson/isDev#1.0.0",
+    "progress": "aleclarson/progress#1.0.0",
+    "reaction": "aleclarson/reaction#1.0.0",
+    "roundValue": "aleclarson/roundValue#1.0.0",
+    "steal": "aleclarson/steal#0.0.1",
+    "sync": "aleclarson/sync#1.0.0",
+    "tracer": "aleclarson/tracer#1.0.0",
+    "type-utils": "aleclarson/type-utils#1.0.0"
+  },
+  "lotus": {
+    "plugins": [
+      "lotus-coffee"
+    ],
+    "implicitDependencies": [
+      "AppRegistry",
+      "Image",
+      "InteractionManager",
+      "ReactComponent",
+      "ReactCurrentOwner",
+      "ReactElement",
+      "StyleSheet",
+      "Text",
+      "TextInput",
+      "View",
+      "WebView"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aleclarson/component.git"
+  },
+  "licenses": [
+    "MIT"
+  ]
+}

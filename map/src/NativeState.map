@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "NativeState.js",
+  "sourceRoot": "../../src",
+  "sources": [
+    "NativeState.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}
