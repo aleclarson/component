@@ -1,4 +1,4 @@
-var Component, Event, ExceptionsManager, Injector, Maybe, NamedFunction, NativeValue, Random, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactionInjector, ReactiveGetter, StyleSheet, assertType, combine, define, emptyFunction, flattenStyle, guard, hook, isType, mergeDefaults, ref1, setKind, setType, steal, sync, throwFailure, validateTypes;
+var Component, Event, Injector, Maybe, NamedFunction, NativeValue, ReactComponent, ReactCurrentOwner, ReactElement, Reaction, ReactionInjector, StyleSheet, Tracer, assertType, combine, define, emptyFunction, guard, hook, isType, mergeDefaults, ref1, setKind, setType, steal, sync, throwFailure, validateTypes;
 
 require("isDev");
 
@@ -7,10 +7,6 @@ ref1 = require("type-utils"), Maybe = ref1.Maybe, setKind = ref1.setKind, setTyp
 throwFailure = require("failure").throwFailure;
 
 ReactCurrentOwner = require("ReactCurrentOwner");
-
-ExceptionsManager = require("ExceptionsManager");
-
-ReactiveGetter = require("ReactiveGetter");
 
 ReactComponent = require("ReactComponent");
 
@@ -22,8 +18,6 @@ mergeDefaults = require("mergeDefaults");
 
 ReactElement = require("ReactElement");
 
-flattenStyle = require("flattenStyle");
-
 StyleSheet = require("StyleSheet");
 
 Reaction = require("reaction");
@@ -32,9 +26,9 @@ Injector = require("injector");
 
 combine = require("combine");
 
-define = require("define");
+Tracer = require("tracer");
 
-Random = require("random");
+define = require("define");
 
 Event = require("event");
 
@@ -51,7 +45,7 @@ ReactionInjector = Injector("Reaction");
 NativeValue = require("./NativeValue");
 
 Component = NamedFunction("Component", function(name, config) {
-  var factory, styles, type;
+  var factory, statics, styles, type;
   assertType(name, String, "name");
   assertType(config, Object, "config");
   Component.applyMixins(config, name);
@@ -59,7 +53,9 @@ Component = NamedFunction("Component", function(name, config) {
   type = Component.createType(config, name);
   factory = Component.createFactory(type);
   styles = Component.createStyles(config);
-  define(factory, Component.createStatics(config, type, styles));
+  statics = Component.createStatics(config, type, styles);
+  define(factory, statics);
+  define(type, statics);
   define(type.prototype, Component.createPrototype(config, styles));
   return factory;
 });
@@ -125,22 +121,16 @@ define(Component, {
         value: styles
       };
     }
-    return sync.map(statics, function(value, key) {
-      var enumerable;
-      enumerable = key[0] !== "_";
+    return sync.map(statics, function(value) {
       if (isType(value, Object)) {
         if (value.frozen == null) {
           value.frozen = true;
-        }
-        if (value.enumerable == null) {
-          value.enumerable = enumerable;
         }
         return value;
       }
       return {
         value: value,
-        frozen: true,
-        enumerable: enumerable
+        frozen: true
       };
     });
   },
@@ -148,11 +138,10 @@ define(Component, {
     if (styles) {
       config.styles = styles;
     }
-    return sync.map(config, function(value, key) {
+    return sync.map(config, function(value) {
       return {
-        configurable: false,
-        enumerable: key[0] !== "_",
-        value: value
+        value: value,
+        configurable: false
       };
     });
   },
@@ -267,7 +256,10 @@ define(Component, {
             mergeDefaults(props, propDefaults);
           }
           initProps.call(this, props);
-          if (isDev && propTypes && isType(props, Object)) {
+          if (isDev && propTypes) {
+            if (props == null) {
+              props = {};
+            }
             guard(function() {
               return validateTypes(props, propTypes);
             }).fail(function(error) {
@@ -417,7 +409,7 @@ define(Component, {
             return;
           }
           return sync.each(this.__nativeValues, function(value) {
-            return value.detach();
+            return value.__detach();
           });
         });
       }
@@ -442,7 +434,6 @@ define(Component, {
                 return;
               }
               return values[key] = {
-                enumerable: key[0] !== "_",
                 value: function() {
                   return method.apply(_this, arguments);
                 }
@@ -475,10 +466,9 @@ define(Component, {
             return;
           }
           assertType(values, Object);
-          return define(this, sync.map(values, function(value, key) {
+          return define(this, sync.map(values, function(value) {
             return {
-              value: value,
-              enumerable: key[0] !== "_"
+              value: value
             };
           }));
         };
@@ -496,11 +486,10 @@ define(Component, {
             return;
           }
           assertType(values, Object);
-          return define(this, sync.map(values, function(value, key) {
+          return define(this, sync.map(values, function(value) {
             return {
-              enumerable: key[0] !== "_",
-              reactive: true,
-              value: value
+              value: value,
+              reactive: true
             };
           }));
         };
@@ -527,6 +516,7 @@ define(Component, {
           return sync.each(values, (function(_this) {
             return function(value, key) {
               if (isType(value, NativeValue.Kind)) {
+                value.__attach();
                 return _this.__attachNativeValue(key, value);
               } else {
                 return _this.__createNativeValue(key, value);
@@ -587,8 +577,7 @@ define(Component, {
                 _this.__addReaction(key, value);
               }
               return values[key] = {
-                value: value,
-                enumerable: key[0] !== "_"
+                value: value
               };
             };
           })(this));
@@ -660,7 +649,6 @@ define(Component.prototype, {
     this.__nativeValues[key] = nativeValue;
     define(this, key, {
       value: nativeValue,
-      enumerable: key[0] !== "_",
       frozen: true
     });
   },

@@ -3,6 +3,15 @@ NativeComponent = require "./NativeComponent"
 
 module.exports =
 
+  Element: lazy: ->
+    require "./Element"
+
+  Children: lazy: ->
+    require "./Children"
+
+  Style: lazy: ->
+    require "./Style"
+
   View: lazy: ->
     NativeComponent "View", require "View"
 
@@ -22,15 +31,6 @@ module.exports =
     StaticRenderer = require "StaticRenderer"
     StaticRenderer.displayName = "StaticRenderer"
     (require "ReactElement").createFactory StaticRenderer
-
-  Element: lazy: ->
-    require "./Element"
-
-  Children: lazy: ->
-    require "./Children"
-
-  Style: lazy: ->
-    require "./Style"
 
   InteractionManager: lazy: ->
     require "InteractionManager"

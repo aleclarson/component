@@ -30,8 +30,8 @@ module.exports = Factory "Animation",
 
     progress: get: ->
       Progress.fromValue @value,
-        from: @_fromValue
-        to: @_toValue
+        fromValue: @_fromValue
+        toValue: @_toValue
         clamp: yes
 
     velocity: get: ->
@@ -54,23 +54,24 @@ module.exports = Factory "Animation",
 
     _onEnd: options.onEnd
 
-  init: (options) ->
+  init: ->
 
     # Attach the value listener.
-    updateListener = @_animated.didSet options.onUpdate if options.onUpdate
+    onUpdate = @_animated.didSet (result) =>
+      @_onUpdate result if @_onUpdate
 
     # Start the animation.
     @_animated.animate @_animation
 
     # Detect instant animations.
     unless @isActive
-      updateListener.stop() if updateListener
+      onUpdate.stop() if onUpdate
       @_onEnd (@_toValue is undefined) or (@_toValue is @value)
       return
 
-    hook.after @_animation, "__onEnd", (_, result) =>
-      updateListener.stop() if updateListener
-      @_onEnd if (@_toValue isnt undefined) then (@_value is @_toValue) else result.finished
+    hook.before @_animation, "__onEnd", (result) =>
+      onUpdate.stop() if onUpdate
+      @_onEnd result.finished
 
   stop: ->
     return unless @isActive

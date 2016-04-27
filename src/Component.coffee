@@ -11,20 +11,17 @@ require "isDev"
 { throwFailure } = require "failure"
 
 ReactCurrentOwner = require "ReactCurrentOwner"
-ExceptionsManager = require "ExceptionsManager"
-ReactiveGetter = require "ReactiveGetter"
 ReactComponent = require "ReactComponent"
 NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
 mergeDefaults = require "mergeDefaults"
 ReactElement = require "ReactElement"
-flattenStyle = require "flattenStyle"
 StyleSheet = require "StyleSheet"
 Reaction = require "reaction"
 Injector = require "injector"
 combine = require "combine"
+Tracer = require "tracer"
 define = require "define"
-Random = require "random"
 Event = require "event"
 guard = require "guard"
 steal = require "steal"
@@ -50,7 +47,11 @@ Component = NamedFunction "Component", (name, config) ->
 
   styles = Component.createStyles config
 
-  define factory, Component.createStatics config, type, styles
+  statics = Component.createStatics config, type, styles
+
+  define factory, statics
+
+  define type, statics
 
   define type.prototype, Component.createPrototype config, styles
 
@@ -98,24 +99,16 @@ define Component,
     statics = steal config, "statics", {}
     statics.type = type
     statics.styles = { value: styles } if styles
-    return sync.map statics, (value, key) ->
-      enumerable = key[0] isnt "_"
+    return sync.map statics, (value) ->
       if isType value, Object
         value.frozen ?= yes
-        value.enumerable ?= enumerable
         return value
-      return {
-        value
-        frozen: yes
-        enumerable
-      }
+      return { value, frozen: yes }
 
   createPrototype: (config, styles) ->
     config.styles = styles if styles
-    return sync.map config, (value, key) ->
-      configurable: no
-      enumerable: key[0] isnt "_"
-      value: value
+    return sync.map config, (value) ->
+      { value, configurable: no }
 
   # Returns a Function that creates a ReactCompositeComponent.
   createType: (config, name) ->
@@ -201,7 +194,8 @@ define Component,
           props ?= {}
           mergeDefaults props, propDefaults
         initProps.call this, props
-        if isDev and propTypes and isType props, Object
+        if isDev and propTypes
+          props ?= {}
           guard -> validateTypes props, propTypes
           .fail (error) -> throwFailure error, { method: "_processProps", element: this, props, propTypes }
         props
@@ -281,7 +275,7 @@ define Component,
       hook.after config, "componentWillUnmount", ->
         return unless @__nativeValues
         sync.each @__nativeValues, (value) ->
-          value.detach()
+          value.__detach()
 
   initPhases: value:
 
@@ -293,9 +287,7 @@ define Component,
         sync.each boundMethods, (key) =>
           method = this[key]
           return unless method and method.apply
-          values[key] =
-            enumerable: key[0] isnt "_"
-            value: => method.apply this, arguments
+          values[key] = value: => method.apply this, arguments
         define this, values
 
     customValues: (config) ->
@@ -310,8 +302,7 @@ define Component,
         values = initValues.call this
         return unless values
         assertType values, Object
-        define this, sync.map values, (value, key) ->
-          { value, enumerable: key[0] isnt "_" }
+        define this, sync.map values, (value) -> { value }
 
     initReactiveValues: (config) ->
       return unless config.initReactiveValues
@@ -320,10 +311,7 @@ define Component,
         values = initReactiveValues.call this
         return unless values
         assertType values, Object
-        define this, sync.map values, (value, key) ->
-          enumerable: key[0] isnt "_"
-          reactive: yes
-          value: value
+        define this, sync.map values, (value) -> { value, reactive: yes }
 
     initNativeValues: (config) ->
       return unless config.initNativeValues
@@ -337,6 +325,7 @@ define Component,
         define this, "__nativeValues", { value: {}, enumerable: no }
         sync.each values, (value, key) =>
           if isType value, NativeValue.Kind
+            value.__attach()
             @__attachNativeValue key, value
           else @__createNativeValue key, value
 
@@ -368,7 +357,7 @@ define Component,
           else value = options
           if isType value, Reaction
             @__addReaction key, value
-          values[key] = { value, enumerable: key[0] isnt "_" }
+          values[key] = { value }
         ReactionInjector.pop "autoStart"
         define this, values
 
@@ -404,10 +393,7 @@ define Component.prototype, { enumerable: no },
   __attachNativeValue: (key, nativeValue) ->
     assertType nativeValue, NativeValue.Kind
     @__nativeValues[key] = nativeValue
-    define this, key,
-      value: nativeValue
-      enumerable: key[0] isnt "_"
-      frozen: yes
+    define this, key, { value: nativeValue, frozen: yes }
     return
 
   __createNativeValue: (key, value) ->

@@ -40,8 +40,8 @@ module.exports = Factory("Animation", {
     progress: {
       get: function() {
         return Progress.fromValue(this.value, {
-          from: this._fromValue,
-          to: this._toValue,
+          fromValue: this._fromValue,
+          toValue: this._toValue,
           clamp: true
         });
       }
@@ -72,25 +72,29 @@ module.exports = Factory("Animation", {
       _onEnd: options.onEnd
     };
   },
-  init: function(options) {
-    var updateListener;
-    if (options.onUpdate) {
-      updateListener = this._animated.didSet(options.onUpdate);
-    }
+  init: function() {
+    var onUpdate;
+    onUpdate = this._animated.didSet((function(_this) {
+      return function(result) {
+        if (_this._onUpdate) {
+          return _this._onUpdate(result);
+        }
+      };
+    })(this));
     this._animated.animate(this._animation);
     if (!this.isActive) {
-      if (updateListener) {
-        updateListener.stop();
+      if (onUpdate) {
+        onUpdate.stop();
       }
       this._onEnd((this._toValue === void 0) || (this._toValue === this.value));
       return;
     }
-    return hook.after(this._animation, "__onEnd", (function(_this) {
-      return function(_, result) {
-        if (updateListener) {
-          updateListener.stop();
+    return hook.before(this._animation, "__onEnd", (function(_this) {
+      return function(result) {
+        if (onUpdate) {
+          onUpdate.stop();
         }
-        return _this._onEnd(_this._toValue !== void 0 ? _this._value === _this._toValue : result.finished);
+        return _this._onEnd(result.finished);
       };
     })(this));
   },

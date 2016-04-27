@@ -1,15 +1,16 @@
-var AnimatedValue, Animation, Event, Factory, Immutable, Kind, Maybe, NativeValue, Progress, Reaction, Tracer, assert, assertType, combine, configTypes, emptyFunction, hook, isDev, isType, ref, roundToScreenScale, steal, sync, validateTypes,
-  slice = [].slice;
+var AnimatedValue, Animation, Event, Factory, Maybe, NativeValue, Null, Progress, Reaction, Tracer, assert, assertType, clampValue, combine, configTypes, emptyFunction, isType, ref, roundValue, steal, sync, validateTypes;
 
-ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Maybe = ref.Maybe, Kind = ref.Kind;
+require("isDev");
+
+ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Maybe = ref.Maybe, Null = ref.Null;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
-roundToScreenScale = require("device").roundToScreenScale;
-
 emptyFunction = require("emptyFunction");
 
-Immutable = require("immutable");
+roundValue = require("roundValue");
+
+clampValue = require("clampValue");
 
 Progress = require("progress");
 
@@ -25,11 +26,7 @@ Event = require("event");
 
 steal = require("steal");
 
-isDev = require("isDev");
-
 sync = require("sync");
-
-hook = require("hook");
 
 Animation = require("./Animation");
 
@@ -41,6 +38,20 @@ if (isDev) {
     onEnd: Maybe(Function.Kind),
     onFinish: Maybe(Function.Kind)
   };
+  configTypes.track = {
+    fromRange: Progress.Range,
+    toRange: Progress.Range
+  };
+  configTypes.setValue = {
+    clamp: Boolean.Maybe,
+    round: [Null, Number.Maybe]
+  };
+  configTypes.setProgress = {
+    fromValue: Number,
+    toValue: Number,
+    clamp: Boolean.Maybe,
+    round: [Null, Number.Maybe]
+  };
 }
 
 module.exports = NativeValue = Factory("NativeValue", {
@@ -49,7 +60,7 @@ module.exports = NativeValue = Factory("NativeValue", {
     return arguments;
   },
   getFromCache: function(value) {
-    if (isKind(value, NativeValue)) {
+    if (isType(value, NativeValue.Kind)) {
       return value;
     } else {
       return void 0;
@@ -71,10 +82,7 @@ module.exports = NativeValue = Factory("NativeValue", {
         return this._value;
       },
       set: function(newValue) {
-        assert(!this.isReactive, {
-          reason: "Cannot set 'value' when 'isReactive' is true!",
-          nativeValue: this
-        });
+        this._assertNonReactive();
         if (this.isAnimated) {
           this._animated.setValue(newValue);
           return;
@@ -111,11 +119,7 @@ module.exports = NativeValue = Factory("NativeValue", {
         return this.getProgress();
       },
       set: function(progress) {
-        return this.setProgress({
-          progress: progress,
-          clamp: true,
-          round: true
-        });
+        return this.setProgress(progress);
       }
     },
     animation: {
@@ -146,7 +150,11 @@ module.exports = NativeValue = Factory("NativeValue", {
         if (newValue === oldValue) {
           return;
         }
-        return this._attachReaction(newValue);
+        if (newValue === null) {
+          return this._detachReaction();
+        } else {
+          return this._attachReaction(newValue);
+        }
       }
     }
   },
@@ -158,17 +166,18 @@ module.exports = NativeValue = Factory("NativeValue", {
       })
     };
   },
-  initValues: function(value, keyPath) {
+  initValues: function() {
     return {
-      _keyPath: keyPath,
-      _inputRange: null,
-      _easing: null,
+      clamp: false,
+      round: null,
+      _keyPath: null,
       _reaction: null,
       _reactionListener: null,
       _animated: null,
       _animation: null,
       _animatedListener: null,
-      _tracer: emptyFunction
+      _tracer: emptyFunction,
+      _retainCount: 1
     };
   },
   initReactiveValues: function() {
@@ -195,26 +204,35 @@ module.exports = NativeValue = Factory("NativeValue", {
       }
       return this.reaction = Reaction.sync(value);
     } else {
+      this._keyPath = keyPath;
       return this.value = value;
     }
   },
-  detach: function() {},
-  absorb: function() {
-    var nativeValues, newValue;
-    nativeValues = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-    newValue = this.value;
-    sync.each(nativeValues, function(nativeValue) {
-      newValue += nativeValue.value;
-      return nativeValue.value = 0;
-    });
+  setValue: function(newValue, config) {
+    assertType(newValue, Number);
+    if (config == null) {
+      config = {};
+    }
+    if (config.clamp == null) {
+      config.clamp = this.clamp;
+    }
+    if (config.round == null) {
+      config.round = this.round;
+    }
+    validateTypes(config, configTypes.setValue);
+    if (config.clamp === true) {
+      assert(this._fromValue != null, "Must have a 'fromValue' defined!");
+      assert(this._toValue != null, "Must have a 'toValue' defined!");
+      newValue = clampValue(newValue, this._fromValue, this._toValue);
+    }
+    if (config.round != null) {
+      newValue = roundValue(newValue, config.round);
+    }
     return this.value = newValue;
   },
   animate: function(config) {
-    var animation, hasEnded, onEnd, onFinish, onUpdate;
-    assert(!this.isReactive, {
-      reason: "Cannot call 'animate' when 'isReactive' is true!",
-      nativeValue: this
-    });
+    var callbacks, onEnd;
+    this._assertNonReactive();
     if (isDev) {
       this._tracer = Tracer("When the Animation was created");
     }
@@ -225,143 +243,158 @@ module.exports = NativeValue = Factory("NativeValue", {
     if (isDev) {
       validateTypes(config, configTypes.animate);
     }
-    onUpdate = steal(config, "onUpdate", emptyFunction);
-    onFinish = steal(config, "onFinish", emptyFunction);
-    onEnd = steal(config, "onEnd", emptyFunction);
-    hasEnded = false;
-    animation = Animation({
+    callbacks = {
+      onUpdate: steal(config, "onUpdate"),
+      onFinish: steal(config, "onFinish", emptyFunction),
+      onEnd: steal(config, "onEnd", emptyFunction)
+    };
+    onEnd = (function(_this) {
+      return function(finished) {
+        _this._animation = null;
+        if (finished) {
+          callbacks.onFinish();
+        }
+        callbacks.onEnd(finished);
+        return _this.didAnimationEnd.emit(finished);
+      };
+    })(this);
+    return this._animation = Animation({
       animated: this._animated,
       type: steal(config, "type"),
       config: config,
-      onUpdate: (function(_this) {
-        return function(value) {
-          assert(!hasEnded, "Must be animating!");
-          assert(_this.isAnimating, "Must be animating!");
-          return onUpdate(value);
-        };
-      })(this),
-      onEnd: (function(_this) {
-        return function(finished) {
-          assert(!hasEnded, "Must be animating!");
-          hasEnded = true;
-          _this._animation = null;
-          if (finished) {
-            onFinish();
-          }
-          onEnd(finished);
-          return _this.didAnimationEnd.emit(finished);
-        };
-      })(this)
+      onUpdate: callbacks.onUpdate,
+      onEnd: onEnd
     });
-    this._fromValue = animation.fromValue;
-    this._toValue = animation.toValue;
-    return this._animation = animation;
   },
-  getProgress: function(options) {
-    var optionDefaults, value;
-    assert(!this.isReactive, {
-      reason: "Cannot call 'getProgress' when 'isReactive' is true!",
-      nativeValue: this
-    });
-    optionDefaults = {
-      at: this._value,
-      to: this._toValue,
-      from: this._fromValue != null ? this._fromValue : this._value
-    };
-    options = combine(optionDefaults, options);
-    validateTypes(options, {
-      at: Number,
-      to: Number,
-      from: Number,
-      clamp: Boolean.Maybe
-    });
-    value = steal(options, "at");
-    return Progress.fromValue(value, options);
-  },
-  setProgress: function(options) {
-    var optionDefaults, progress, value;
-    assert(!this.isReactive, {
-      reason: "Cannot call 'setProgress' when 'isReactive' is true!",
-      nativeValue: this
-    });
-    if (isType(options, Number)) {
-      options = {
-        progress: options
+  track: function(nativeValue, config) {
+    var base, base1, base2, base3;
+    assert(!this._tracking, "Already tracking another value!");
+    assertType(nativeValue, NativeValue.Kind);
+    if (config.fromRange == null) {
+      config.fromRange = {};
+    }
+    if ((base = config.fromRange).fromValue == null) {
+      base.fromValue = nativeValue._fromValue;
+    }
+    if ((base1 = config.fromRange).toValue == null) {
+      base1.toValue = nativeValue._toValue;
+    }
+    if (config.toRange == null) {
+      config.toRange = {};
+    }
+    if ((base2 = config.toRange).fromValue == null) {
+      base2.fromValue = this._fromValue;
+    }
+    if ((base3 = config.toRange).toValue == null) {
+      base3.toValue = this._toValue;
+    }
+    validateTypes(config, configTypes.track);
+    log.format(config, this.__id + ".track: ");
+    this._tracking = nativeValue.didSet((function(_this) {
+      return function(value) {
+        var progress;
+        progress = Progress.fromValue(value, config.fromRange);
+        return _this.value = Progress.toValue(progress, config.toRange);
       };
+    })(this));
+    this._tracking._onEvent(nativeValue.value);
+    this._tracking._onDefuse = (function(_this) {
+      return function() {
+        return _this._tracking = null;
+      };
+    })(this);
+    return this._tracking;
+  },
+  stopTracking: function() {
+    if (this._tracking) {
+      this._tracking.stop();
     }
-    optionDefaults = {
-      from: this._fromValue,
-      to: this._toValue
-    };
-    options = combine(optionDefaults, options);
-    validateTypes(options, {
-      progress: Number,
-      from: Number,
-      to: Number,
-      clamp: Boolean.Maybe,
-      round: Boolean.Maybe
-    });
-    progress = steal(options, "progress");
-    if (this._inputRange != null) {
-      progress = this._applyInputRange(progress);
+  },
+  getProgress: function(value, config) {
+    this._assertNonReactive();
+    if (isType(value, Object)) {
+      config = value;
+      value = this._value;
+    } else {
+      if (config == null) {
+        config = {};
+      }
+      if (value == null) {
+        value = this._value;
+      }
     }
-    if (this._easing != null) {
-      progress = this._easing(progress);
+    if (config.fromValue == null) {
+      config.fromValue = this._fromValue != null ? this._fromValue : this._value;
     }
-    value = Progress.toValue(progress, options);
-    if (options.round === true) {
-      value = roundToScreenScale(value);
+    if (config.toValue == null) {
+      config.toValue = this._toValue;
     }
-    return this.value = value;
+    assertType(value, Number);
+    validateTypes(config, configTypes.setProgress);
+    return Progress.fromValue(value, config);
+  },
+  setProgress: function(progress, config) {
+    var value;
+    this._assertNonReactive();
+    if (config == null) {
+      config = {};
+    }
+    if (config.fromValue == null) {
+      config.fromValue = this._fromValue;
+    }
+    if (config.toValue == null) {
+      config.toValue = this._toValue;
+    }
+    if (config.clamp == null) {
+      config.clamp = this.clamp;
+    }
+    if (config.round == null) {
+      config.round = this.round;
+    }
+    assertType(progress, Number);
+    validateTypes(config, configTypes.setProgress);
+    value = Progress.toValue(progress, config);
+    if (config.round != null) {
+      value = roundValue(value, config.round);
+    }
+    this.value = value;
   },
   willProgress: function(config) {
-    var easing, from, to, within;
-    assert(!this.isReactive, {
-      reason: "Cannot call 'willProgress' when 'isReactive' is true!",
-      nativeValue: this
-    });
-    validateTypes(config, {
-      from: Number.Maybe,
-      to: Number,
-      within: Array.Maybe,
-      easing: Function.Maybe
-    });
-    to = config.to, from = config.from, within = config.within, easing = config.easing;
-    if (within != null) {
-      assert(within.length === 2);
-      assert(within[0] <= within[1]);
+    this._assertNonReactive();
+    validateTypes(config, configTypes.setProgress);
+    if (config.clamp !== void 0) {
+      this.clamp = config.clamp;
     }
-    this._inputRange = within;
-    this._easing = easing;
-    this._fromValue = from != null ? from : from = this._value;
-    return this._toValue = to;
+    if (config.round !== void 0) {
+      this.round = config.round;
+    }
+    this._fromValue = config.fromValue != null ? config.fromValue : config.fromValue = this._value;
+    this._toValue = config.toValue;
+  },
+  __attach: function() {
+    this._retainCount += 1;
+  },
+  __detach: function() {
+    this._retainCount -= 1;
+    if (this._retainCount > 0) {
+      return;
+    }
+    this._detachReaction();
+    this._detachAnimated();
+  },
+  _assertNonReactive: function(reason) {
+    return assert(!this.isReactive, reason);
   },
   _setValue: function(newValue) {
-    if (this.type !== void 0) {
-      assertType(newValue, this.type, {
-        nativeValue: this,
-        stack: this._tracer()
-      });
-    }
     if (this._value === newValue) {
       return;
     }
     this._value = newValue;
     return this.didSet.emit(newValue);
   },
-  _applyInputRange: function(value) {
-    var max, min, ref1;
-    assert(this._inputRange, Array);
-    ref1 = this._inputRange, min = ref1[0], max = ref1[1];
-    value = Math.max(min, Math.min(max, value));
-    return (value - min) / (max - min);
-  },
   _attachReaction: function(reaction) {
     var base;
-    if (!reaction) {
-      return this._detachReaction();
-    }
-    if (isType(reaction, [Object, Function.Kind])) {
+    if (!isType(reaction, Reaction)) {
       reaction = Reaction.sync(reaction);
     }
     assertType(reaction, Reaction);

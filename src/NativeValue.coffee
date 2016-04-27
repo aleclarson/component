@@ -1,14 +1,12 @@
 
-# TODO Batch synchronous changes in an appropriate timeframe (eg: 16ms).
+require "isDev"
 
-{ isType, validateTypes, assertType, assert, Maybe, Kind } = require "type-utils"
-
+{ isType, validateTypes, assertType, assert, Maybe, Null } = require "type-utils"
 { AnimatedValue } = require "Animated"
 
-{ roundToScreenScale } = require "device"
-
 emptyFunction = require "emptyFunction"
-Immutable = require "immutable"
+roundValue = require "roundValue"
+clampValue = require "clampValue"
 Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
@@ -16,19 +14,33 @@ combine = require "combine"
 Tracer = require "tracer"
 Event = require "event"
 steal = require "steal"
-isDev = require "isDev"
 sync = require "sync"
-hook = require "hook"
 
 Animation = require "./Animation"
 
 if isDev
+
   configTypes = {}
+
   configTypes.animate =
     type: Function.Kind
     onUpdate: Maybe Function.Kind
     onEnd: Maybe Function.Kind
     onFinish: Maybe Function.Kind
+
+  configTypes.track =
+    fromRange: Progress.Range
+    toRange: Progress.Range
+
+  configTypes.setValue =
+    clamp: Boolean.Maybe
+    round: [ Null, Number.Maybe ]
+
+  configTypes.setProgress =
+    fromValue: Number
+    toValue: Number
+    clamp: Boolean.Maybe
+    round: [ Null, Number.Maybe ]
 
 module.exports =
 NativeValue = Factory "NativeValue",
@@ -38,7 +50,7 @@ NativeValue = Factory "NativeValue",
     arguments
 
   getFromCache: (value) ->
-    if isKind value, NativeValue then value else undefined
+    if isType value, NativeValue.Kind then value else undefined
 
   customValues:
 
@@ -52,9 +64,7 @@ NativeValue = Factory "NativeValue",
       get: -> @_value
       set: (newValue) ->
 
-        assert not @isReactive,
-          reason: "Cannot set 'value' when 'isReactive' is true!"
-          nativeValue: this
+        @_assertNonReactive()
 
         if @isAnimated
           @_animated.setValue newValue
@@ -77,7 +87,7 @@ NativeValue = Factory "NativeValue",
     progress:
       get: -> @getProgress()
       set: (progress) ->
-        @setProgress { progress, clamp: yes, round: yes }
+        @setProgress progress
 
     animation: get: ->
       @_animation
@@ -95,7 +105,8 @@ NativeValue = Factory "NativeValue",
       get: -> @_reaction
       set: (newValue, oldValue) ->
         return if newValue is oldValue
-        @_attachReaction newValue
+        if newValue is null then @_detachReaction()
+        else @_attachReaction newValue
 
   initFrozenValues: ->
 
@@ -103,13 +114,13 @@ NativeValue = Factory "NativeValue",
 
     didAnimationEnd: Event { maxRecursion: 10 }
 
-  initValues: (value, keyPath) ->
+  initValues: ->
 
-    _keyPath: keyPath
+    clamp: no
 
-    _inputRange: null
+    round: null
 
-    _easing: null
+    _keyPath: null
 
     _reaction: null
 
@@ -122,6 +133,8 @@ NativeValue = Factory "NativeValue",
     _animatedListener: null
 
     _tracer: emptyFunction
+
+    _retainCount: 1
 
   initReactiveValues: ->
 
@@ -145,25 +158,34 @@ NativeValue = Factory "NativeValue",
       @reaction = Reaction.sync value
 
     else
+      @_keyPath = keyPath
       @value = value
 
-  detach: ->
-    # TODO This cleanup should involve a reference count.
-    # @_detachReaction()
-    # @_detachAnimated()
+  setValue: (newValue, config) ->
 
-  absorb: (nativeValues...) ->
-    newValue = @value
-    sync.each nativeValues, (nativeValue) ->
-      newValue += nativeValue.value
-      nativeValue.value = 0
+    assertType newValue, Number
+
+    config ?= {}
+
+    unless config.clamp?
+      config.clamp = @clamp
+
+    unless config.round?
+      config.round = @round
+
+    validateTypes config, configTypes.setValue
+
+    if config.clamp is yes
+      assert @_fromValue?, "Must have a 'fromValue' defined!"
+      assert @_toValue?, "Must have a 'toValue' defined!"
+      newValue = clampValue newValue, @_fromValue, @_toValue
+
+    newValue = roundValue newValue, config.round if config.round?
     @value = newValue
 
   animate: (config) ->
 
-    assert not @isReactive,
-      reason: "Cannot call 'animate' when 'isReactive' is true!"
-      nativeValue: this
+    @_assertNonReactive()
 
     @_tracer = Tracer "When the Animation was created" if isDev
 
@@ -173,152 +195,157 @@ NativeValue = Factory "NativeValue",
 
     validateTypes config, configTypes.animate if isDev
 
-    onUpdate = steal config, "onUpdate", emptyFunction
-    onFinish = steal config, "onFinish", emptyFunction
-    onEnd = steal config, "onEnd", emptyFunction
+    callbacks =
+      onUpdate: steal config, "onUpdate"
+      onFinish: steal config, "onFinish", emptyFunction
+      onEnd: steal config, "onEnd", emptyFunction
 
-    hasEnded = no
+    onEnd = (finished) =>
+      @_animation = null
+      callbacks.onFinish() if finished
+      callbacks.onEnd finished
+      @didAnimationEnd.emit finished
 
-    animation = Animation
+    @_animation = Animation {
       animated: @_animated
       type: steal config, "type"
-      config: config
+      config
+      onUpdate: callbacks.onUpdate
+      onEnd
+    }
 
-      onUpdate: (value) =>
+  track: (nativeValue, config) ->
 
-        assert not hasEnded, "Must be animating!"
+    assert not @_tracking, "Already tracking another value!"
+    assertType nativeValue, NativeValue.Kind
 
-        assert @isAnimating, "Must be animating!"
-        # assert animation.isActive, "Animation must be active!"
-        onUpdate value
+    config.fromRange ?= {}
+    config.fromRange.fromValue ?= nativeValue._fromValue
+    config.fromRange.toValue ?= nativeValue._toValue
 
-      onEnd: (finished) =>
+    config.toRange ?= {}
+    config.toRange.fromValue ?= @_fromValue
+    config.toRange.toValue ?= @_toValue
 
-        assert not hasEnded, "Must be animating!"
-        hasEnded = yes
+    validateTypes config, configTypes.track
 
-        # Must set this before callbacks (in case they start another animation)!
-        @_animation = null
+    log.format config, @__id + ".track: "
 
-        onFinish() if finished
-        onEnd finished
+    @_tracking = nativeValue.didSet (value) =>
+      progress = Progress.fromValue value, config.fromRange
+      @value = Progress.toValue progress, config.toRange
 
-        @didAnimationEnd.emit finished
+    # Update the value immediately.
+    @_tracking._onEvent nativeValue.value
 
-    @_fromValue = animation.fromValue
-    @_toValue = animation.toValue
-    @_animation = animation
+    # Clean up even if the listener was
+    # stopped without calling 'stopTracking()'.
+    @_tracking._onDefuse = =>
+      @_tracking = null
 
-  getProgress: (options) ->
+    return @_tracking
 
-    assert not @isReactive,
-      reason: "Cannot call 'getProgress' when 'isReactive' is true!"
-      nativeValue: this
+  stopTracking: ->
+    @_tracking.stop() if @_tracking
+    return
 
-    optionDefaults =
-      at: @_value
-      to: @_toValue
-      from: if @_fromValue? then @_fromValue else @_value
+  getProgress: (value, config) ->
 
-    options = combine optionDefaults, options
+    @_assertNonReactive()
 
-    validateTypes options,
-      at: Number
-      to: Number
-      from: Number
-      clamp: Boolean.Maybe
+    if isType value, Object
+      config = value
+      value = @_value
+    else
+      config ?= {}
+      value ?= @_value
 
-    value = steal options, "at"
-    Progress.fromValue value, options
+    config.fromValue ?= if @_fromValue? then @_fromValue else @_value
+    config.toValue ?= @_toValue
 
-  setProgress: (options) ->
+    assertType value, Number
+    validateTypes config, configTypes.setProgress
 
-    assert not @isReactive,
-      reason: "Cannot call 'setProgress' when 'isReactive' is true!"
-      nativeValue: this
+    return Progress.fromValue value, config
 
-    if isType options, Number
-      options = { progress: options }
+  setProgress: (progress, config) ->
 
-    optionDefaults =
-      from: @_fromValue
-      to: @_toValue
+    @_assertNonReactive()
 
-    options = combine optionDefaults, options
+    config ?= {}
+    config.fromValue ?= @_fromValue
+    config.toValue ?= @_toValue
+    config.clamp ?= @clamp
+    config.round ?= @round
 
-    validateTypes options,
-      progress: Number
-      from: Number
-      to: Number
-      clamp: Boolean.Maybe
-      round: Boolean.Maybe
+    assertType progress, Number
+    validateTypes config, configTypes.setProgress
 
-    progress = steal options, "progress"
-
-    progress = @_applyInputRange progress if @_inputRange?
-
-    progress = @_easing progress if @_easing?
-
-    value = Progress.toValue progress, options
-
-    value = roundToScreenScale value if options.round is yes
-
+    value = Progress.toValue progress, config
+    value = roundValue value, config.round if config.round?
     @value = value
+    return
 
   willProgress: (config) ->
 
-    assert not @isReactive,
-      reason: "Cannot call 'willProgress' when 'isReactive' is true!"
-      nativeValue: this
+    @_assertNonReactive()
 
-    validateTypes config,
-      from: Number.Maybe
-      to: Number
-      within: Array.Maybe
-      easing: Function.Maybe
+    validateTypes config, configTypes.setProgress
 
-    { to, from, within, easing } = config
+    if config.clamp isnt undefined
+      @clamp = config.clamp
 
-    if within?
-      assert within.length is 2
-      assert within[0] <= within[1]
+    if config.round isnt undefined
+      @round = config.round
 
-    @_inputRange = within
-    @_easing = easing
+    @_fromValue = config.fromValue ?= @_value
+    @_toValue = config.toValue
+    return
 
-    @_fromValue = from ?= @_value
-    @_toValue = to
+  __attach: ->
+    @_retainCount += 1
+    return
+
+  __detach: ->
+    @_retainCount -= 1
+    return if @_retainCount > 0
+    @_detachReaction()
+    @_detachAnimated()
+    return
+
+  _assertNonReactive: (reason) ->
+    assert not @isReactive, reason
 
   _setValue: (newValue) ->
-    assertType newValue, @type, { nativeValue: this, stack: @_tracer() } if @type isnt undefined
     return if @_value is newValue
     @_value = newValue
     @didSet.emit newValue
 
-  _applyInputRange: (value) ->
-    assert @_inputRange, Array
-    [ min, max ] = @_inputRange
-    value = Math.max min, Math.min max, value
-    (value - min) / (max - min)
-
   _attachReaction: (reaction) ->
-    return @_detachReaction() unless reaction
-    if isType reaction, [ Object, Function.Kind ]
+
+    unless isType reaction, Reaction
       reaction = Reaction.sync reaction
+
     assertType reaction, Reaction
+
     if @isReactive then @_detachReaction()
     else @_detachAnimated()
+
     @_tracer = reaction._traceInit
+
     @_reaction = reaction
     @_reaction.keyPath ?= @keyPath
+
     @_reactionListener = @_reaction.didSet (newValue) =>
       @_setValue newValue
+
     @_setValue reaction.value
 
   _attachAnimated: ->
     return if @_animated
     @_animated = new AnimatedValue @_value
-    @_animatedListener = @_animated.didSet (value) => @_setValue value
+    @_animatedListener = @_animated.didSet (value) =>
+      @_setValue value
 
   _detachReaction: ->
     return unless @isReactive

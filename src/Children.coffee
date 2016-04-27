@@ -8,6 +8,7 @@ module.exports =
 Children = Validator "Children",
 
   validate: (value, key) ->
+    return yes if value is undefined
     return yes if ReactElement.isValidElement value
     return yes if Array.isArray value
     return { key, value, type: Children }

@@ -2,7 +2,6 @@
 { isType, isKind, setType, assert, assertType } = require "type-utils"
 sync = require "sync"
 
-Immutable = require "immutable"
 Factory = require "factory"
 Event = require "event"
 
