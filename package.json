@@ -1,6 +1,7 @@
 {
   "name": "component",
   "version": "1.0.0",
+  "main": "js/src/index",
   "dependencies": {
     "Animated": "aleclarson/Animated#1.0.0",
     "NamedFunction": "aleclarson/NamedFunction#2.0.0",

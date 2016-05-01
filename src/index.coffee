@@ -1,6 +1,6 @@
 
-module.exports =
-  Component: require "./Component"
-  NativeComponent: require "./NativeComponent"
-  NativeArray: require "./NativeArray"
-  NativeValue: require "./NativeValue"
+define = require "define"
+
+define exports, Component: require "./Component"
+define exports, require "./Native"
+define exports, require "./React"

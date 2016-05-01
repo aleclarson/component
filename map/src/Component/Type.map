@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "Type.js",
+  "sourceRoot": "../../../src/Component",
+  "sources": [
+    "Type.coffee"
+  ],
+  "names": [],
+  "mappings": "AACA,IAAA;;AAAA,IAAA,GAAO,IAAA,CAAK,gBAAL;;AAEP,MAAM,CAAC,OAAP,GAAiB,IAAI,CAAC,KAAL,CAAA"
+}

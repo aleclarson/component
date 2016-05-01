@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "ReactComponent.js",
+  "sourceRoot": "../../../src/mocks",
+  "sources": [
+    "ReactComponent.coffee"
+  ],
+  "names": [],
+  "mappings": "AACA,IAAA;;AAAE,UAAY,OAAA,CAAQ,YAAR,EAAZ;;AAEF,aAAA,GAAgB,OAAA,CAAQ,eAAR;;AAEhB,MAAM,CAAC,OAAP,GACA,cAAA,GAAiB,aAAA,CAAc,gBAAd,EAAgC,SAAA;AAC/C,SAAO,OAAA,CAAQ,EAAR,EAAY,cAAZ;AADwC,CAAhC"
+}

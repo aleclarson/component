@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "ReactCurrentOwner.js",
+  "sourceRoot": "../../../src/mocks",
+  "sources": [
+    "ReactCurrentOwner.coffee"
+  ],
+  "names": [],
+  "mappings": "AACA,OAAO,CAAC,OAAR,GAAkB"
+}
