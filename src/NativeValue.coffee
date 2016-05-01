@@ -173,7 +173,7 @@ NativeValue = Factory "NativeValue",
     unless config.round?
       config.round = @round
 
-    validateTypes config, configTypes.setValue
+    validateTypes config, configTypes.setValue if isDev
 
     if config.clamp is yes
       assert @_fromValue?, "Must have a 'fromValue' defined!"
@@ -219,21 +219,19 @@ NativeValue = Factory "NativeValue",
     assert not @_tracking, "Already tracking another value!"
     assertType nativeValue, NativeValue.Kind
 
-    config.fromRange ?= {}
-    config.fromRange.fromValue ?= nativeValue._fromValue
-    config.fromRange.toValue ?= nativeValue._toValue
+    fromRange = config.fromRange ?= {}
+    fromRange.fromValue ?= nativeValue._fromValue
+    fromRange.toValue ?= nativeValue._toValue
 
-    config.toRange ?= {}
-    config.toRange.fromValue ?= @_fromValue
-    config.toRange.toValue ?= @_toValue
+    toRange = config.toRange ?= {}
+    toRange.fromValue ?= @_fromValue
+    toRange.toValue ?= @_toValue
 
-    validateTypes config, configTypes.track
-
-    log.format config, @__id + ".track: "
+    validateTypes config, configTypes.track if isDev
 
     @_tracking = nativeValue.didSet (value) =>
-      progress = Progress.fromValue value, config.fromRange
-      @value = Progress.toValue progress, config.toRange
+      progress = Progress.fromValue value, fromRange
+      @value = Progress.toValue progress, toRange
 
     # Update the value immediately.
     @_tracking._onEvent nativeValue.value
@@ -264,7 +262,7 @@ NativeValue = Factory "NativeValue",
     config.toValue ?= @_toValue
 
     assertType value, Number
-    validateTypes config, configTypes.setProgress
+    validateTypes config, configTypes.setProgress if isDev
 
     return Progress.fromValue value, config
 
@@ -279,7 +277,7 @@ NativeValue = Factory "NativeValue",
     config.round ?= @round
 
     assertType progress, Number
-    validateTypes config, configTypes.setProgress
+    validateTypes config, configTypes.setProgress if isDev
 
     value = Progress.toValue progress, config
     value = roundValue value, config.round if config.round?
@@ -290,7 +288,7 @@ NativeValue = Factory "NativeValue",
 
     @_assertNonReactive()
 
-    validateTypes config, configTypes.setProgress
+    validateTypes config, configTypes.setProgress if isDev
 
     if config.clamp isnt undefined
       @clamp = config.clamp

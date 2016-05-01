@@ -219,7 +219,9 @@ module.exports = NativeValue = Factory("NativeValue", {
     if (config.round == null) {
       config.round = this.round;
     }
-    validateTypes(config, configTypes.setValue);
+    if (isDev) {
+      validateTypes(config, configTypes.setValue);
+    }
     if (config.clamp === true) {
       assert(this._fromValue != null, "Must have a 'fromValue' defined!");
       assert(this._toValue != null, "Must have a 'toValue' defined!");
@@ -267,34 +269,31 @@ module.exports = NativeValue = Factory("NativeValue", {
     });
   },
   track: function(nativeValue, config) {
-    var base, base1, base2, base3;
+    var fromRange, toRange;
     assert(!this._tracking, "Already tracking another value!");
     assertType(nativeValue, NativeValue.Kind);
-    if (config.fromRange == null) {
-      config.fromRange = {};
+    fromRange = config.fromRange != null ? config.fromRange : config.fromRange = {};
+    if (fromRange.fromValue == null) {
+      fromRange.fromValue = nativeValue._fromValue;
     }
-    if ((base = config.fromRange).fromValue == null) {
-      base.fromValue = nativeValue._fromValue;
+    if (fromRange.toValue == null) {
+      fromRange.toValue = nativeValue._toValue;
     }
-    if ((base1 = config.fromRange).toValue == null) {
-      base1.toValue = nativeValue._toValue;
+    toRange = config.toRange != null ? config.toRange : config.toRange = {};
+    if (toRange.fromValue == null) {
+      toRange.fromValue = this._fromValue;
     }
-    if (config.toRange == null) {
-      config.toRange = {};
+    if (toRange.toValue == null) {
+      toRange.toValue = this._toValue;
     }
-    if ((base2 = config.toRange).fromValue == null) {
-      base2.fromValue = this._fromValue;
+    if (isDev) {
+      validateTypes(config, configTypes.track);
     }
-    if ((base3 = config.toRange).toValue == null) {
-      base3.toValue = this._toValue;
-    }
-    validateTypes(config, configTypes.track);
-    log.format(config, this.__id + ".track: ");
     this._tracking = nativeValue.didSet((function(_this) {
       return function(value) {
         var progress;
-        progress = Progress.fromValue(value, config.fromRange);
-        return _this.value = Progress.toValue(progress, config.toRange);
+        progress = Progress.fromValue(value, fromRange);
+        return _this.value = Progress.toValue(progress, toRange);
       };
     })(this));
     this._tracking._onEvent(nativeValue.value);
@@ -330,7 +329,9 @@ module.exports = NativeValue = Factory("NativeValue", {
       config.toValue = this._toValue;
     }
     assertType(value, Number);
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      validateTypes(config, configTypes.setProgress);
+    }
     return Progress.fromValue(value, config);
   },
   setProgress: function(progress, config) {
@@ -352,7 +353,9 @@ module.exports = NativeValue = Factory("NativeValue", {
       config.round = this.round;
     }
     assertType(progress, Number);
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      validateTypes(config, configTypes.setProgress);
+    }
     value = Progress.toValue(progress, config);
     if (config.round != null) {
       value = roundValue(value, config.round);
@@ -361,7 +364,9 @@ module.exports = NativeValue = Factory("NativeValue", {
   },
   willProgress: function(config) {
     this._assertNonReactive();
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      validateTypes(config, configTypes.setProgress);
+    }
     if (config.clamp !== void 0) {
       this.clamp = config.clamp;
     }
