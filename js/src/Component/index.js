@@ -36,6 +36,11 @@ type.defineStatics({
       return require("./Type");
     }
   },
+  StyleMap: {
+    lazy: function() {
+      return require("./StyleMap");
+    }
+  },
   traverseParents: function(component) {
     var owner, results;
     results = [];

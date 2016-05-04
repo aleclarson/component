@@ -1,4 +1,14 @@
 
-type = Type "ComponentModel"
+NamedFunction = require "NamedFunction"
 
-module.exports = type.build()
+TypeBuilder = require "./TypeBuilder"
+
+module.exports =
+ComponentType = NamedFunction "ComponentType", ->
+
+  self = TypeBuilder()
+
+  self.didBuild (type) ->
+    setType type, ComponentType
+
+  return self

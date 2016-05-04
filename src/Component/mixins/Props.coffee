@@ -25,10 +25,11 @@ typeProps =
 
       assert not @_contextType, "'contextType' is already defined!"
 
-      # assertType contextType, ComponentType.Kind
+      assertType contextType, Component.Type
 
       @_contextType = contextType
 
+      # TODO: Implement 'contextType'
       @_viewType
 
   propTypes:

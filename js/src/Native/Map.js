@@ -2,7 +2,7 @@ var Event, NativeMap, NativeValue, Type, assertType, isType, ref, sync, type;
 
 ref = require("type-utils"), isType = ref.isType, assertType = ref.assertType;
 
-Event = require("../../Event/Event");
+Event = require("event");
 
 Type = require("Type");
 

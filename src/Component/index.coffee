@@ -24,6 +24,9 @@ type.defineStatics
   Type: lazy: ->
     require "./Type"
 
+  StyleMap: lazy: ->
+    require "./StyleMap"
+
   traverseParents: (component) ->
     results = []
     loop

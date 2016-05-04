@@ -2,7 +2,7 @@
 { AnimatedValue } = require "Animated"
 
 Progress = require "progress"
-Factory = require "factory"
+Type = require "Type"
 hook = require "hook"
 
 type = Type "Animation"
@@ -38,13 +38,13 @@ type.defineProperties
     velocity = @_animation._curVelocity
     if (isType velocity, Number) then velocity else 0
 
-type.createFrozenValues
+type.defineFrozenValues
 
   _animated: (options) -> options.animated
 
   _animation: (options) -> new options.type options.config
 
-type.createValues
+type.defineValues
 
   _fromValue: -> @value
 

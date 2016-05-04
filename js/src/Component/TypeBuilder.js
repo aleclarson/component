@@ -1,24 +1,31 @@
-var Reaction, Type, assertType, define, type;
+var LazyVar, Reaction, Type, assert, assertType, define, ref, type;
 
-assertType = require("type-utils").assertType;
+ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType;
 
-Reaction = require("../Reaction/Reaction");
+Reaction = require("reaction");
+
+LazyVar = require("lazy-var");
 
 define = require("define");
 
 Type = require("Type");
 
-type = Type("ComponentModelBuilder");
+type = Type("ComponentType_Builder");
 
 type.inherits(Type.Builder);
 
 type.initInstance(function() {
-  return this.defineReactiveValues({
+  this.defineReactiveValues({
     view: null
+  });
+  return this.willBuild(function() {
+    return assert(this._render, "Must call 'loadComponent' or 'render' before building!");
   });
 });
 
 type.defineValues({
+  _loadComponent: null,
+  _render: null,
   _styles: null,
   _hasNativeValues: false,
   _hasListeners: false,
@@ -27,61 +34,46 @@ type.defineValues({
 
 type.defineMethods({
   loadComponent: function(loadComponent) {
+    var render;
     assertType(loadComponent, Function);
-    return this.initType(function(type) {
-      var render;
-      render = LazyVar(function() {
-        return loadComponent.call(type.prototype);
-      });
-      return define(type.prototype, "render", function(props) {
-        if (props) {
-          if (ModelContext.current) {
-            return props.__context = ModelContext.current;
-          }
-        }
+    assert(!this._loadComponent, "'loadComponent' is already defined!");
+    assert(!this._render, "'render' is already defined!");
+    render = LazyVar(function() {
+      return loadComponent();
+    });
+    this._loadComponent = loadComponent;
+    this._render = function(props) {
+      if (!props) {
+        props = {};
+      }
+      props.context = this;
+      return render.get()(props);
+    };
+    return this.didBuild(function() {
+      return this.defineMethods({
+        render: this._render
       });
     });
   },
-  createNativeValues: function(createNativeValues) {
+  render: function(render) {
+    assertType(render, Function);
+    return assert(!this._render, "'render' is already defined!");
+  }
+}, this.didBuild(function() {
+  return this.defineMethods({
+    render: render
+  });
+}), {
+  defineNativeValues: function(createNativeValues) {
     assertType(createNativeValues, Function);
     throw Error("Not yet implemented!");
   },
-  createListeners: function(createListeners) {
+  defineListeners: function(createListeners) {
     assertType(createListeners, Function);
     throw Error("Not yet implemented!");
   },
   defineReactions: function(reactions) {
-    assertType(reactions, Object);
-    if (!this._hasReactions) {
-      this._hasReactions = true;
-      this._initInstance(function() {
-        return define(this, "__reactions", Object.create(null));
-      });
-    }
-    return this._initInstance(function() {
-      var createReaction, key, value;
-      Reaction.inject.push("autoStart", true);
-      for (key in reactions) {
-        createReaction = reactions[key];
-        assertType(createReaction, Function, key);
-        value = createReaction.apply(this, args);
-        if (value === void 0) {
-          continue;
-        }
-        if (!isType(value, Reaction)) {
-          value = Reaction.sync(value);
-        }
-        assert(this.__reactions[key] === void 0, {
-          reason: "Conflicting reactions are both named '" + key + "'."
-        });
-        this.__reactions[key] = value;
-        define(this, key, {
-          value: value,
-          enumerable: false
-        });
-      }
-      return Reaction.inject.pop("autoStart");
-    });
+    throw Error("Not yet implemented!");
   },
   _startReactions: function() {
     throw Error("Not yet implemented!");
@@ -90,5 +82,9 @@ type.defineMethods({
     throw Error("Not yet implemented!");
   }
 });
+
+type.addMixins([require("./mixins/Styles")]);
+
+module.exports = type.build();
 
 //# sourceMappingURL=../../../map/src/Component/TypeBuilder.map

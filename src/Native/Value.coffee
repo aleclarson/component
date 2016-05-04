@@ -1,17 +1,17 @@
 
 require "isDev"
 
-{ isType, validateTypes, assertType, assert, Any, Maybe, Kind } = require "type-utils"
-{ AnimatedValue } = require "../../Animated/Animated"
+{ isType, validateTypes, assertType, assert, Any, Null, Maybe, Kind } = require "type-utils"
+{ AnimatedValue } = require "Animated"
 
 emptyFunction = require "emptyFunction"
 roundValue = require "roundValue"
 clampValue = require "clampValue"
 Progress = require "progress"
-Reaction = require "../../Reaction/Reaction"
+Reaction = require "reaction"
 combine = require "combine"
 Tracer = require "tracer"
-Event = require "../../Event/Event"
+Event = require "event"
 Type = require "Type"
 sync = require "sync"
 

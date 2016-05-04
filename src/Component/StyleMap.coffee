@@ -1,10 +1,4 @@
 
-#
-# - Shared with each instance.
-# - Supports presets with the 'presets' key.
-# - Supports getters that access the instance.
-#
-
 { assert, assertType } = require "type-utils"
 
 define = require "define"

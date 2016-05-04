@@ -20,6 +20,7 @@ typeProps = {
     },
     set: function(contextType) {
       assert(!this._contextType, "'contextType' is already defined!");
+      assertType(contextType, Component.Type);
       this._contextType = contextType;
       return this._viewType;
     }

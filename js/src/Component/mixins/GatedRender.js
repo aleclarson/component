@@ -1,6 +1,6 @@
 var Reaction, gatedRender, hook, instanceReactions, instanceValues, shift, typeMethods, typePhases, typeValues;
 
-Reaction = require("../../../Reaction/Reaction");
+Reaction = require("reaction");
 
 hook = require("hook");
 

@@ -1,5 +1,5 @@
 
-Reaction = require "../../../Reaction/Reaction"
+Reaction = require "reaction"
 hook = require "hook"
 
 shift = Array::shift

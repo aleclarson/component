@@ -1,10 +1,10 @@
-var AnimatedValue, Factory, Progress, hook, type;
+var AnimatedValue, Progress, Type, hook, type;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
 Progress = require("progress");
 
-Factory = require("factory");
+Type = require("Type");
 
 hook = require("hook");
 
@@ -61,7 +61,7 @@ type.defineProperties({
   }
 });
 
-type.createFrozenValues({
+type.defineFrozenValues({
   _animated: function(options) {
     return options.animated;
   },
@@ -70,7 +70,7 @@ type.createFrozenValues({
   }
 });
 
-type.createValues({
+type.defineValues({
   _fromValue: function() {
     return this.value;
   },

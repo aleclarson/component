@@ -1,10 +1,10 @@
-var AnimatedValue, Animation, Any, Event, Kind, Maybe, NativeValue, Progress, Reaction, Tracer, Type, assert, assertType, clampValue, combine, configTypes, emptyFunction, isType, ref, roundValue, sync, type, validateTypes;
+var AnimatedValue, Animation, Any, Event, Kind, Maybe, NativeValue, Null, Progress, Reaction, Tracer, Type, assert, assertType, clampValue, combine, configTypes, emptyFunction, isType, ref, roundValue, sync, type, validateTypes;
 
 require("isDev");
 
-ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Any = ref.Any, Maybe = ref.Maybe, Kind = ref.Kind;
+ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Any = ref.Any, Null = ref.Null, Maybe = ref.Maybe, Kind = ref.Kind;
 
-AnimatedValue = require("../../Animated/Animated").AnimatedValue;
+AnimatedValue = require("Animated").AnimatedValue;
 
 emptyFunction = require("emptyFunction");
 
@@ -14,13 +14,13 @@ clampValue = require("clampValue");
 
 Progress = require("progress");
 
-Reaction = require("../../Reaction/Reaction");
+Reaction = require("reaction");
 
 combine = require("combine");
 
 Tracer = require("tracer");
 
-Event = require("../../Event/Event");
+Event = require("event");
 
 Type = require("Type");
 
