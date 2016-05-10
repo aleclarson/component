@@ -8,7 +8,7 @@ Type = require("Type");
 
 hook = require("hook");
 
-type = Type("Animation");
+type = Type("NativeAnimation");
 
 type.optionTypes = {
   animated: AnimatedValue,

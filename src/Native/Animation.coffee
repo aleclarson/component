@@ -5,7 +5,8 @@ Progress = require "progress"
 Type = require "Type"
 hook = require "hook"
 
-type = Type "Animation"
+# TODO: Merge this class into 'Animated'?
+type = Type "NativeAnimation"
 
 type.optionTypes =
   animated: AnimatedValue

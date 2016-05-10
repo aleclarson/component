@@ -56,7 +56,7 @@ instanceReactions = {
           _this.needsRender = false;
           try {
             return _this.forceUpdate();
-          } catch (_error) {}
+          } catch (error) {}
         };
       })(this)
     };
