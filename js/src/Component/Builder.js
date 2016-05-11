@@ -1,8 +1,8 @@
 var Component, ReactCurrentOwner, ReactElement, Type, combine, type;
 
-ReactCurrentOwner = require("../mocks/ReactCurrentOwner");
+ReactCurrentOwner = require("ReactCurrentOwner");
 
-ReactElement = require("../mocks/ReactElement");
+ReactElement = require("ReactElement");
 
 combine = require("combine");
 

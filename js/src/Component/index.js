@@ -1,8 +1,8 @@
 var Component, ReactComponent, Type, type;
 
-ReactComponent = require("../mocks/ReactComponent");
+ReactComponent = require("ReactComponent");
 
-Type = require("type");
+Type = require("Type");
 
 type = Type("Component");
 

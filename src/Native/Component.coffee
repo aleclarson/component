@@ -3,7 +3,7 @@
 
 require "isDev"
 
-ReactElement = require "../mocks/ReactElement"
+ReactElement = require "ReactElement"
 
 { isType, assertType } = require "type-utils"
 { throwFailure } = require "failure"

@@ -1,6 +1,6 @@
 
-ReactComponent = require "../mocks/ReactComponent"
-Type = require "type"
+ReactComponent = require "ReactComponent"
+Type = require "Type"
 
 type = Type "Component"
 

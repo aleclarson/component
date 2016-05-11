@@ -11,9 +11,11 @@ typeProps =
 
   _styles: lazy: ->
 
-    styles = StyleMap @_kind.styles
+    inheritedStyles = if @_kind then @_kind.styles else null
 
-    @initType (type) ->
+    styles = StyleMap inheritedStyles
+
+    @didBuild (type) ->
       type.styles = styles
 
     @initInstance ->

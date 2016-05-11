@@ -2,7 +2,7 @@ var Component, NativeComponent, NativeProps, ReactElement, assertType, combine, 
 
 require("isDev");
 
-ReactElement = require("../mocks/ReactElement");
+ReactElement = require("ReactElement");
 
 ref = require("type-utils"), isType = ref.isType, assertType = ref.assertType;
 

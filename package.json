@@ -18,20 +18,25 @@
     "steal": "aleclarson/steal#0.0.1",
     "sync": "aleclarson/sync#1.0.0",
     "tracer": "aleclarson/tracer#1.0.0",
-    "type-utils": "aleclarson/type-utils#1.0.0"
+    "type-utils": "aleclarson/type-utils#1.0.0",
+    "Type": "aleclarson/Type#1.0.0",
+    "guard": "aleclarson/guard#1.0.0",
+    "hook": "aleclarson/hook#1.0.0",
+    "lazy-var": "aleclarson/lazy-var#2.0.0"
   },
   "lotus": {
     "plugins": [
       "lotus-coffee"
     ],
     "implicitDependencies": [
+      "StyleSheet",
       "AppRegistry",
       "Image",
       "InteractionManager",
       "ReactComponent",
       "ReactCurrentOwner",
       "ReactElement",
-      "StyleSheet",
+      "StaticRenderer",
       "Text",
       "TextInput",
       "View",

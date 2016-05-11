@@ -44,7 +44,7 @@ typeProps =
 
       @_propTypes = propTypes
 
-      @initType (type) ->
+      @didBuild (type) ->
         type.propTypes = propTypes
 
       unless @_propDefaults
@@ -77,7 +77,7 @@ typeProps =
 
       @_propDefaults = propDefaults
 
-      @initType (type) ->
+      @didBuild (type) ->
         type.propDefaults = propDefaults
 
       unless @_propTypes
@@ -129,5 +129,5 @@ instancePhases =
           props = phase.call null, props
         return props
 
-    @_viewType.initType (type) ->
+    @_viewType.didBuild (type) ->
       define type, "_processProps", processProps

@@ -10,9 +10,10 @@ module.exports = function(type) {
 typeProps = {
   _styles: {
     lazy: function() {
-      var styles;
-      styles = StyleMap(this._kind.styles);
-      this.initType(function(type) {
+      var inheritedStyles, styles;
+      inheritedStyles = this._kind ? this._kind.styles : null;
+      styles = StyleMap(inheritedStyles);
+      this.didBuild(function(type) {
         return type.styles = styles;
       });
       this.initInstance(function() {

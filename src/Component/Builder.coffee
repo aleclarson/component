@@ -1,6 +1,6 @@
 
-ReactCurrentOwner = require "../mocks/ReactCurrentOwner"
-ReactElement = require "../mocks/ReactElement"
+ReactCurrentOwner = require "ReactCurrentOwner"
+ReactElement = require "ReactElement"
 combine = require "combine"
 Type = require "Type"
 

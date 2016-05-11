@@ -17,6 +17,7 @@ type.initInstance ->
 
   @willBuild ->
     assert @_render, "Must call 'loadComponent' or 'render' before building!"
+    @defineMethods { render: @_render }
 
 type.defineValues
 
@@ -48,17 +49,15 @@ type.defineMethods
       props = {} unless props
       props.context = this
       render.get() props
-
-    @didBuild ->
-      @defineMethods { render: @_render }
+    return
 
   render: (render) ->
 
     assertType render, Function
     assert not @_render, "'render' is already defined!"
 
-  @didBuild ->
-      @defineMethods { render }
+    @_render = render
+    return
 
   defineNativeValues: (createNativeValues) ->
     assertType createNativeValues, Function

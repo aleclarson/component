@@ -33,7 +33,7 @@ typeProps = {
       assert(!this._propTypes, "'propTypes' is already defined!");
       assertType(propTypes, Object);
       this._propTypes = propTypes;
-      this.initType(function(type) {
+      this.didBuild(function(type) {
         return type.propTypes = propTypes;
       });
       if (!this._propDefaults) {
@@ -68,7 +68,7 @@ typeProps = {
       assert(!this._propDefaults, "'propDefaults' is already defined!");
       assertType(propDefaults, Object);
       this._propDefaults = propDefaults;
-      this.initType(function(type) {
+      this.didBuild(function(type) {
         return type.propDefaults = propDefaults;
       });
       if (!this._propTypes) {
@@ -125,7 +125,7 @@ instancePhases = {
         return props;
       };
     }
-    return this._viewType.initType(function(type) {
+    return this._viewType.didBuild(function(type) {
       return define(type, "_processProps", processProps);
     });
   }

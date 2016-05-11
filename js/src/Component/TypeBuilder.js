@@ -19,7 +19,10 @@ type.initInstance(function() {
     view: null
   });
   return this.willBuild(function() {
-    return assert(this._render, "Must call 'loadComponent' or 'render' before building!");
+    assert(this._render, "Must call 'loadComponent' or 'render' before building!");
+    return this.defineMethods({
+      render: this._render
+    });
   });
 });
 
@@ -49,21 +52,12 @@ type.defineMethods({
       props.context = this;
       return render.get()(props);
     };
-    return this.didBuild(function() {
-      return this.defineMethods({
-        render: this._render
-      });
-    });
   },
   render: function(render) {
     assertType(render, Function);
-    return assert(!this._render, "'render' is already defined!");
-  }
-}, this.didBuild(function() {
-  return this.defineMethods({
-    render: render
-  });
-}), {
+    assert(!this._render, "'render' is already defined!");
+    this._render = render;
+  },
   defineNativeValues: function(createNativeValues) {
     assertType(createNativeValues, Function);
     throw Error("Not yet implemented!");
