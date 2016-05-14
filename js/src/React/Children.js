@@ -1,36 +1,24 @@
-var Children, ReactElement, Validator, throwFailure;
+var Element, Validator, Void, throwFailure, validTypes;
 
 throwFailure = require("failure").throwFailure;
 
-Validator = require("type-utils").Validator;
+Validator = require("Validator");
 
-ReactElement = require("ReactElement");
+Void = require("Void");
 
-module.exports = Children = Validator("Children", {
-  validate: function(value, key) {
-    if (value === void 0) {
-      return true;
-    }
-    if (ReactElement.isValidElement(value)) {
-      return true;
-    }
-    if (Array.isArray(value)) {
-      return true;
-    }
-    return {
-      key: key,
-      value: value,
-      type: Children
-    };
+Element = require("./Element");
+
+validTypes = [Element, Array, Void];
+
+module.exports = Validator("ReactChildren", {
+  test: function(value) {
+    return isType(value, validTypes);
   },
-  fail: function(values) {
-    var error;
-    if (values.key) {
-      error = TypeError("'" + values.key + "' must be an Array or ReactElement!");
-    } else {
-      error = TypeError("Expected an Array or ReactElement.");
+  assert: function(value, key) {
+    if (this.test(value)) {
+      return;
     }
-    return throwFailure(error, values);
+    return wrongType(validTypes, key);
   }
 });
 

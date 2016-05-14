@@ -1,32 +1,14 @@
-var StyleMap, Type, assert, assertType, define, ref, type;
+var StyleMap, Type, assert, assertType, define, type;
 
-ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType;
+assertType = require("assertType");
+
+assert = require("assert");
 
 define = require("define");
 
 Type = require("Type");
 
 type = Type("StyleMap");
-
-type.initInstance(function(inherited) {
-  var key, ref1, ref2, results, value;
-  if (!inherited) {
-    return;
-  }
-  assertType(inherited, StyleMap);
-  ref1 = inherited._constantValues;
-  for (key in ref1) {
-    value = ref1[key];
-    this._constantValues[key] = value;
-  }
-  ref2 = inherited._computedValues;
-  results = [];
-  for (key in ref2) {
-    value = ref2[key];
-    results.push(this._computedValues[key] = value);
-  }
-  return results;
-});
 
 type.defineValues({
   _constantValues: function() {
@@ -37,12 +19,24 @@ type.defineValues({
   }
 });
 
-type.defineStatics({
-  _presets: Object.create(null),
-  addPreset: function(presetName, style) {
-    assertType(style, Object);
-    StyleMap._presets[presetName] = style;
+type.initInstance(function(inherited) {
+  var key, ref, ref1, results, value;
+  if (!inherited) {
+    return;
   }
+  assertType(inherited, StyleMap);
+  ref = inherited._constantValues;
+  for (key in ref) {
+    value = ref[key];
+    this._constantValues[key] = value;
+  }
+  ref1 = inherited._computedValues;
+  results = [];
+  for (key in ref1) {
+    value = ref1[key];
+    results.push(this._computedValues[key] = value);
+  }
+  return results;
 });
 
 type.defineMethods({
@@ -74,14 +68,14 @@ type.defineMethods({
     return styles;
   },
   define: function(styles) {
-    var base, base1, base2, i, key, len, presetName, ref1, style, styleName, value, values;
+    var base, base1, base2, i, key, len, presetName, ref, style, styleName, value, values;
     for (styleName in styles) {
       style = styles[styleName];
       if (style.presets) {
         values = (base = this._constantValues)[styleName] != null ? base[styleName] : base[styleName] = Object.create(null);
-        ref1 = style.presets;
-        for (i = 0, len = ref1.length; i < len; i++) {
-          presetName = ref1[i];
+        ref = style.presets;
+        for (i = 0, len = ref.length; i < len; i++) {
+          presetName = ref[i];
           this._applyPreset(presetName, values);
         }
         delete style.presets;
@@ -100,7 +94,7 @@ type.defineMethods({
     }
   },
   override: function(styles) {
-    var computedValues, constantValues, i, key, len, presetName, ref1, style, styleName, value;
+    var computedValues, constantValues, i, key, len, presetName, ref, style, styleName, value;
     for (styleName in styles) {
       style = styles[styleName];
       assert(this._constantValues[styleName] || this._computedValues[styleName], {
@@ -109,9 +103,9 @@ type.defineMethods({
       this._constantValues[styleName] = constantValues = Object.create(null);
       this._computedValues[styleName] = computedValues = Object.create(null);
       if (style.presets) {
-        ref1 = style.presets;
-        for (i = 0, len = ref1.length; i < len; i++) {
-          presetName = ref1[i];
+        ref = style.presets;
+        for (i = 0, len = ref.length; i < len; i++) {
+          presetName = ref[i];
           this._applyPreset(presetName, constantValues);
         }
         delete style.presets;
@@ -138,11 +132,11 @@ type.defineMethods({
     }
   },
   _compute: function(styleName, context, args) {
-    var constantValues, key, ref1, style, value;
+    var constantValues, key, ref, style, value;
     style = {};
-    ref1 = this._computedValues[styleName];
-    for (key in ref1) {
-      value = ref1[key];
+    ref = this._computedValues[styleName];
+    for (key in ref) {
+      value = ref[key];
       style[key] = value.apply(context, args);
     }
     constantValues = this._constantValues[styleName];
@@ -153,6 +147,14 @@ type.defineMethods({
       }
     }
     return style;
+  }
+});
+
+type.defineStatics({
+  _presets: Object.create(null),
+  addPreset: function(presetName, style) {
+    assertType(style, Object);
+    StyleMap._presets[presetName] = style;
   }
 });
 

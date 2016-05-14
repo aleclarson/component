@@ -1,30 +1,22 @@
-var Element, ReactElement, Validator, throwFailure;
+var ReactElement, Validator, throwFailure, wrongType;
 
 throwFailure = require("failure").throwFailure;
 
-Validator = require("type-utils").Validator;
-
 ReactElement = require("ReactElement");
 
-module.exports = Element = Validator("Element", {
-  validate: function(value, key) {
-    if (ReactElement.isValidElement(value)) {
-      return true;
-    }
-    return {
-      key: key,
-      value: value,
-      type: Element
-    };
+Validator = require("Validator");
+
+wrongType = require("wrongType");
+
+module.exports = Validator("ReactElement", {
+  test: function(value) {
+    return ReactElement.isValidElement(value);
   },
-  fail: function(values) {
-    var error;
-    if (values.key) {
-      error = TypeError("'" + values.key + "' must be a ReactElement!");
-    } else {
-      error = TypeError("Expected a ReactElement.");
+  assert: function(value, key) {
+    if (this.test(value)) {
+      return;
     }
-    return throwFailure(error, values);
+    return wrongType(this, key);
   }
 });
 

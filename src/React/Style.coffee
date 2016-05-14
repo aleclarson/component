@@ -1,17 +1,19 @@
 
-{ Void, Validator, isType } = require "type-utils"
 { throwFailure } = require "failure"
 
-valueTypes = [ Object, Array, Number, Function, Void ]
+Validator = require "Validator"
+wrongType = require "wrongType"
+isType = require "isType"
+Void = require "Void"
+
+validTypes = [ Object, Array, Void ]
 
 module.exports =
 Style = Validator "Style",
 
-  validate: (value, key) ->
-    return yes if isType value, valueTypes
-    return { key, value, type: Style }
+  test: (value) ->
+    isType value, validTypes
 
-  fail: (values) ->
-    if values.key then error = TypeError "'#{values.key}' must be a Style!"
-    else error = TypeError "Expected a Style."
-    throwFailure error, values
+  assert: (value, key) ->
+    return if @test value
+    wrongType validTypes, key

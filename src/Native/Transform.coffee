@@ -1,8 +1,7 @@
 
 require "isDev"
 
-{ isType } = require "type-utils"
-
+isType = require "isType"
 Type = require "Type"
 sync = require "sync"
 

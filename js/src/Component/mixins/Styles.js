@@ -17,7 +17,7 @@ typeProps = {
         return type.styles = styles;
       });
       this.initInstance(function() {
-        return this.styles = styles.build(this);
+        return this.styles = styles.bind(this);
       });
       return styles;
     }

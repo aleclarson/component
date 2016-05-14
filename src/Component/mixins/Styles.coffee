@@ -19,7 +19,7 @@ typeProps =
       type.styles = styles
 
     @initInstance ->
-      @styles = styles.build this
+      @styles = styles.bind this
 
     return styles
 

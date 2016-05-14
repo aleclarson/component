@@ -20,27 +20,37 @@ module.exports = {
   },
   View: {
     lazy: function() {
-      return NativeComponent("View", require("View"));
+      var render;
+      render = require("View");
+      return NativeComponent(render);
     }
   },
   ImageView: {
     lazy: function() {
-      return NativeComponent("ImageView", require("Image"));
+      var render;
+      render = require("Image");
+      return NativeComponent(render);
     }
   },
   TextView: {
     lazy: function() {
-      return NativeComponent("TextView", require("Text"));
+      var render;
+      render = require("Text");
+      return NativeComponent(render);
     }
   },
   TextInput: {
     lazy: function() {
-      return NativeComponent("TextInput", require("TextInput"));
+      var render;
+      render = require("TextInput");
+      return NativeComponent(render);
     }
   },
   WebView: {
     lazy: function() {
-      return NativeComponent("WebView", require("WebView"));
+      var render;
+      render = require("WebView");
+      return NativeComponent(render);
     }
   },
   StaticRenderer: {
@@ -48,7 +58,7 @@ module.exports = {
       var StaticRenderer;
       StaticRenderer = require("StaticRenderer");
       StaticRenderer.displayName = "StaticRenderer";
-      return (require("ReactElement")).createFactory(StaticRenderer);
+      return require("ReactElement").createFactory(StaticRenderer);
     }
   },
   InteractionManager: {

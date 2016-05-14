@@ -2,7 +2,7 @@ var NativeMap, NativeValue, Type, isType, sync, type;
 
 require("isDev");
 
-isType = require("type-utils").isType;
+isType = require("isType");
 
 Type = require("Type");
 

@@ -1,28 +1,34 @@
-var LazyVar, Reaction, Type, assert, assertType, define, ref, type;
+var LazyCaller, Reaction, Type, assert, assertType, define, guard, isType, type;
 
-ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType;
+LazyCaller = require("LazyCaller");
+
+assertType = require("assertType");
 
 Reaction = require("reaction");
 
-LazyVar = require("lazy-var");
+isType = require("isType");
+
+assert = require("assert");
 
 define = require("define");
 
+guard = require("guard");
+
 Type = require("Type");
 
-type = Type("ComponentType_Builder");
+type = Type("ComponentTypeBuilder");
 
 type.inherits(Type.Builder);
 
 type.initInstance(function() {
+  if (!isType(this, Type.Builder.Kind)) {
+    global.failedInstance = this;
+  }
   this.defineReactiveValues({
     view: null
   });
   return this.willBuild(function() {
-    assert(this._render, "Must call 'loadComponent' or 'render' before building!");
-    return this.defineMethods({
-      render: this._render
-    });
+    return this._buildRender();
   });
 });
 
@@ -41,16 +47,11 @@ type.defineMethods({
     assertType(loadComponent, Function);
     assert(!this._loadComponent, "'loadComponent' is already defined!");
     assert(!this._render, "'render' is already defined!");
-    render = LazyVar(function() {
-      return loadComponent();
-    });
+    render = LazyCaller(loadComponent);
     this._loadComponent = loadComponent;
     this._render = function(props) {
-      if (!props) {
-        props = {};
-      }
       props.context = this;
-      return render.get()(props);
+      return render(props);
     };
   },
   render: function(render) {
@@ -74,6 +75,21 @@ type.defineMethods({
   },
   _stopReactions: function() {
     throw Error("Not yet implemented!");
+  },
+  _buildRender: function() {
+    var render;
+    render = this._render;
+    if (!render) {
+      return;
+    }
+    return this.defineMethods({
+      render: function(props) {
+        if (!isType(props, Object)) {
+          props = {};
+        }
+        return render.call(this, props);
+      }
+    });
   }
 });
 

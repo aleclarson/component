@@ -1,8 +1,10 @@
 
 ReactCurrentOwner = require "ReactCurrentOwner"
+ReactComponent = require "ReactComponent"
 ReactElement = require "ReactElement"
-combine = require "combine"
+Builder = require "Builder"
 Type = require "Type"
+sync = require "sync"
 
 Component = require "."
 
@@ -53,6 +55,7 @@ type.willBuild ->
 
     methods[key] = (values) ->
 
+      # Bind 'this.context' to each dynamic value.
       values = sync.map values, (value) ->
         return value unless isType value, Function
         return -> value.apply @context, arguments
@@ -60,13 +63,6 @@ type.willBuild ->
       @_viewType[key] values
 
   type.defineMethods methods
-
-    defineValues: (values) ->
-
-    defineFrozenValues: (values) ->
-
-      values = sync.map values, (value, key) ->
-        return value unless isType value, Function
 
 type.defineMethods
 
@@ -180,15 +176,23 @@ type.defineMethods
 
       Reaction.inject.pop "autoStart"
 
+  defineProperties: (props) ->
+
+    bound = [ "get", "set", "willSet", "didSet", "lazy" ]
+    sync.each props, (prop) ->
+      sync.each bound, (key) ->
+        func = prop[key]
+        return unless isType func, Function
+        prop[key] = -> func.apply @context, arguments
+
+    @_viewType.defineProperties props
+
   defineMethods: (methods) ->
 
     methods = sync.map methods, (method, key) ->
       return -> method.apply @context, arguments
 
     @_viewType.defineMethods methods
-
-  defineProperties: (props) ->
-    @_viewType.defineProperties props
 
   initInstance: (init) ->
     @_viewType.initInstance init
@@ -207,11 +211,11 @@ type.defineMethods
 
     if @_phases.didBuild.length
       for phase in @_phases.didBuild
-        phase.call this
+        phase.call null, this
 
     return type
 
-  _initInstance: (init) _>
+  _initInstance: (init) ->
     @_viewType._initInstance init
 
   __createType: (type) ->
@@ -224,7 +228,11 @@ type.defineMethods
     if props.mixins?
       mixins = steal props, "mixins"
       assertType mixins, Array, "props.mixins"
-      props = combine.apply null, [ {} ].concat mixins.concat props
+      addProp = (key, value) ->
+        return if props[key] isnt undefined
+        props[key] = value
+      for mixin in props.mixin
+        sync.each mixin, addProp
 
     key = null
     if props.key?

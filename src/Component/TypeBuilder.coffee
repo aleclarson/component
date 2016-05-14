@@ -1,23 +1,27 @@
 
-{ assert, assertType } = require "type-utils"
-
+LazyCaller = require "LazyCaller"
+assertType = require "assertType"
 Reaction = require "reaction"
-LazyVar = require "lazy-var"
+isType = require "isType"
+assert = require "assert"
 define = require "define"
+guard = require "guard"
 Type = require "Type"
 
-type = Type "ComponentType_Builder"
+type = Type "ComponentTypeBuilder"
 
 type.inherits Type.Builder
 
 type.initInstance ->
 
+  unless isType this, Type.Builder.Kind
+    global.failedInstance = this
+
   @defineReactiveValues
     view: null
 
   @willBuild ->
-    assert @_render, "Must call 'loadComponent' or 'render' before building!"
-    @defineMethods { render: @_render }
+    @_buildRender()
 
 type.defineValues
 
@@ -42,13 +46,12 @@ type.defineMethods
     assert not @_render, "'render' is already defined!"
 
     # The component class is loaded on first render.
-    render = LazyVar -> loadComponent()
+    render = LazyCaller loadComponent
 
     @_loadComponent = loadComponent
     @_render = (props) ->
-      props = {} unless props
       props.context = this
-      render.get() props
+      render props
     return
 
   render: (render) ->
@@ -119,6 +122,14 @@ type.defineMethods
 
   _stopReactions: ->
     throw Error "Not yet implemented!"
+
+  _buildRender: ->
+    render = @_render
+    return unless render
+    @defineMethods
+      render: (props) ->
+        props = {} unless isType props, Object
+        render.call this, props
 
 type.addMixins [
   require "./mixins/Styles"

@@ -1,10 +1,12 @@
-var NativeMap, NativeTransform, Style, Type, assert, assertType, isType, ref, sync, throwFailure, type;
+var NativeMap, NativeTransform, Style, Type, assert, assertType, isType, sync, type;
 
 require("isDev");
 
-ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType, isType = ref.isType;
+assertType = require("assertType");
 
-throwFailure = require("failure").throwFailure;
+isType = require("isType");
+
+assert = require("assert");
 
 sync = require("sync");
 

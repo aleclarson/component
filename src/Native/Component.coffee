@@ -1,67 +1,69 @@
 
-# TODO: Convert this to use 'Component.Builder'!
-
-require "isDev"
-
-ReactElement = require "ReactElement"
-
-{ isType, assertType } = require "type-utils"
 { throwFailure } = require "failure"
 
-combine = require "combine"
-define = require "define"
-steal = require "steal"
-sync = require "sync"
+ReactElement = require "ReactElement"
+assertType = require "assertType"
 
 NativeProps = require "./Props"
 Component = require "../Component"
 
 module.exports =
-NativeComponent = (name, render) ->
+NativeComponent = (render) ->
 
-  assertType name, String
   assertType render, Function
 
-  component = Component "NativeComponent_" + name,
+  type = Component()
 
-    initValues: ->
+  type.defineFrozenValues
+    _render: render
 
-      child: null
+  type.didBuild (type) ->
+    type.propTypes = render.propTypes
 
-      _queuedProps: null
+  type.defineValues instanceValues
+  type.defineMethods instanceMethods
+  type.createListeners createListeners
+  type.willReceiveProps willReceiveProps
+  type.willUnmount willUnmount
 
-      _nativeProps: NativeProps @props, render.propTypes
+  return type.build()
 
-    initListeners: ->
+instanceValues =
 
-      @_nativeProps.didSet (newProps) =>
+  child: null
 
-        guard =>
-          if @child isnt null
-            @child.setNativeProps newProps
-          else @_queuedProps = newProps
+  _queuedProps: null
 
-        .fail (error) =>
-          throwFailure error, { component: this, newProps }
+  _nativeProps: ->
+    NativeProps @props, @_render.propTypes
 
-    componentWillReceiveProps: (props) ->
-      @_nativeProps.attach props
+instanceMethods =
 
-    componentWillUnmount: ->
-      @_nativeProps.detach()
+  onRef: (view) ->
+    @child = view
+    if view and @_queuedProps
+      @child.setNativeProps @_queuedProps
+      @_queuedProps = null
 
-    onRef: (view) ->
-      @child = view
-      if view and @_queuedProps
-        @child.setNativeProps @_queuedProps
-        @_queuedProps = null
+  render: ->
+    props = @_nativeProps.values
+    props.ref = (view) => @_onRef view
+    ReactElement.createElement render, props
 
-    render: ->
-      props = @_nativeProps.values
-      props.ref = (view) => @_onRef view
-      ReactElement.createElement render, props
+createListeners = ->
 
-  # Must be after class creation, else it gets overwritten.
-  component.propTypes = render.propTypes
+  @_nativeProps.didSet (newProps) =>
 
-  component
+    guard =>
+      if @child isnt null
+        @child.setNativeProps newProps
+      else @_queuedProps = newProps
+
+    .fail (error) =>
+      throwFailure error, { component: this, newProps }
+
+willReceiveProps = (props) ->
+  @_nativeProps.attach props
+
+willUnmount = ->
+  @_nativeProps.detach()

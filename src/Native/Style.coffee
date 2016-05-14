@@ -1,10 +1,12 @@
 
 require "isDev"
 
-{ assert, assertType, isType } = require "type-utils"
-{ throwFailure } = require "failure"
-
+# { throwFailure } = require "failure"
 # flattenStyle = require "flattenStyle"
+
+assertType = require "assertType"
+isType = require "isType"
+assert = require "assert"
 sync = require "sync"
 Type = require "Type"
 

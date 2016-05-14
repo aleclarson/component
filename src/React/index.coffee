@@ -13,24 +13,29 @@ module.exports =
     require "./Style"
 
   View: lazy: ->
-    NativeComponent "View", require "View"
+    render = require "View"
+    NativeComponent render
 
   ImageView: lazy: ->
-    NativeComponent "ImageView", require "Image"
+    render = require "Image"
+    NativeComponent render
 
   TextView: lazy: ->
-    NativeComponent "TextView", require "Text"
+    render = require "Text"
+    NativeComponent render
 
   TextInput: lazy: ->
-    NativeComponent "TextInput", require "TextInput"
+    render = require "TextInput"
+    NativeComponent render
 
   WebView: lazy: ->
-    NativeComponent "WebView", require "WebView"
+    render = require "WebView"
+    NativeComponent render
 
   StaticRenderer: lazy: ->
     StaticRenderer = require "StaticRenderer"
     StaticRenderer.displayName = "StaticRenderer"
-    (require "ReactElement").createFactory StaticRenderer
+    require("ReactElement").createFactory StaticRenderer
 
   InteractionManager: lazy: ->
     require "InteractionManager"

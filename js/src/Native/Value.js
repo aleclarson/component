@@ -1,12 +1,14 @@
-var AnimatedValue, Animation, Any, Event, Kind, Maybe, NativeValue, Null, Progress, Reaction, Tracer, Type, assert, assertType, clampValue, combine, configTypes, emptyFunction, isType, ref, roundValue, sync, type, validateTypes;
+var AnimatedValue, Animation, Any, Event, Maybe, NativeValue, Null, Progress, Reaction, Tracer, Type, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, isType, roundValue, sync, type;
 
 require("isDev");
-
-ref = require("type-utils"), isType = ref.isType, validateTypes = ref.validateTypes, assertType = ref.assertType, assert = ref.assert, Any = ref.Any, Null = ref.Null, Maybe = ref.Maybe, Kind = ref.Kind;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
 emptyFunction = require("emptyFunction");
+
+assertTypes = require("assertTypes");
+
+assertType = require("assertType");
 
 roundValue = require("roundValue");
 
@@ -18,13 +20,23 @@ Reaction = require("reaction");
 
 combine = require("combine");
 
+assert = require("assert");
+
 Tracer = require("tracer");
 
+isType = require("isType");
+
+Maybe = require("Maybe");
+
 Event = require("event");
+
+Null = require("Null");
 
 Type = require("Type");
 
 sync = require("sync");
+
+Any = require("Any");
 
 Animation = require("./Animation");
 
@@ -42,7 +54,7 @@ if (isDev) {
   };
   configTypes.setValue = {
     clamp: Boolean.Maybe,
-    round: [Null, Number.Maybe]
+    round: Maybe([Number, Null])
   };
   configTypes.setProgress = {
     fromValue: Number,
@@ -71,9 +83,9 @@ type.defineProperties({
       return this._keyPath;
     },
     set: function(keyPath) {
-      var ref1;
+      var ref;
       this._keyPath = keyPath;
-      return (ref1 = this._reaction) != null ? ref1.keyPath = keyPath : void 0;
+      return (ref = this._reaction) != null ? ref.keyPath = keyPath : void 0;
     }
   },
   value: {
@@ -223,7 +235,9 @@ type.defineMethods({
     if (config.round == null) {
       config.round = this.round;
     }
-    validateTypes(config, configTypes.setValue);
+    if (isDev) {
+      assertTypes(config, configTypes.setValue);
+    }
     if (config.clamp === true) {
       assert(this._fromValue != null, "Must have a 'fromValue' defined!");
       assert(this._toValue != null, "Must have a 'toValue' defined!");
@@ -244,7 +258,9 @@ type.defineMethods({
       this._animation.stop();
     }
     this._attachAnimated();
-    validateTypes(config, configTypes.animate);
+    if (isDev) {
+      assertTypes(config, configTypes.animate);
+    }
     callbacks = {
       onUpdate: steal(config, "onUpdate"),
       onFinish: steal(config, "onFinish", emptyFunction),
@@ -293,7 +309,9 @@ type.defineMethods({
     if (toRange.toValue == null) {
       toRange.toValue = this._toValue;
     }
-    validateTypes(config, configTypes.track);
+    if (isDev) {
+      assertTypes(config, configTypes.track);
+    }
     this._tracking = nativeValue.didSet((function(_this) {
       return function(value) {
         var progress;
@@ -336,7 +354,9 @@ type.defineMethods({
       config.toValue = this._toValue;
     }
     assertType(value, Number);
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      assertTypes(config, configTypes.setProgress);
+    }
     return Progress.fromValue(value, config);
   },
   setProgress: function(progress, config) {
@@ -349,7 +369,9 @@ type.defineMethods({
       config.toValue = this._toValue;
     }
     assertType(progress, Number);
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      assertTypes(config, configTypes.setProgress);
+    }
     value = Progress.toValue(progress, config);
     if (config.round != null) {
       value = roundValue(value, config.round);
@@ -358,7 +380,9 @@ type.defineMethods({
   },
   willProgress: function(config) {
     this._assertNonReactive();
-    validateTypes(config, configTypes.setProgress);
+    if (isDev) {
+      assertTypes(config, configTypes.setProgress);
+    }
     this._fromValue = config.fromValue != null ? config.fromValue : config.fromValue = this._value;
     this._toValue = config.toValue;
   },

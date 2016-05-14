@@ -1,14 +1,20 @@
 
 require "isDev"
 
-{ assert, assertType } = require "type-utils"
-
-emptyFunction = require "emptyFunction"
-define = require "define"
+assertType = require "assertType"
+assert = require "assert"
 guard = require "guard"
 sync = require "sync"
 
-methodsByPhase =
+module.exports = (type) ->
+
+  type.initInstance typePhases.initInstance
+
+  type.defineValues typeValues
+
+  type.defineMethods typeMethods
+
+shimNames =
   willMount: "componentWillMount"
   didMount: "componentDidMount"
   willReceiveProps: "componentWillReceiveProps"
@@ -16,15 +22,7 @@ methodsByPhase =
   didUpdate: "componentDidUpdate"
   willUnmount: "componentWillUnmount"
 
-module.exports = (type) ->
-
-  type.willBuild typePhases.willBuild
-
-  type.initInstance typePhases.initInstance
-
-  type.defineValues typeValues
-
-  type.defineMethods typeMethods
+phaseNames = Object.keys shimNames
 
 typeValues =
 
@@ -42,42 +40,32 @@ typeMethods =
 
   render: (render) ->
     assertType render, Function
-    @_render = (props) ->
-      guard => render.call this, props
-      .fail (error) =>
-        if isDev
+    assert not @_render, "'render' is already defined!"
+    if isDev
+      @_render = (props) ->
+        guard => render.call this, props
+        .fail (error) =>
           element = @_reactInternalInstance._currentElement
           stack = element._trace()
-        method = @constructor.name + ".render"
-        throwFailure error, { context: this, method, stack }
-        return no
+          method = @constructor.name + ".render"
+          throwFailure error, { context: this, method, stack }
+          return no
+    else
+      @_render = render
+    return
+
+sync.each phaseNames, (phaseName) ->
+  typeMethods[phaseName] = (fn) ->
+    assertType fn, Function
+    @_phases[phaseName].push fn
     return
 
 typePhases =
 
-  willBuild: ->
-
-    # This will hold all methods that are used to add
-    # lifecycle-based phases to 'Component.Builder' (eg: didMount)
-    lifecycle = {}
-
-    sync.each methodsByPhase, (phaseName, methodName) ->
-      lifecycle[methodName] = (fn) ->
-        assertType fn, Function
-        @_phases[phaseName].push fn
-        return
-
-    type.defineMethods lifecycle
-
   initInstance: ->
 
-    combine @_phases,
-      willMount: []
-      didMount: []
-      willReceiveProps: []
-      willUpdate: []
-      didUpdate: []
-      willUnmount: []
+    for phaseName in phaseNames
+      @_phases[phaseName] = []
 
     @willBuild instancePhases.willBuild
 
@@ -88,7 +76,7 @@ instancePhases =
     render = @_render
     shouldUpdate = @_shouldUpdate
 
-    instanceMethods =
+    shims =
 
       render: ->
         render.call @context, @view.props
@@ -96,7 +84,7 @@ instancePhases =
       componentShouldUpdate: ->
         shouldUpdate.call @context
 
-    sync.each methodsByPhase, (methodName, phaseName) =>
+    sync.each shimNames, (shimName, phaseName) =>
 
       callbacks = @_phases[phaseName]
 
@@ -104,17 +92,17 @@ instancePhases =
 
       if callbacks.length is 1
         callback = callbacks
-        method = ->
+        shim = ->
           callback.call @context
           return
 
       else
-        method = ->
+        shim = ->
           { context } = this
           for callback in callbacks
             callback.call context
           return
 
-      methods[methodName] = method
+      shims[shimName] = shim
 
-    @_viewType.defineMethods methods
+    @_viewType.defineMethods shims

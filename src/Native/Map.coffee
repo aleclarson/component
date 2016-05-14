@@ -1,6 +1,6 @@
 
-{ isType, assertType } = require "type-utils"
-
+assertType = require "assertType"
+isType = require "isType"
 Event = require "event"
 Type = require "Type"
 sync = require "sync"

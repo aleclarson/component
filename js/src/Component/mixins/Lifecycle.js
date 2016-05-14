@@ -1,18 +1,22 @@
-var assert, assertType, define, emptyFunction, guard, instancePhases, methodsByPhase, ref, sync, typeMethods, typePhases, typeValues;
+var assert, assertType, guard, instancePhases, phaseNames, shimNames, sync, typeMethods, typePhases, typeValues;
 
 require("isDev");
 
-ref = require("type-utils"), assert = ref.assert, assertType = ref.assertType;
+assertType = require("assertType");
 
-emptyFunction = require("emptyFunction");
-
-define = require("define");
+assert = require("assert");
 
 guard = require("guard");
 
 sync = require("sync");
 
-methodsByPhase = {
+module.exports = function(type) {
+  type.initInstance(typePhases.initInstance);
+  type.defineValues(typeValues);
+  return type.defineMethods(typeMethods);
+};
+
+shimNames = {
   willMount: "componentWillMount",
   didMount: "componentDidMount",
   willReceiveProps: "componentWillReceiveProps",
@@ -21,12 +25,7 @@ methodsByPhase = {
   willUnmount: "componentWillUnmount"
 };
 
-module.exports = function(type) {
-  type.willBuild(typePhases.willBuild);
-  type.initInstance(typePhases.initInstance);
-  type.defineValues(typeValues);
-  return type.defineMethods(typeMethods);
-};
+phaseNames = Object.keys(shimNames);
 
 typeValues = {
   _render: function() {
@@ -45,62 +44,58 @@ typeMethods = {
   },
   render: function(render) {
     assertType(render, Function);
-    this._render = function(props) {
-      return guard((function(_this) {
-        return function() {
-          return render.call(_this, props);
-        };
-      })(this)).fail((function(_this) {
-        return function(error) {
-          var element, method, stack;
-          if (isDev) {
+    assert(!this._render, "'render' is already defined!");
+    if (isDev) {
+      this._render = function(props) {
+        return guard((function(_this) {
+          return function() {
+            return render.call(_this, props);
+          };
+        })(this)).fail((function(_this) {
+          return function(error) {
+            var element, method, stack;
             element = _this._reactInternalInstance._currentElement;
             stack = element._trace();
-          }
-          method = _this.constructor.name + ".render";
-          throwFailure(error, {
-            context: _this,
-            method: method,
-            stack: stack
-          });
-          return false;
-        };
-      })(this));
-    };
+            method = _this.constructor.name + ".render";
+            throwFailure(error, {
+              context: _this,
+              method: method,
+              stack: stack
+            });
+            return false;
+          };
+        })(this));
+      };
+    } else {
+      this._render = render;
+    }
   }
 };
 
+sync.each(phaseNames, function(phaseName) {
+  return typeMethods[phaseName] = function(fn) {
+    assertType(fn, Function);
+    this._phases[phaseName].push(fn);
+  };
+});
+
 typePhases = {
-  willBuild: function() {
-    var lifecycle;
-    lifecycle = {};
-    sync.each(methodsByPhase, function(phaseName, methodName) {
-      return lifecycle[methodName] = function(fn) {
-        assertType(fn, Function);
-        this._phases[phaseName].push(fn);
-      };
-    });
-    return type.defineMethods(lifecycle);
-  },
   initInstance: function() {
-    combine(this._phases, {
-      willMount: [],
-      didMount: [],
-      willReceiveProps: [],
-      willUpdate: [],
-      didUpdate: [],
-      willUnmount: []
-    });
+    var i, len, phaseName;
+    for (i = 0, len = phaseNames.length; i < len; i++) {
+      phaseName = phaseNames[i];
+      this._phases[phaseName] = [];
+    }
     return this.willBuild(instancePhases.willBuild);
   }
 };
 
 instancePhases = {
   willBuild: function() {
-    var instanceMethods, render, shouldUpdate;
+    var render, shims, shouldUpdate;
     render = this._render;
     shouldUpdate = this._shouldUpdate;
-    instanceMethods = {
+    shims = {
       render: function() {
         return render.call(this.context, this.view.props);
       },
@@ -108,20 +103,20 @@ instancePhases = {
         return shouldUpdate.call(this.context);
       }
     };
-    sync.each(methodsByPhase, (function(_this) {
-      return function(methodName, phaseName) {
-        var callback, callbacks, method;
+    sync.each(shimNames, (function(_this) {
+      return function(shimName, phaseName) {
+        var callback, callbacks, shim;
         callbacks = _this._phases[phaseName];
         if (callbacks.length === 0) {
           return;
         }
         if (callbacks.length === 1) {
           callback = callbacks;
-          method = function() {
+          shim = function() {
             callback.call(this.context);
           };
         } else {
-          method = function() {
+          shim = function() {
             var context, i, len;
             context = this.context;
             for (i = 0, len = callbacks.length; i < len; i++) {
@@ -130,10 +125,10 @@ instancePhases = {
             }
           };
         }
-        return methods[methodName] = method;
+        return shims[shimName] = shim;
       };
     })(this));
-    return this._viewType.defineMethods(methods);
+    return this._viewType.defineMethods(shims);
   }
 };
 

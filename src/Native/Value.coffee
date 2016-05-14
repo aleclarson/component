@@ -1,19 +1,25 @@
 
 require "isDev"
 
-{ isType, validateTypes, assertType, assert, Any, Null, Maybe, Kind } = require "type-utils"
 { AnimatedValue } = require "Animated"
 
 emptyFunction = require "emptyFunction"
+assertTypes = require "assertTypes"
+assertType = require "assertType"
 roundValue = require "roundValue"
 clampValue = require "clampValue"
 Progress = require "progress"
 Reaction = require "reaction"
 combine = require "combine"
+assert = require "assert"
 Tracer = require "tracer"
+isType = require "isType"
+Maybe = require "Maybe"
 Event = require "event"
+Null = require "Null"
 Type = require "Type"
 sync = require "sync"
+Any = require "Any"
 
 Animation = require "./Animation"
 
@@ -33,7 +39,7 @@ if isDev
 
   configTypes.setValue =
     clamp: Boolean.Maybe
-    round: [ Null, Number.Maybe ]
+    round: Maybe [ Number, Null ]
 
   configTypes.setProgress =
     fromValue: Number
@@ -176,7 +182,7 @@ type.defineMethods
     unless config.round?
       config.round = @round
 
-    validateTypes config, configTypes.setValue
+    assertTypes config, configTypes.setValue if isDev
 
     if config.clamp is yes
       assert @_fromValue?, "Must have a 'fromValue' defined!"
@@ -196,7 +202,7 @@ type.defineMethods
 
     @_attachAnimated()
 
-    validateTypes config, configTypes.animate
+    assertTypes config, configTypes.animate if isDev
 
     callbacks =
       onUpdate: steal config, "onUpdate"
@@ -235,7 +241,7 @@ type.defineMethods
     toRange.fromValue ?= @_fromValue
     toRange.toValue ?= @_toValue
 
-    validateTypes config, configTypes.track
+    assertTypes config, configTypes.track if isDev
 
     @_tracking = nativeValue.didSet (value) =>
       progress = Progress.fromValue value, fromRange
@@ -271,7 +277,7 @@ type.defineMethods
     config.toValue ?= @_toValue
 
     assertType value, Number
-    validateTypes config, configTypes.setProgress
+    assertTypes config, configTypes.setProgress if isDev
 
     return Progress.fromValue value, config
 
@@ -283,7 +289,7 @@ type.defineMethods
     config.toValue ?= @_toValue
 
     assertType progress, Number
-    validateTypes config, configTypes.setProgress
+    assertTypes config, configTypes.setProgress if isDev
 
     value = Progress.toValue progress, config
     value = roundValue value, config.round if config.round?
@@ -294,7 +300,7 @@ type.defineMethods
 
     @_assertNonReactive()
 
-    validateTypes config, configTypes.setProgress
+    assertTypes config, configTypes.setProgress if isDev
 
     @_fromValue = config.fromValue ?= @_value
     @_toValue = config.toValue

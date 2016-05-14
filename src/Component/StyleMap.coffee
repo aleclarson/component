@@ -1,10 +1,16 @@
 
-{ assert, assertType } = require "type-utils"
-
+assertType = require "assertType"
+assert = require "assert"
 define = require "define"
 Type = require "Type"
 
 type = Type "StyleMap"
+
+type.defineValues
+
+  _constantValues: -> Object.create null
+
+  _computedValues: -> Object.create null
 
 type.initInstance (inherited) ->
 
@@ -17,21 +23,6 @@ type.initInstance (inherited) ->
 
   for key, value of inherited._computedValues
     @_computedValues[key] = value
-
-type.defineValues
-
-  _constantValues: -> Object.create null
-
-  _computedValues: -> Object.create null
-
-type.defineStatics
-
-  _presets: Object.create null
-
-  addPreset: (presetName, style) ->
-    assertType style, Object
-    StyleMap._presets[presetName] = style
-    return
 
 type.defineMethods
 
@@ -135,5 +126,14 @@ type.defineMethods
         style[key] = value
 
     return style
+
+type.defineStatics
+
+  _presets: Object.create null
+
+  addPreset: (presetName, style) ->
+    assertType style, Object
+    StyleMap._presets[presetName] = style
+    return
 
 module.exports = StyleMap = type.build()

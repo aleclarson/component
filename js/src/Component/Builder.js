@@ -1,12 +1,16 @@
-var Component, ReactCurrentOwner, ReactElement, Type, combine, type;
+var Builder, Component, ReactComponent, ReactCurrentOwner, ReactElement, Type, sync, type;
 
 ReactCurrentOwner = require("ReactCurrentOwner");
 
+ReactComponent = require("ReactComponent");
+
 ReactElement = require("ReactElement");
 
-combine = require("combine");
+Builder = require("Builder");
 
 Type = require("Type");
+
+sync = require("sync");
 
 Component = require(".");
 
@@ -59,16 +63,7 @@ type.willBuild(function() {
       return this._viewType[key](values);
     };
   });
-  return type.defineMethods(methods({
-    defineValues: function(values) {},
-    defineFrozenValues: function(values) {
-      return values = sync.map(values, function(value, key) {
-        if (!isType(value, Function)) {
-          return value;
-        }
-      });
-    }
-  }));
+  return type.defineMethods(methods);
 });
 
 type.defineMethods({
@@ -213,6 +208,23 @@ type.defineMethods({
       return Reaction.inject.pop("autoStart");
     });
   },
+  defineProperties: function(props) {
+    var bound;
+    bound = ["get", "set", "willSet", "didSet", "lazy"];
+    sync.each(props, function(prop) {
+      return sync.each(bound, function(key) {
+        var func;
+        func = prop[key];
+        if (!isType(func, Function)) {
+          return;
+        }
+        return prop[key] = function() {
+          return func.apply(this.context, arguments);
+        };
+      });
+    });
+    return this._viewType.defineProperties(props);
+  },
   defineMethods: function(methods) {
     methods = sync.map(methods, function(method, key) {
       return function() {
@@ -220,9 +232,6 @@ type.defineMethods({
       };
     });
     return this._viewType.defineMethods(methods);
-  },
-  defineProperties: function(props) {
-    return this._viewType.defineProperties(props);
   },
   initInstance: function(init) {
     return this._viewType.initInstance(init);
@@ -243,12 +252,14 @@ type.defineMethods({
       ref1 = this._phases.didBuild;
       for (j = 0, len1 = ref1.length; j < len1; j++) {
         phase = ref1[j];
-        phase.call(this);
+        phase.call(null, this);
       }
     }
     return type;
   },
-  _initInstance: init(_ > this._viewType._initInstance(init)),
+  _initInstance: function(init) {
+    return this._viewType._initInstance(init);
+  },
   __createType: function(type) {
     var factory;
     factory = this.__createFactory(type);
@@ -257,14 +268,24 @@ type.defineMethods({
   },
   __createFactory: function(type) {
     return function(props) {
-      var element, key, mixins;
+      var addProp, element, i, key, len, mixin, mixins, ref;
       if (props == null) {
         props = {};
       }
       if (props.mixins != null) {
         mixins = steal(props, "mixins");
         assertType(mixins, Array, "props.mixins");
-        props = combine.apply(null, [{}].concat(mixins.concat(props)));
+        addProp = function(key, value) {
+          if (props[key] !== void 0) {
+            return;
+          }
+          return props[key] = value;
+        };
+        ref = props.mixin;
+        for (i = 0, len = ref.length; i < len; i++) {
+          mixin = ref[i];
+          sync.each(mixin, addProp);
+        }
       }
       key = null;
       if (props.key != null) {

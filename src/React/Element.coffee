@@ -1,17 +1,15 @@
 
 { throwFailure } = require "failure"
-{ Validator } = require "type-utils"
 
 ReactElement = require "ReactElement"
+Validator = require "Validator"
+wrongType = require "wrongType"
 
-module.exports =
-Element = Validator "Element",
+module.exports = Validator "ReactElement",
 
-  validate: (value, key) ->
-    return yes if ReactElement.isValidElement value
-    return { key, value, type: Element }
+  test: (value) ->
+    ReactElement.isValidElement value
 
-  fail: (values) ->
-    if values.key then error = TypeError "'#{values.key}' must be a ReactElement!"
-    else error = TypeError "Expected a ReactElement."
-    throwFailure error, values
+  assert: (value, key) ->
+    return if @test value
+    wrongType this, key
