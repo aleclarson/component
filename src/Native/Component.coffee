@@ -14,7 +14,7 @@ NativeComponent = (render) ->
 
   type = Component()
 
-  type.defineFrozenValues
+  type.definePrototype
     _render: render
 
   type.didBuild (type) ->
@@ -22,8 +22,7 @@ NativeComponent = (render) ->
 
   type.defineValues instanceValues
   type.defineMethods instanceMethods
-  type.createListeners createListeners
-  type.willReceiveProps willReceiveProps
+  type.defineListeners defineListeners
   type.willUnmount willUnmount
 
   return type.build()
@@ -39,18 +38,18 @@ instanceValues =
 
 instanceMethods =
 
-  onRef: (view) ->
+  render: ->
+    props = @_nativeProps.values
+    props.ref = (view) => @_onRef view
+    ReactElement.createElement @_render, props
+
+  _onRef: (view) ->
     @child = view
     if view and @_queuedProps
       @child.setNativeProps @_queuedProps
       @_queuedProps = null
 
-  render: ->
-    props = @_nativeProps.values
-    props.ref = (view) => @_onRef view
-    ReactElement.createElement render, props
-
-createListeners = ->
+defineListeners = ->
 
   @_nativeProps.didSet (newProps) =>
 
@@ -61,9 +60,6 @@ createListeners = ->
 
     .fail (error) =>
       throwFailure error, { component: this, newProps }
-
-willReceiveProps = (props) ->
-  @_nativeProps.attach props
 
 willUnmount = ->
   @_nativeProps.detach()

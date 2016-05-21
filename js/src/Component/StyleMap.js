@@ -1,150 +1,165 @@
-var StyleMap, Type, assert, assertType, define, type;
+var Property, PureObject, StyleMap, TRANSFORMS, Type, applyPreset, assert, assertType, cloneObject, fillValue, has, pairKeyValue, sync, type;
+
+require("isDev");
+
+cloneObject = require("cloneObject");
+
+PureObject = require("PureObject");
 
 assertType = require("assertType");
 
+fillValue = require("fillValue");
+
+Property = require("Property");
+
 assert = require("assert");
 
-define = require("define");
-
 Type = require("Type");
+
+sync = require("sync");
+
+has = require("has");
 
 type = Type("StyleMap");
 
 type.defineValues({
-  _constantValues: function() {
+  _styles: function() {
     return Object.create(null);
   },
-  _computedValues: function() {
+  _constantStyles: function() {
+    return Object.create(null);
+  },
+  _computedStyles: function() {
     return Object.create(null);
   }
 });
 
 type.initInstance(function(inherited) {
-  var key, ref, ref1, results, value;
   if (!inherited) {
     return;
   }
   assertType(inherited, StyleMap);
-  ref = inherited._constantValues;
-  for (key in ref) {
-    value = ref[key];
-    this._constantValues[key] = value;
-  }
-  ref1 = inherited._computedValues;
-  results = [];
-  for (key in ref1) {
-    value = ref1[key];
-    results.push(this._computedValues[key] = value);
-  }
-  return results;
+  return sync.keys(inherited._styles, (function(_this) {
+    return function(styleName) {
+      var style;
+      _this._styles[styleName] = true;
+      style = inherited._constantStyles[styleName];
+      if (style) {
+        _this._constantStyles[styleName] = cloneObject(style);
+      }
+      style = inherited._computedStyles[styleName];
+      if (style) {
+        return _this._computedStyles[styleName] = cloneObject(style);
+      }
+    };
+  })(this));
 });
 
 type.defineMethods({
   bind: function(context) {
-    var computedNames, constantNames, self, styles;
-    self = this;
+    var computedStyles, constantStyles, prop, styles;
+    prop = Property({
+      frozen: isDev
+    });
     styles = Object.create(null);
-    computedNames = Object.keys(this._computedValues);
-    computedNames.forEach(function(styleName) {
-      return define(styles, styleName, {
-        value: function() {
-          return self._compute(styleName, context, arguments);
-        },
-        frozen: true
-      });
-    });
-    constantNames = Object.keys(this._constantValues);
-    constantNames.forEach(function(styleName) {
-      if (self._computedValues[styleName]) {
-        return;
-      }
-      return define(styles, styleName, {
-        get: function() {
-          return self._constantValues[styleName];
-        },
-        frozen: true
-      });
-    });
+    constantStyles = this._constantStyles;
+    computedStyles = this._computedStyles;
+    sync.keys(this._styles, (function(_this) {
+      return function(styleName) {
+        return prop.define(styles, styleName, function() {
+          return _this._buildStyle(styleName, context, arguments);
+        });
+      };
+    })(this));
     return styles;
   },
   define: function(styles) {
-    var base, base1, base2, i, key, len, presetName, ref, style, styleName, value, values;
+    var style, styleName;
     for (styleName in styles) {
       style = styles[styleName];
-      if (style.presets) {
-        values = (base = this._constantValues)[styleName] != null ? base[styleName] : base[styleName] = Object.create(null);
-        ref = style.presets;
-        for (i = 0, len = ref.length; i < len; i++) {
-          presetName = ref[i];
-          this._applyPreset(presetName, values);
-        }
-        delete style.presets;
+      if (!style) {
+        continue;
       }
-      for (key in style) {
-        value = style[key];
-        if (value instanceof Function) {
-          values = (base1 = this._computedValues)[styleName] != null ? base1[styleName] : base1[styleName] = Object.create(null);
-          values[key] = value;
-        } else {
-          assert(value !== void 0, "Invalid style value: '" + styleName + "." + key + "'");
-          values = (base2 = this._constantValues)[styleName] != null ? base2[styleName] : base2[styleName] = Object.create(null);
-          values[key] = value;
-        }
-      }
+      this._styles[styleName] = true;
+      this._parseStyle(styleName, style);
     }
   },
   override: function(styles) {
-    var computedValues, constantValues, i, key, len, presetName, ref, style, styleName, value;
+    var computedStyles, constantStyles, style, styleName;
+    constantStyles = this._constantStyles;
+    computedStyles = this._computedStyles;
     for (styleName in styles) {
       style = styles[styleName];
-      assert(this._constantValues[styleName] || this._computedValues[styleName], {
+      assert(constantStyles[styleName] || computedStyles[styleName], {
         reason: "Could not find style to override: '" + styleName + "'"
       });
-      this._constantValues[styleName] = constantValues = Object.create(null);
-      this._computedValues[styleName] = computedValues = Object.create(null);
-      if (style.presets) {
-        ref = style.presets;
-        for (i = 0, len = ref.length; i < len; i++) {
-          presetName = ref[i];
-          this._applyPreset(presetName, constantValues);
-        }
-        delete style.presets;
+      delete constantStyles[styleName];
+      delete computedStyles[styleName];
+      if (!style) {
+        continue;
       }
-      for (key in style) {
-        value = style[key];
-        if (value instanceof Function) {
-          computedValues[key] = value;
-        } else {
-          assert(value !== void 0, "Invalid style value: '" + styleName + "." + key + "'");
-          constantValues[key] = value;
+      this._parseStyle(styleName, style);
+    }
+  },
+  _parseStyle: function(styleName, style) {
+    var computedValues, constantValues, key, value;
+    assertType(style, Object);
+    constantValues = fillValue(this._constantStyles, styleName, PureObject.create);
+    computedValues = fillValue(this._computedStyles, styleName, PureObject.create);
+    for (key in style) {
+      value = style[key];
+      if (StyleMap._presets[key]) {
+        applyPreset(key, value, constantValues);
+        continue;
+      }
+      if (value instanceof Function) {
+        computedValues[key] = value;
+        if (has(constantValues, key)) {
+          delete constantValues[key];
+        }
+      } else {
+        assert(value !== void 0, "Invalid style value: '" + styleName + "." + key + "'");
+        constantValues[key] = value;
+        if (has(computedValues, key)) {
+          delete computedValues[key];
         }
       }
     }
   },
-  _applyPreset: function(presetName, style) {
-    var key, preset, value;
-    preset = StyleMap._presets[presetName];
-    assert(preset, "Invalid style preset: '" + presetName + "'");
-    for (key in preset) {
-      value = preset[key];
-      assert(value !== void 0, "Invalid style value: '" + presetName + "." + key + "'");
-      style[key] = value;
-    }
-  },
-  _compute: function(styleName, context, args) {
-    var constantValues, key, ref, style, value;
+  _buildStyle: function(styleName, context, args) {
+    var computedValues, constantValues, key, style, transform, value;
     style = {};
-    ref = this._computedValues[styleName];
-    for (key in ref) {
-      value = ref[key];
-      style[key] = value.apply(context, args);
-    }
-    constantValues = this._constantValues[styleName];
+    constantValues = this._constantStyles[styleName];
     if (constantValues) {
       for (key in constantValues) {
         value = constantValues[key];
-        style[key] = value;
+        if (TRANSFORMS[key]) {
+          if (!transform) {
+            transform = [];
+          }
+          transform.push(pairKeyValue(key, value));
+        } else {
+          style[key] = value;
+        }
       }
+    }
+    computedValues = this._computedStyles[styleName];
+    if (computedValues) {
+      for (key in computedValues) {
+        value = computedValues[key];
+        value = value.apply(context, args);
+        if (TRANSFORMS[key]) {
+          if (!transform) {
+            transform = [];
+          }
+          transform.push(pairKeyValue(key, value));
+        } else {
+          style[key] = value;
+        }
+      }
+    }
+    if (transform) {
+      style.transform = transform;
     }
     return style;
   }
@@ -152,12 +167,39 @@ type.defineMethods({
 
 type.defineStatics({
   _presets: Object.create(null),
-  addPreset: function(presetName, style) {
-    assertType(style, Object);
-    StyleMap._presets[presetName] = style;
+  addPreset: function(presetName, createStyle) {
+    assertType(presetName, String);
+    assertType(createStyle, Function);
+    StyleMap._presets[presetName] = createStyle;
   }
 });
 
 module.exports = StyleMap = type.build();
+
+TRANSFORMS = {
+  scale: 1,
+  translateX: 1,
+  translateY: 1,
+  rotate: 1
+};
+
+applyPreset = function(presetName, presetArg, constantValues) {
+  var createStyle, key, style, value;
+  createStyle = StyleMap._presets[presetName];
+  style = createStyle(presetArg);
+  assertType(style, Object, "style");
+  for (key in style) {
+    value = style[key];
+    assert(value !== void 0, "Invalid style value: '" + presetName + "." + key + "'");
+    constantValues[key] = value;
+  }
+};
+
+pairKeyValue = function(key, value) {
+  var pair;
+  pair = {};
+  pair[key] = value;
+  return pair;
+};
 
 //# sourceMappingURL=../../../map/src/Component/StyleMap.map

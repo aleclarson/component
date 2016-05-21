@@ -1,4 +1,4 @@
-var Component, NativeComponent, NativeProps, ReactElement, assertType, createListeners, instanceMethods, instanceValues, throwFailure, willReceiveProps, willUnmount;
+var Component, NativeComponent, NativeProps, ReactElement, assertType, defineListeners, instanceMethods, instanceValues, throwFailure, willUnmount;
 
 throwFailure = require("failure").throwFailure;
 
@@ -14,7 +14,7 @@ module.exports = NativeComponent = function(render) {
   var type;
   assertType(render, Function);
   type = Component();
-  type.defineFrozenValues({
+  type.definePrototype({
     _render: render
   });
   type.didBuild(function(type) {
@@ -22,8 +22,7 @@ module.exports = NativeComponent = function(render) {
   });
   type.defineValues(instanceValues);
   type.defineMethods(instanceMethods);
-  type.createListeners(createListeners);
-  type.willReceiveProps(willReceiveProps);
+  type.defineListeners(defineListeners);
   type.willUnmount(willUnmount);
   return type.build();
 };
@@ -37,13 +36,6 @@ instanceValues = {
 };
 
 instanceMethods = {
-  onRef: function(view) {
-    this.child = view;
-    if (view && this._queuedProps) {
-      this.child.setNativeProps(this._queuedProps);
-      return this._queuedProps = null;
-    }
-  },
   render: function() {
     var props;
     props = this._nativeProps.values;
@@ -52,11 +44,18 @@ instanceMethods = {
         return _this._onRef(view);
       };
     })(this);
-    return ReactElement.createElement(render, props);
+    return ReactElement.createElement(this._render, props);
+  },
+  _onRef: function(view) {
+    this.child = view;
+    if (view && this._queuedProps) {
+      this.child.setNativeProps(this._queuedProps);
+      return this._queuedProps = null;
+    }
   }
 };
 
-createListeners = function() {
+defineListeners = function() {
   return this._nativeProps.didSet((function(_this) {
     return function(newProps) {
       return guard(function() {
@@ -73,10 +72,6 @@ createListeners = function() {
       });
     };
   })(this));
-};
-
-willReceiveProps = function(props) {
-  return this._nativeProps.attach(props);
 };
 
 willUnmount = function() {

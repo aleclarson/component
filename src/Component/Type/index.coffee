@@ -4,14 +4,15 @@ setKind = require "setKind"
 setType = require "setType"
 Type = require "Type"
 
-TypeBuilder = require "./TypeBuilder"
+ComponentTypeBuilder = require "./Builder"
 
 module.exports =
 ComponentType = NamedFunction "ComponentType", (name) ->
 
-  self = TypeBuilder name
+  self = ComponentTypeBuilder name
 
   self.didBuild (type) ->
+    Type.augment type
     setType type, ComponentType
 
   return self

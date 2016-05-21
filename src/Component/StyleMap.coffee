@@ -1,16 +1,25 @@
 
+require "isDev"
+
+cloneObject = require "cloneObject"
+PureObject = require "PureObject"
 assertType = require "assertType"
+fillValue = require "fillValue"
+Property = require "Property"
 assert = require "assert"
-define = require "define"
 Type = require "Type"
+sync = require "sync"
+has = require "has"
 
 type = Type "StyleMap"
 
 type.defineValues
 
-  _constantValues: -> Object.create null
+  _styles: -> Object.create null
 
-  _computedValues: -> Object.create null
+  _constantStyles: -> Object.create null
+
+  _computedStyles: -> Object.create null
 
 type.initInstance (inherited) ->
 
@@ -18,122 +27,127 @@ type.initInstance (inherited) ->
 
   assertType inherited, StyleMap
 
-  for key, value of inherited._constantValues
-    @_constantValues[key] = value
+  sync.keys inherited._styles, (styleName) =>
 
-  for key, value of inherited._computedValues
-    @_computedValues[key] = value
+    @_styles[styleName] = yes
+
+    style = inherited._constantStyles[styleName]
+    @_constantStyles[styleName] = cloneObject style if style
+
+    style = inherited._computedStyles[styleName]
+    @_computedStyles[styleName] = cloneObject style if style
 
 type.defineMethods
 
-  # Creates the interface used by each instance.
   bind: (context) ->
 
-    self = this
+    prop = Property { frozen: isDev }
     styles = Object.create null
 
-    computedNames = Object.keys @_computedValues
-    computedNames.forEach (styleName) ->
-      define styles, styleName,
-        value: -> self._compute styleName, context, arguments
-        frozen: yes
-
-    constantNames = Object.keys @_constantValues
-    constantNames.forEach (styleName) ->
-      return if self._computedValues[styleName]
-      define styles, styleName,
-        get: -> self._constantValues[styleName]
-        frozen: yes
+    constantStyles = @_constantStyles
+    computedStyles = @_computedStyles
+    sync.keys @_styles, (styleName) =>
+      prop.define styles, styleName, =>
+        @_buildStyle styleName, context, arguments
 
     return styles
 
   define: (styles) ->
-
     for styleName, style of styles
-
-      if style.presets
-
-        values = @_constantValues[styleName] ?= Object.create null
-
-        for presetName in style.presets
-          @_applyPreset presetName, values
-
-        delete style.presets
-
-      for key, value of style
-
-        if value instanceof Function
-          values = @_computedValues[styleName] ?= Object.create null
-          values[key] = value
-
-        else
-          assert value isnt undefined, "Invalid style value: '#{styleName}.#{key}'"
-          values = @_constantValues[styleName] ?= Object.create null
-          values[key] = value
-
+      continue if not style
+      @_styles[styleName] = yes
+      @_parseStyle styleName, style
     return
 
   override: (styles) ->
 
+    constantStyles = @_constantStyles
+    computedStyles = @_computedStyles
+
     for styleName, style of styles
 
-      assert @_constantValues[styleName] or @_computedValues[styleName],
+      assert constantStyles[styleName] or computedStyles[styleName],
         reason: "Could not find style to override: '#{styleName}'"
 
-      @_constantValues[styleName] = constantValues = Object.create null
-      @_computedValues[styleName] = computedValues = Object.create null
+      delete constantStyles[styleName]
+      delete computedStyles[styleName]
 
-      if style.presets
-
-        for presetName in style.presets
-          @_applyPreset presetName, constantValues
-
-        delete style.presets
-
-      for key, value of style
-
-        if value instanceof Function
-          computedValues[key] = value
-
-        else
-          assert value isnt undefined, "Invalid style value: '#{styleName}.#{key}'"
-          constantValues[key] = value
+      continue if not style
+      @_parseStyle styleName, style
 
     return
 
-  _applyPreset: (presetName, style) ->
+  _parseStyle: (styleName, style) ->
 
-    preset = StyleMap._presets[presetName]
+    assertType style, Object
 
-    assert preset, "Invalid style preset: '#{presetName}'"
+    constantValues = fillValue @_constantStyles, styleName, PureObject.create
+    computedValues = fillValue @_computedStyles, styleName, PureObject.create
 
-    for key, value of preset
-      assert value isnt undefined, "Invalid style value: '#{presetName}.#{key}'"
-      style[key] = value
+    for key, value of style
+
+      if StyleMap._presets[key]
+        applyPreset key, value, constantValues
+        continue
+
+      if value instanceof Function
+        computedValues[key] = value
+        delete constantValues[key] if has constantValues, key
+      else
+        assert value isnt undefined, "Invalid style value: '#{styleName}.#{key}'"
+        constantValues[key] = value
+        delete computedValues[key] if has computedValues, key
 
     return
 
-  _compute: (styleName, context, args) ->
+  _buildStyle: (styleName, context, args) ->
 
     style = {}
 
-    for key, value of @_computedValues[styleName]
-      style[key] = value.apply context, args
-
-    constantValues = @_constantValues[styleName]
+    constantValues = @_constantStyles[styleName]
     if constantValues
       for key, value of constantValues
-        style[key] = value
+        if TRANSFORMS[key]
+          transform = [] if not transform
+          transform.push pairKeyValue key, value
+        else style[key] = value
 
+    computedValues = @_computedStyles[styleName]
+    if computedValues
+      for key, value of computedValues
+        value = value.apply context, args
+        if TRANSFORMS[key]
+          transform = [] if not transform
+          transform.push pairKeyValue key, value
+        else style[key] = value
+
+    style.transform = transform if transform
     return style
 
 type.defineStatics
 
   _presets: Object.create null
 
-  addPreset: (presetName, style) ->
-    assertType style, Object
-    StyleMap._presets[presetName] = style
+  addPreset: (presetName, createStyle) ->
+    assertType presetName, String
+    assertType createStyle, Function
+    StyleMap._presets[presetName] = createStyle
     return
 
 module.exports = StyleMap = type.build()
+
+TRANSFORMS = { scale: 1, translateX: 1, translateY: 1, rotate: 1 }
+
+applyPreset = (presetName, presetArg, constantValues) ->
+  createStyle = StyleMap._presets[presetName]
+  style = createStyle presetArg
+  assertType style, Object, "style"
+  for key, value of style
+    assert value isnt undefined, "Invalid style value: '#{presetName}.#{key}'"
+    constantValues[key] = value
+  return
+
+pairKeyValue = (key, value) ->
+  pair = {}
+  pair[key] = value
+  return pair

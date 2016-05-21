@@ -212,15 +212,13 @@ type.defineReactiveValues({
 type.initInstance(function(value, keyPath) {
   if (isType(value, Reaction)) {
     throw Error("NativeValue must create its own Reaction!");
-  } else if (isType(value, Function.Kind)) {
-    this.reaction = Reaction.sync({
-      keyPath: keyPath,
-      get: value
-    });
-    return;
   }
   this._keyPath = keyPath;
-  return this.value = value;
+  if (isType(value, [Object, Function.Kind])) {
+    return this._attachReaction(value);
+  } else {
+    return this.value = value;
+  }
 });
 
 type.defineMethods({
@@ -409,18 +407,14 @@ type.defineMethods({
   },
   _attachReaction: function(reaction) {
     var base;
-    if (isType(reaction, Reaction)) {
-      throw Error("NativeValue must create its own Reaction!");
-    }
-    if (isType(reaction, Function.Kind)) {
+    if (isType(reaction, Object)) {
+      reaction = Reaction.sync(reaction);
+    } else if (reaction instanceof Function) {
       reaction = Reaction.sync({
         get: reaction
       });
-    } else if (isType(reaction, Object)) {
-      reaction = Reaction.sync(reaction);
-    } else {
-      return;
     }
+    assertType(reaction, Reaction);
     if (this.isReactive) {
       this._detachReaction();
     } else {

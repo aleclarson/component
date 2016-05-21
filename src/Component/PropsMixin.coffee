@@ -1,50 +1,38 @@
 
+mergeDefaults = require "mergeDefaults"
+assertType = require "assertType"
+assert = require "assert"
+define = require "define"
+guard = require "guard"
+
 module.exports = (type) ->
 
   type.defineValues typeValues
 
-  type.defineProperties typeProps
-
-  type.defineMethods typeMethods
+  type.definePrototype typePrototype
 
   type.initInstance typePhases.initInstance
 
 typeValues =
 
-  _contextType: null
-
   _propTypes: null
 
   _propDefaults: null
 
-typeProps =
+  _initProps: -> []
 
-  contextType:
-    get: -> @_contextType
-    set: (contextType) ->
-
-      assert not @_contextType, "'contextType' is already defined!"
-
-      assertType contextType, Component.Type
-
-      @_contextType = contextType
-
-      # TODO: Implement 'contextType'
-      @_viewType
+typePrototype =
 
   propTypes:
-
     get: -> @_propTypes
-
     set: (propTypes) ->
 
-      assert not @_propTypes, "'propTypes' is already defined!"
-
       assertType propTypes, Object
+      assert not @_propTypes, "'propTypes' is already defined!"
 
       @_propTypes = propTypes
 
-      @didBuild (type) ->
+      @_didBuild.push (type) ->
         type.propTypes = propTypes
 
       unless @_propDefaults
@@ -66,18 +54,15 @@ typeProps =
         return props
 
   propDefaults:
-
     get: -> @_propDefaults
-
     set: (propDefaults) ->
 
-      assert not @_propDefaults, "'propDefaults' is already defined!"
-
       assertType propDefaults, Object
+      assert not @_propDefaults, "'propDefaults' is already defined!"
 
       @_propDefaults = propDefaults
 
-      @didBuild (type) ->
+      @_didBuild.push (type) ->
         type.propDefaults = propDefaults
 
       unless @_propTypes
@@ -92,29 +77,26 @@ typeProps =
 
         return props
 
-typeMethods =
-
   createProps: (fn) ->
     assertType fn, Function
-    @_phases.initProps.unshift fn
+    @_initProps.unshift fn
     return
 
   initProps: (fn) ->
     assertType fn, Function
-    @_phases.initProps.push fn
+    @_initProps.push fn
     return
 
 typePhases =
 
   initInstance: ->
-    @_phases.initProps = []
-    @willBuild instancePhases.willBuild
+    @_willBuild.push instancePhases.willBuild
 
 instancePhases =
 
   willBuild: ->
 
-    phases = @_phases.initProps
+    phases = @_initProps
 
     return if phases.length is 0
 
@@ -129,5 +111,5 @@ instancePhases =
           props = phase.call null, props
         return props
 
-    @_viewType.didBuild (type) ->
+    @_didBuild.push (type) ->
       define type, "_processProps", processProps

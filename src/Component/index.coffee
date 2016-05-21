@@ -1,25 +1,30 @@
 
-ReactComponent = require "ReactComponent"
+require "isDev"
+
+ReactCurrentOwner = require "ReactCurrentOwner"
+NamedFunction = require "NamedFunction"
+ReactElement = require "ReactElement"
+assertType = require "assertType"
+Property = require "Property"
+setKind = require "setKind"
+setType = require "setType"
+Tracer = require "tracer"
+isType = require "isType"
+define = require "define"
 Type = require "Type"
+hook = require "hook"
 
-type = Type "Component"
+Builder = require "./Builder"
 
-type.inherits ReactComponent
+module.exports =
+Component = NamedFunction "Component", (name) ->
+  self = Builder name
+  hook self, "build", build
+  return self
 
-type.returnExisting -> Component.Builder()
+setKind Component, Function
 
-type.defineProperties
-
-  view: get: ->
-    @context.view or this
-
-  context: get: ->
-    @props.context or this
-
-type.defineStatics
-
-  Builder: lazy: ->
-    require "./Builder"
+define Component,
 
   Type: lazy: ->
     require "./Type"
@@ -27,22 +32,42 @@ type.defineStatics
   StyleMap: lazy: ->
     require "./StyleMap"
 
-  traverseParents: (component) ->
-    results = []
-    loop
-      results.push component
-      owner = component._reactInternalInstance._currentElement._owner
-      break unless owner
-      component = owner._instance
-    return results
+build = (orig) ->
+  type = orig.call this
+  throw Error "'type' must be defined!" if not isType type, Function.Kind
+  factory = createFactory type
+  setType factory, Component
+  factory.type = type
+  return factory
 
-type.initInstance ->
-  @context.view = this
+createFactory = (type) -> (props) ->
 
-type.defineMethods
+  # NOTE: Avoid using if possible!
+  if props.mixins
+    mixins = steal props, "mixins"
+    assertType mixins, Array, "props.mixins"
+    for mixin in props.mixin
+      for key, value of mixin
+        continue if props[key] isnt undefined
+        props[key] = value
 
-  componentDidMount: ->
+  key = null
+  if props.key?
+    key = steal props, "key"
+    key = "" + key if not isType key, String
 
-  componentDidUnmount: ->
+  element = { type, props, key }
 
-module.exports = Component = type.build()
+  prop = Property { enumerable: no }
+  for key, getValue of elementProps
+    prop.define element, key, getValue()
+
+  if isDev
+    prop.define element, "_trace", Tracer "ReactElement()"
+
+  return element
+
+elementProps =
+  $$typeof: -> ReactElement.type
+  _owner: -> ReactCurrentOwner.current
+  _store: -> { validated: no }

@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "ReactionMixin.js",
+  "sourceRoot": "../../../src/Component",
+  "sources": [
+    "ReactionMixin.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

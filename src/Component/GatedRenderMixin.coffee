@@ -1,13 +1,13 @@
 
+assertType = require "assertType"
 Reaction = require "reaction"
+assert = require "assert"
 hook = require "hook"
 
 shift = Array::shift
 
 module.exports = (type) ->
-
   type.defineValues typeValues
-
   type.defineMethods typeMethods
 
 typeValues =
@@ -23,12 +23,11 @@ typeMethods =
     assert not @_isRenderPrevented, "'isRenderPrevented' is already defined!"
     @_isRenderPrevented = isRenderPrevented
 
-    @_viewType.defineValues instanceValues
-    @_viewType.defineReactions instanceReactions
-    @_viewType.defineMethods { isRenderPrevented }
+    @defineValues instanceValues
+    @defineReactions instanceReactions
+    @defineMethods { isRenderPrevented }
 
-    @willBuild typePhases.build
-
+    @_willBuild.push typePhases.build
     return
 
 typePhases =
@@ -44,7 +43,7 @@ instanceValues =
 instanceReactions =
 
   shouldRender: ->
-    get: => not @isRenderPrevented.call @context
+    get: => not @isRenderPrevented()
     didSet: (shouldRender) =>
       return unless @needsRender and shouldRender
       @needsRender = no

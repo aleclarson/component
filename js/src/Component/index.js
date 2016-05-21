@@ -1,36 +1,43 @@
-var Component, ReactComponent, Type, type;
+var Builder, Component, NamedFunction, Property, ReactCurrentOwner, ReactElement, Tracer, Type, assertType, build, createFactory, define, elementProps, hook, isType, setKind, setType;
 
-ReactComponent = require("ReactComponent");
+require("isDev");
+
+ReactCurrentOwner = require("ReactCurrentOwner");
+
+NamedFunction = require("NamedFunction");
+
+ReactElement = require("ReactElement");
+
+assertType = require("assertType");
+
+Property = require("Property");
+
+setKind = require("setKind");
+
+setType = require("setType");
+
+Tracer = require("tracer");
+
+isType = require("isType");
+
+define = require("define");
 
 Type = require("Type");
 
-type = Type("Component");
+hook = require("hook");
 
-type.inherits(ReactComponent);
+Builder = require("./Builder");
 
-type.returnExisting(function() {
-  return Component.Builder();
+module.exports = Component = NamedFunction("Component", function(name) {
+  var self;
+  self = Builder(name);
+  hook(self, "build", build);
+  return self;
 });
 
-type.defineProperties({
-  view: {
-    get: function() {
-      return this.context.view || this;
-    }
-  },
-  context: {
-    get: function() {
-      return this.props.context || this;
-    }
-  }
-});
+setKind(Component, Function);
 
-type.defineStatics({
-  Builder: {
-    lazy: function() {
-      return require("./Builder");
-    }
-  },
+define(Component, {
   Type: {
     lazy: function() {
       return require("./Type");
@@ -40,31 +47,77 @@ type.defineStatics({
     lazy: function() {
       return require("./StyleMap");
     }
-  },
-  traverseParents: function(component) {
-    var owner, results;
-    results = [];
-    while (true) {
-      results.push(component);
-      owner = component._reactInternalInstance._currentElement._owner;
-      if (!owner) {
-        break;
-      }
-      component = owner._instance;
-    }
-    return results;
   }
 });
 
-type.initInstance(function() {
-  return this.context.view = this;
-});
+build = function(orig) {
+  var factory, type;
+  type = orig.call(this);
+  if (!isType(type, Function.Kind)) {
+    throw Error("'type' must be defined!");
+  }
+  factory = createFactory(type);
+  setType(factory, Component);
+  factory.type = type;
+  return factory;
+};
 
-type.defineMethods({
-  componentDidMount: function() {},
-  componentDidUnmount: function() {}
-});
+createFactory = function(type) {
+  return function(props) {
+    var element, getValue, i, key, len, mixin, mixins, prop, ref, value;
+    if (props.mixins) {
+      mixins = steal(props, "mixins");
+      assertType(mixins, Array, "props.mixins");
+      ref = props.mixin;
+      for (i = 0, len = ref.length; i < len; i++) {
+        mixin = ref[i];
+        for (key in mixin) {
+          value = mixin[key];
+          if (props[key] !== void 0) {
+            continue;
+          }
+          props[key] = value;
+        }
+      }
+    }
+    key = null;
+    if (props.key != null) {
+      key = steal(props, "key");
+      if (!isType(key, String)) {
+        key = "" + key;
+      }
+    }
+    element = {
+      type: type,
+      props: props,
+      key: key
+    };
+    prop = Property({
+      enumerable: false
+    });
+    for (key in elementProps) {
+      getValue = elementProps[key];
+      prop.define(element, key, getValue());
+    }
+    if (isDev) {
+      prop.define(element, "_trace", Tracer("ReactElement()"));
+    }
+    return element;
+  };
+};
 
-module.exports = Component = type.build();
+elementProps = {
+  $$typeof: function() {
+    return ReactElement.type;
+  },
+  _owner: function() {
+    return ReactCurrentOwner.current;
+  },
+  _store: function() {
+    return {
+      validated: false
+    };
+  }
+};
 
 //# sourceMappingURL=../../../map/src/Component/index.map

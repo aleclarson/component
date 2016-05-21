@@ -1,6 +1,10 @@
-var Reaction, gatedRender, hook, instanceReactions, instanceValues, shift, typeMethods, typePhases, typeValues;
+var Reaction, assert, assertType, gatedRender, hook, instanceReactions, instanceValues, shift, typeMethods, typePhases, typeValues;
+
+assertType = require("assertType");
 
 Reaction = require("reaction");
+
+assert = require("assert");
 
 hook = require("hook");
 
@@ -20,12 +24,12 @@ typeMethods = {
     assertType(isRenderPrevented, Function);
     assert(!this._isRenderPrevented, "'isRenderPrevented' is already defined!");
     this._isRenderPrevented = isRenderPrevented;
-    this._viewType.defineValues(instanceValues);
-    this._viewType.defineReactions(instanceReactions);
-    this._viewType.defineMethods({
+    this.defineValues(instanceValues);
+    this.defineReactions(instanceReactions);
+    this.defineMethods({
       isRenderPrevented: isRenderPrevented
     });
-    this.willBuild(typePhases.build);
+    this._willBuild.push(typePhases.build);
   }
 };
 
@@ -45,7 +49,7 @@ instanceReactions = {
     return {
       get: (function(_this) {
         return function() {
-          return !_this.isRenderPrevented.call(_this.context);
+          return !_this.isRenderPrevented();
         };
       })(this),
       didSet: (function(_this) {
@@ -73,4 +77,4 @@ gatedRender = function() {
   return false;
 };
 
-//# sourceMappingURL=../../../../map/src/Component/mixins/GatedRender.map
+//# sourceMappingURL=../../../map/src/Component/GatedRenderMixin.map

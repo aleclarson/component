@@ -161,12 +161,10 @@ type.initInstance (value, keyPath) ->
   if isType value, Reaction
     throw Error "NativeValue must create its own Reaction!"
 
-  else if isType value, Function.Kind
-    @reaction = Reaction.sync { keyPath, get: value }
-    return
-
   @_keyPath = keyPath
-  @value = value
+  if isType value, [ Object, Function.Kind ]
+    @_attachReaction value
+  else @value = value
 
 type.defineMethods
 
@@ -325,16 +323,13 @@ type.defineMethods
 
   _attachReaction: (reaction) ->
 
-    if isType reaction, Reaction
-      throw Error "NativeValue must create its own Reaction!"
-
-    if isType reaction, Function.Kind
-      reaction = Reaction.sync { get: reaction }
-
-    else if isType reaction, Object
+    if isType reaction, Object
       reaction = Reaction.sync reaction
 
-    else return
+    else if reaction instanceof Function
+      reaction = Reaction.sync { get: reaction }
+
+    assertType reaction, Reaction
 
     if @isReactive
       @_detachReaction()

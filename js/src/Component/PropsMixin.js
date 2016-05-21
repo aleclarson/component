@@ -1,39 +1,39 @@
-var instancePhases, typeMethods, typePhases, typeProps, typeValues;
+var assert, assertType, define, guard, instancePhases, mergeDefaults, typePhases, typePrototype, typeValues;
+
+mergeDefaults = require("mergeDefaults");
+
+assertType = require("assertType");
+
+assert = require("assert");
+
+define = require("define");
+
+guard = require("guard");
 
 module.exports = function(type) {
   type.defineValues(typeValues);
-  type.defineProperties(typeProps);
-  type.defineMethods(typeMethods);
+  type.definePrototype(typePrototype);
   return type.initInstance(typePhases.initInstance);
 };
 
 typeValues = {
-  _contextType: null,
   _propTypes: null,
-  _propDefaults: null
+  _propDefaults: null,
+  _initProps: function() {
+    return [];
+  }
 };
 
-typeProps = {
-  contextType: {
-    get: function() {
-      return this._contextType;
-    },
-    set: function(contextType) {
-      assert(!this._contextType, "'contextType' is already defined!");
-      assertType(contextType, Component.Type);
-      this._contextType = contextType;
-      return this._viewType;
-    }
-  },
+typePrototype = {
   propTypes: {
     get: function() {
       return this._propTypes;
     },
     set: function(propTypes) {
-      assert(!this._propTypes, "'propTypes' is already defined!");
       assertType(propTypes, Object);
+      assert(!this._propTypes, "'propTypes' is already defined!");
       this._propTypes = propTypes;
-      this.didBuild(function(type) {
+      this._didBuild.push(function(type) {
         return type.propTypes = propTypes;
       });
       if (!this._propDefaults) {
@@ -65,10 +65,10 @@ typeProps = {
       return this._propDefaults;
     },
     set: function(propDefaults) {
-      assert(!this._propDefaults, "'propDefaults' is already defined!");
       assertType(propDefaults, Object);
+      assert(!this._propDefaults, "'propDefaults' is already defined!");
       this._propDefaults = propDefaults;
-      this.didBuild(function(type) {
+      this._didBuild.push(function(type) {
         return type.propDefaults = propDefaults;
       });
       if (!this._propTypes) {
@@ -82,31 +82,27 @@ typeProps = {
         return props;
       });
     }
-  }
-};
-
-typeMethods = {
+  },
   createProps: function(fn) {
     assertType(fn, Function);
-    this._phases.initProps.unshift(fn);
+    this._initProps.unshift(fn);
   },
   initProps: function(fn) {
     assertType(fn, Function);
-    this._phases.initProps.push(fn);
+    this._initProps.push(fn);
   }
 };
 
 typePhases = {
   initInstance: function() {
-    this._phases.initProps = [];
-    return this.willBuild(instancePhases.willBuild);
+    return this._willBuild.push(instancePhases.willBuild);
   }
 };
 
 instancePhases = {
   willBuild: function() {
     var phase, phases, processProps;
-    phases = this._phases.initProps;
+    phases = this._initProps;
     if (phases.length === 0) {
       return;
     }
@@ -125,10 +121,10 @@ instancePhases = {
         return props;
       };
     }
-    return this._viewType.didBuild(function(type) {
+    return this._didBuild.push(function(type) {
       return define(type, "_processProps", processProps);
     });
   }
 };
 
-//# sourceMappingURL=../../../../map/src/Component/mixins/Props.map
+//# sourceMappingURL=../../../map/src/Component/PropsMixin.map
