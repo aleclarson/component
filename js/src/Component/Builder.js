@@ -12,28 +12,39 @@ type = Type("ComponentBuilder");
 
 type.inherits(Builder);
 
-type.initInstance(function() {
+type._initInstance.unshift(function() {
+  this._tracer.trace();
   return this._willBuild.push(function() {
     return this._kind != null ? this._kind : this._kind = ReactComponent;
   });
 });
 
+type.definePrototype({
+  _delegate: {
+    get: function() {
+      return this;
+    }
+  }
+});
+
+type.defineStatics({
+  _elementType: {
+    get: function() {
+      return this;
+    }
+  }
+});
+
 type.overrideMethods({
-  inherits: function() {
-    throw Error("Cannot call 'inherits' as a ComponentBuilder!");
-  },
-  createInstance: function() {
-    throw Error("Cannot call 'createInstance' as a ComponentBuilder!");
-  },
   __createBaseObject: function(args) {
     var instance;
-    instance = Object.create(ReactComponent.prototype);
+    instance = Builder.prototype.__createBaseObject.apply(null, arguments);
     ReactComponent.apply(instance, args);
     return instance;
   }
 });
 
-type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StyleMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./GatedRenderMixin")]);
+type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StyleMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
 
 module.exports = type.build();
 

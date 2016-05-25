@@ -22,35 +22,35 @@ module.exports = {
     lazy: function() {
       var render;
       render = require("View");
-      return NativeComponent(render);
+      return NativeComponent("View", render);
     }
   },
   ImageView: {
     lazy: function() {
       var render;
       render = require("Image");
-      return NativeComponent(render);
+      return NativeComponent("ImageView", render);
     }
   },
   TextView: {
     lazy: function() {
       var render;
       render = require("Text");
-      return NativeComponent(render);
+      return NativeComponent("TextView", render);
     }
   },
   TextInput: {
     lazy: function() {
       var render;
       render = require("TextInput");
-      return NativeComponent(render);
+      return NativeComponent("TextInput", render);
     }
   },
   WebView: {
     lazy: function() {
       var render;
       render = require("WebView");
-      return NativeComponent(render);
+      return NativeComponent("WebView", render);
     }
   },
   StaticRenderer: {

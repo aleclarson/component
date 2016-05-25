@@ -1,6 +1,8 @@
-var Builder, applyChain, assert, assertType, emptyFunction, guard, instanceMethods, instancePhases, sync, typeMethods, typePhases, typeValues;
+var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, guard, inheritArray, instImpl, sync, typeImpl, viewImpl;
 
 require("isDev");
+
+ReactComponent = require("ReactComponent");
 
 emptyFunction = require("emptyFunction");
 
@@ -17,18 +19,16 @@ guard = require("guard");
 sync = require("sync");
 
 module.exports = function(type) {
-  type.defineValues(typeValues);
-  type.defineMethods(typeMethods);
-  return type.initInstance(typePhases.initInstance);
+  type.defineValues(typeImpl.values);
+  type.defineMethods(typeImpl.methods);
+  return type.initInstance(typeImpl.initInstance);
 };
 
-typeValues = {
-  _render: function() {
-    return emptyFunction.thatReturnsFalse;
-  },
-  _shouldUpdate: function() {
-    return emptyFunction.thatReturnsTrue;
-  },
+typeImpl = {};
+
+typeImpl.values = {
+  _render: null,
+  _shouldUpdate: null,
   _willMount: function() {
     return [];
   },
@@ -40,7 +40,7 @@ typeValues = {
   }
 };
 
-typeMethods = {
+typeImpl.methods = {
   willMount: function(func) {
     assertType(func, Function);
     this._willMount.push(func);
@@ -63,36 +63,64 @@ typeMethods = {
   }
 };
 
-typePhases = {
-  initInstance: function() {
-    return this._willBuild.push(instancePhases.willBuild);
-  }
+typeImpl.initInstance = function() {
+  return this._willBuild.push(instImpl.willBuild);
 };
 
-instancePhases = {
-  willBuild: function() {
-    this.definePrototype({
-      _willMount: this._willMount,
-      _didMount: this._didMount,
-      _willUnmount: this._willUnmount
-    });
-    this.defineMethods(instanceMethods);
-    return this.defineMethods({
-      shouldComponentUpdate: this._shouldUpdate,
-      render: this._render
-    });
+instImpl = {};
+
+instImpl.willBuild = function() {
+  var kind, ownMethods;
+  kind = this._kind;
+  ownMethods = {};
+  if (kind === ReactComponent) {
+    this.defineMethods(viewImpl.methods);
+    ownMethods.render = this._render || emptyFunction.thatReturnsFalse;
+    ownMethods.shouldComponentUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
+  } else {
+    inheritArray(this, "_willMount", kind);
+    inheritArray(this, "_didMount", kind);
+    inheritArray(this, "_willUnmount", kind);
+    if (this._render) {
+      ownMethods.render = this._render;
+    }
+    if (this._shouldUpdate) {
+      ownMethods.shouldComponentUpdate = this._shouldUpdate;
+    }
   }
+  this.defineMethods(ownMethods);
+  return this.definePrototype({
+    _willMount: this._willMount,
+    _didMount: this._didMount,
+    _willUnmount: this._willUnmount
+  });
 };
 
-instanceMethods = {
+viewImpl = {};
+
+viewImpl.methods = {
   componentWillMount: function() {
-    return applyChain(this._willMount, this);
+    return applyChain(this._willMount, this._delegate);
   },
   componentDidMount: function() {
-    return applyChain(this._didMount, this);
+    return applyChain(this._didMount, this._delegate);
   },
   componentWillUnmount: function() {
-    return applyChain(this._willUnmount, this);
+    return applyChain(this._willUnmount, this._delegate);
+  }
+};
+
+inheritArray = function(obj, key, type) {
+  var inherited;
+  inherited = type.prototype[key];
+  assertType(inherited, Array);
+  if (obj[key].length) {
+    if (!inherited.length) {
+      return;
+    }
+    obj[key] = inherited.concat(obj[key]);
+  } else {
+    obj[key] = inherited;
   }
 };
 

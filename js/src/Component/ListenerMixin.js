@@ -1,51 +1,71 @@
-var Event, assertType, define, typeMethods;
+var Event, Property, Random, assertType, define, frozen, hasListeners, typeImpl;
 
 assertType = require("assertType");
+
+Property = require("Property");
+
+Random = require("random");
 
 define = require("define");
 
 Event = require("event");
 
+hasListeners = Symbol("Component.hasListeners");
+
+frozen = Property({
+  frozen: true
+});
+
 module.exports = function(type) {
-  return type.defineMethods(typeMethods);
+  return type.defineMethods(typeImpl.methods);
 };
 
-typeMethods = {
+typeImpl = {};
+
+typeImpl.methods = {
   defineListeners: function(createListeners) {
+    var delegate, kind, phaseId;
     assertType(createListeners, Function);
-    if (!this._hasListeners) {
-      define(this, "_hasListeners", true);
-      this._hasListeners = true;
-      this._initInstance.push(function() {
-        return define(this, "__listeners", []);
-      });
-      this.willMount(function() {
-        var i, len, listener, ref;
-        ref = this.__listeners;
-        for (i = 0, len = ref.length; i < len; i++) {
-          listener = ref[i];
-          listener.start();
-        }
-      });
-      this.willUnmount(function() {
-        var i, len, listener, ref;
-        ref = this.__listeners;
-        for (i = 0, len = ref.length; i < len; i++) {
-          listener = ref[i];
-          listener.stop();
-        }
-      });
+    delegate = this._delegate;
+    kind = delegate._kind;
+    if (!this[hasListeners]) {
+      define(this, hasListeners, true);
+      if (!(kind && kind.prototype[hasListeners])) {
+        delegate._didBuild.push(function(type) {
+          return define(type.prototype, hasListeners, true);
+        });
+        delegate._initInstance.push(function() {
+          return define(this, "__listeners", Object.create(null));
+        });
+      }
     }
-    return this._initInstance.push(function(args) {
-      var onListen;
-      onListen = Event.didListen((function(_this) {
-        return function(listener) {
-          listener.stop();
-          return _this.__listeners.push(listener);
-        };
-      })(this));
+    phaseId = Random.id();
+    delegate._initInstance.push(function(args) {
+      var listeners, onListen;
+      listeners = [];
+      onListen = Event.didListen(function(listener) {
+        listener.stop();
+        return listeners.push(listener);
+      });
       createListeners.apply(this, args);
-      return onListen.stop();
+      onListen.stop();
+      this.__listeners[phaseId] = listeners;
+    });
+    this._willMount.push(function() {
+      var i, len, listener, ref;
+      ref = this._delegate.__listeners[phaseId];
+      for (i = 0, len = ref.length; i < len; i++) {
+        listener = ref[i];
+        listener.start();
+      }
+    });
+    this._willUnmount.push(function() {
+      var i, len, listener, ref;
+      ref = this._delegate.__listeners[phaseId];
+      for (i = 0, len = ref.length; i < len; i++) {
+        listener = ref[i];
+        listener.stop();
+      }
     });
   }
 };

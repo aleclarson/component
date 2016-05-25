@@ -8,26 +8,30 @@ NativeProps = require "./Props"
 Component = require "../Component"
 
 module.exports =
-NativeComponent = (render) ->
+NativeComponent = (name, render) ->
 
+  assertType name, String
   assertType render, Function
 
-  type = Component()
+  type = Component "Native" + name
 
   type.definePrototype
     _render: render
 
-  type.didBuild (type) ->
-    type.propTypes = render.propTypes
+  if render.propTypes
+    type.didBuild (type) ->
+      type.propTypes = render.propTypes
 
-  type.defineValues instanceValues
-  type.defineMethods instanceMethods
-  type.defineListeners defineListeners
-  type.willUnmount willUnmount
+  type.defineValues typeImpl.values
+  type.defineMethods typeImpl.methods
+  type.defineListeners typeImpl.listeners
+  type.willUnmount typeImpl.willUnmount
 
   return type.build()
 
-instanceValues =
+typeImpl = {}
+
+typeImpl.values =
 
   child: null
 
@@ -36,7 +40,7 @@ instanceValues =
   _nativeProps: ->
     NativeProps @props, @_render.propTypes
 
-instanceMethods =
+typeImpl.methods =
 
   render: ->
     props = @_nativeProps.values
@@ -49,7 +53,7 @@ instanceMethods =
       @child.setNativeProps @_queuedProps
       @_queuedProps = null
 
-defineListeners = ->
+typeImpl.listeners = ->
 
   @_nativeProps.didSet (newProps) =>
 
@@ -61,5 +65,5 @@ defineListeners = ->
     .fail (error) =>
       throwFailure error, { component: this, newProps }
 
-willUnmount = ->
+typeImpl.willUnmount = ->
   @_nativeProps.detach()

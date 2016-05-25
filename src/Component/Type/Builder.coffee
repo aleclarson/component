@@ -13,18 +13,22 @@ type = Type "ComponentTypeBuilder"
 
 type.inherits Type.Builder
 
-type.overrideMethods
+type._initInstance.unshift ->
+  @_tracer.trace()
+
+type.defineMethods
 
   inherits: (kind) ->
+
     @__super arguments
-    # @_viewType.inherits
+
+    if kind instanceof Component.Type
+      @_componentType.inherits kind.View
+
     return
 
 type.addMixins [
   require "./ViewMixin"
-  require "../StyleMixin"
-  require "../NativeValueMixin"
-  require "../ListenerMixin"
 ]
 
 module.exports = type.build()

@@ -1,4 +1,4 @@
-var Component, NativeComponent, NativeProps, ReactElement, assertType, defineListeners, instanceMethods, instanceValues, throwFailure, willUnmount;
+var Component, NativeComponent, NativeProps, ReactElement, assertType, throwFailure, typeImpl;
 
 throwFailure = require("failure").throwFailure;
 
@@ -10,24 +10,29 @@ NativeProps = require("./Props");
 
 Component = require("../Component");
 
-module.exports = NativeComponent = function(render) {
+module.exports = NativeComponent = function(name, render) {
   var type;
+  assertType(name, String);
   assertType(render, Function);
-  type = Component();
+  type = Component("Native" + name);
   type.definePrototype({
     _render: render
   });
-  type.didBuild(function(type) {
-    return type.propTypes = render.propTypes;
-  });
-  type.defineValues(instanceValues);
-  type.defineMethods(instanceMethods);
-  type.defineListeners(defineListeners);
-  type.willUnmount(willUnmount);
+  if (render.propTypes) {
+    type.didBuild(function(type) {
+      return type.propTypes = render.propTypes;
+    });
+  }
+  type.defineValues(typeImpl.values);
+  type.defineMethods(typeImpl.methods);
+  type.defineListeners(typeImpl.listeners);
+  type.willUnmount(typeImpl.willUnmount);
   return type.build();
 };
 
-instanceValues = {
+typeImpl = {};
+
+typeImpl.values = {
   child: null,
   _queuedProps: null,
   _nativeProps: function() {
@@ -35,7 +40,7 @@ instanceValues = {
   }
 };
 
-instanceMethods = {
+typeImpl.methods = {
   render: function() {
     var props;
     props = this._nativeProps.values;
@@ -55,7 +60,7 @@ instanceMethods = {
   }
 };
 
-defineListeners = function() {
+typeImpl.listeners = function() {
   return this._nativeProps.didSet((function(_this) {
     return function(newProps) {
       return guard(function() {
@@ -74,7 +79,7 @@ defineListeners = function() {
   })(this));
 };
 
-willUnmount = function() {
+typeImpl.willUnmount = function() {
   return this._nativeProps.detach();
 };
 

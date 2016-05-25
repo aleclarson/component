@@ -1,46 +1,75 @@
 
 assertType = require "assertType"
 Property = require "Property"
+Random = require "random"
 isType = require "isType"
 define = require "define"
 
 NativeValue = require "../Native/Value"
 
+hasNativeValues = Symbol "Component.hasNativeValues"
+
+frozen = Property { frozen: yes }
+
 module.exports = (type) ->
-  type.defineMethods typeMethods
+  type.defineMethods typeImpl.methods
 
-typeMethods =
+#
+# The 'type' is the Component.Builder constructor
+#
 
-  defineNativeValues: (values) ->
+typeImpl = {}
 
-    assertType values, Object
+typeImpl.methods =
 
-    if not @_hasNativeValues
-      define this, "_hasNativeValues", yes
+  defineNativeValues: (nativeValues) ->
 
-      @_initInstance.push ->
-        define this, "__nativeValues", []
+    assertType nativeValues, Object
 
-      @willMount ->
-        for key in @__nativeValues
-          this[key].__attach()
-        return
+    delegate = @_delegate
+    kind = delegate._kind
 
-      @willUnmount ->
-        for key in @__nativeValues
-          this[key].__detach()
-        return
+    if not delegate[hasNativeValues]
+      frozen.define delegate, hasNativeValues, yes
 
+      # Define 'this.__nativeKeys' only once in the inheritance chain.
+      unless kind and kind::[hasNativeValues]
+
+        delegate._didBuild.push (type) ->
+          frozen.define type.prototype, hasNativeValues, yes
+
+        delegate._initInstance.push ->
+          frozen.define this, "__nativeKeys", Object.create null
+
+    # Function values are used as initializers.
     computed = Object.create null
-    computed[key] = yes for key, value of values when isType value, Function
+    for key, value of nativeValues
+      if isType value, Function
+        computed[key] = yes
 
-    prop = Property { frozen: yes }
-    @_initInstance.push (args) ->
-      for key, value of values
+    phaseId = Random.id()
+    delegate._initInstance.push (args) ->
+      keys = []
+      for key, value of nativeValues
         value = value.apply this, args if computed[key]
         continue if value is undefined
-        @__nativeValues.push key
-        prop.define this, key,
+        keys.push key
+        frozen.define this, key,
           if value instanceof NativeValue then value
           else NativeValue value, @constructor.name + "." + key
+      @__nativeKeys[phaseId] = keys
       return
+
+    @_willMount.push ->
+      delegate = @_delegate
+      for key in delegate.__nativeKeys[phaseId]
+        delegate[key].__attach()
+      return
+
+    @_willUnmount.push ->
+      delegate = @_delegate
+      for key in delegate.__nativeKeys[phaseId]
+        delegate[key].__detach()
+      return
+
+    return

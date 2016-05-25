@@ -1,95 +1,120 @@
-var Component, assertType, instImpl, sync, typeImpl, viewImpl;
+var ComponentBuilder, ElementType, Property, frozen, instImpl, typeImpl, viewImpl;
 
-assertType = require("assertType");
+require("isDev");
 
-sync = require("sync");
+Property = require("Property");
 
-Component = require("..");
+ComponentBuilder = require("../Builder");
+
+ElementType = require("../ElementType");
+
+frozen = Property({
+  frozen: true
+});
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);
   type.definePrototype(typeImpl.prototype);
-  type.defineMethods(typeImpl.methods);
   return type.initInstance(typeImpl.initInstance);
 };
 
 typeImpl = {};
 
 typeImpl.values = {
-  _viewType: function() {
-    return Component();
+  _componentType: function() {
+    var name, self;
+    name = this._name ? this._name + "_View" : null;
+    self = ComponentBuilder(name);
+    frozen.define(self, "_delegate", this);
+    return self;
   }
 };
 
-typeImpl.prototype = {
-  propTypes: {
-    get: function() {
-      return this._viewType.propTypes;
-    },
-    set: function(propTypes) {
-      return this._viewType.propTypes = propTypes;
-    }
-  },
-  propDefaults: {
-    get: function() {
-      return this._viewType.propDefaults;
-    },
-    set: function(propDefaults) {
-      return this._viewType.propDefaults = propDefaults;
-    }
-  }
-};
+typeImpl.prototype = {};
 
-typeImpl.methods = {};
+["propTypes", "propDefaults"].forEach(function(key) {
+  return typeImpl.prototype[key] = {
+    get: function() {
+      return this._componentType[key];
+    },
+    set: function(newValue) {
+      return this._componentType[key] = newValue;
+    }
+  };
+});
 
-["willMount", "didMount", "willUnmount", "shouldUpdate", "render", "isRenderPrevented"].forEach(function(key) {
-  return typeImpl.methods[key] = function(func) {
-    this._viewType[key](function() {
-      return func.apply(this._instance, arguments);
-    });
+[].forEach(function(key) {});
+
+["render", "shouldUpdate", "defineListeners", "isRenderPrevented"].forEach(function(key) {
+  return typeImpl.prototype[key] = {
+    value: function(func) {
+      var bound;
+      bound = function() {
+        return func.apply(this._delegate, arguments);
+      };
+      if (isDev) {
+        bound.toString = function() {
+          return func.toString();
+        };
+      }
+      return this._componentType[key](bound);
+    }
+  };
+});
+
+["willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles", "defineNativeValues", "defineReactions"].forEach(function(key) {
+  return typeImpl.prototype[key] = {
+    value: function(func) {
+      return this._componentType[key](func);
+    }
+  };
+});
+
+["_willMount", "_didMount", "_willUnmount"].forEach(function(key) {
+  return typeImpl.prototype[key] = {
+    get: function() {
+      return this._componentType[key];
+    }
   };
 });
 
 typeImpl.initInstance = function() {
-  var type;
   this._willBuild.push(instImpl.willBuild);
-  type = this._viewType;
-  type.definePrototype(viewImpl.prototype);
-  type.initInstance(viewImpl.initInstance);
-  return type.willBuild(viewImpl.willBuild);
+  return this._componentType.willBuild(viewImpl.willBuild);
 };
 
 instImpl = {};
 
-instImpl.values = {
-  _view: null
-};
-
 instImpl.prototype = {
-  view: {
-    get: function() {
-      return this._view;
-    }
-  },
   props: {
     get: function() {
       return this._view.props;
     }
   },
-  render: function(props) {
-    if (!props) {
-      props = {};
+  view: {
+    get: function() {
+      return this._view;
     }
-    props._instance = this;
-    return this.constructor.View(props);
   }
+};
+
+instImpl.values = {
+  render: function() {
+    return ElementType(this.constructor.View, (function(_this) {
+      return function(props) {
+        props._delegate = _this;
+        return props;
+      };
+    })(this));
+  },
+  _view: null
 };
 
 instImpl.willBuild = function() {
   this.defineStatics({
-    View: this._viewType.build()
+    View: this._componentType.build()
   });
-  if (this._kind) {
+  if (this._kind instanceof Component.Type) {
     return;
   }
   this.defineValues(instImpl.values);
@@ -99,21 +124,30 @@ instImpl.willBuild = function() {
 viewImpl = {};
 
 viewImpl.prototype = {
-  _instance: {
+  _delegate: {
     get: function() {
-      return this.props._instance;
+      return this.props._delegate;
     }
   }
 };
 
-viewImpl.initInstance = function() {
-  return this._instance._view = this;
+viewImpl.willBuild = function() {
+  if (this._kind instanceof Component.Type) {
+    return;
+  }
+  this.definePrototype(viewImpl.prototype);
+  return this._willBuild.push(function() {
+    this._initInstance.unshift(viewImpl.initInstance);
+    return this._willUnmount.push(viewImpl.willUnmount);
+  });
 };
 
-viewImpl.willBuild = function() {
-  return this._willUnmount.push(function() {
-    return this._instance._view = null;
-  });
+viewImpl.initInstance = function() {
+  return this._delegate._view = this;
+};
+
+viewImpl.willUnmount = function() {
+  return this._delegate._view = null;
 };
 
 //# sourceMappingURL=../../../../map/src/Component/Type/ViewMixin.map

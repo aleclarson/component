@@ -1,4 +1,6 @@
 
+require "isDev"
+
 assertType = require "assertType"
 Reaction = require "reaction"
 assert = require "assert"
@@ -7,40 +9,62 @@ hook = require "hook"
 shift = Array::shift
 
 module.exports = (type) ->
-  type.defineValues typeValues
-  type.defineMethods typeMethods
+  type.defineValues typeImpl.values
+  type.defineMethods typeImpl.methods
 
-typeValues =
+#
+# The 'type' is the Component.Builder constructor
+#
+
+typeImpl = {}
+
+typeImpl.values =
 
   _isRenderPrevented: null
 
-typeMethods =
+typeImpl.methods =
 
-  isRenderPrevented: (isRenderPrevented) ->
+  isRenderPrevented: (func) ->
 
-    assertType isRenderPrevented, Function
+    assertType func, Function
 
     assert not @_isRenderPrevented, "'isRenderPrevented' is already defined!"
-    @_isRenderPrevented = isRenderPrevented
+    @_isRenderPrevented = func
 
-    @defineValues instanceValues
-    @defineReactions instanceReactions
-    @defineMethods { isRenderPrevented }
+    @defineValues instImpl.values
+    @defineReactions instImpl.reactions
+    @defineMethods { isRenderPrevented: func }
 
-    @_willBuild.push typePhases.build
+    @_willBuild.push typeImpl.willBuild
     return
 
-typePhases =
+typeImpl.willBuild = ->
+  hook this, "_render", typeImpl.gatedRender
+  hook this, "_shouldUpdate", typeImpl.gatedRender
 
-  willBuild: ->
-    hook this, "_render", gatedRender
-    hook this, "_shouldUpdate", gatedRender
+# Must be used with 'hook()'.
+typeImpl.gatedRender = ->
 
-instanceValues =
+  # Allow the render to go through.
+  if @view.shouldRender.value
+    orig = shift.call arguments
+    return orig.call this
+
+  # Wait for 'isRenderPrevented'
+  @needsRender = yes
+  return no
+
+#
+# The 'instance' is a Component.Builder
+#
+
+instImpl = {}
+
+instImpl.values =
 
   needsRender: no
 
-instanceReactions =
+instImpl.reactions =
 
   shouldRender: ->
     get: => not @isRenderPrevented()
@@ -48,15 +72,3 @@ instanceReactions =
       return unless @needsRender and shouldRender
       @needsRender = no
       try @forceUpdate()
-
-# Must be used with 'hook()'.
-gatedRender = ->
-
-  # Allow the render to go through.
-  if @view.shouldRender.value
-    orig = shift.call arguments
-    return orig.apply this, arguments
-
-  # Wait for 'isRenderPrevented'
-  @needsRender = yes
-  return no

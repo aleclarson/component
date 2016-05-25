@@ -1,99 +1,119 @@
 
-assertType = require "assertType"
-sync = require "sync"
+require "isDev"
 
-Component = require ".."
+Property = require "Property"
+
+ComponentBuilder = require "../Builder"
+ElementType = require "../ElementType"
+
+frozen = Property { frozen: yes }
 
 module.exports = (type) ->
   type.defineValues typeImpl.values
   type.definePrototype typeImpl.prototype
-  type.defineMethods typeImpl.methods
   type.initInstance typeImpl.initInstance
 
 #
-# The 'type' is a subclass of 'Type'
+# The 'type' is the 'Component.Type.Builder' constructor
 #
 
 typeImpl = {}
 
 typeImpl.values =
 
-  _viewType: -> Component()
+  _componentType: ->
+    name = if @_name then @_name + "_View" else null
+    self = ComponentBuilder name
+    frozen.define self, "_delegate", this
+    return self
 
-typeImpl.prototype =
+typeImpl.prototype = {}
 
-  propTypes:
-    get: -> @_viewType.propTypes
-    set: (propTypes) ->
-      @_viewType.propTypes = propTypes
+# Proxy both the getter and setter.
+[ "propTypes", "propDefaults" ].forEach (key) ->
 
-  propDefaults:
-    get: -> @_viewType.propDefaults
-    set: (propDefaults) ->
-      @_viewType.propDefaults = propDefaults
+  typeImpl.prototype[key] =
+    get: -> @_componentType[key]
+    set: (newValue) ->
+      @_componentType[key] = newValue
 
-typeImpl.methods = {}
+# Proxy a higher-order function.
+[  ].forEach (key) ->
 
-[ "willMount", "didMount", "willUnmount"
-  "shouldUpdate", "render", "isRenderPrevented" ]
-.forEach (key) ->
-  typeImpl.methods[key] = (func) ->
-    @_viewType[key] ->
-      func.apply @_instance, arguments
-    return
+# Proxy a bound, higher-order function.
+[ "render", "shouldUpdate", "defineListeners", "isRenderPrevented" ].forEach (key) ->
+
+  typeImpl.prototype[key] = value: (func) ->
+    bound = -> func.apply @_delegate, arguments
+    if isDev then bound.toString = -> func.toString()
+    @_componentType[key] bound
+
+# Proxy a function that takes an argument.
+[ "willMount", "didMount", "willUnmount", "defineStyles",
+  "overrideStyles", "defineNativeValues", "defineReactions" ].forEach (key) ->
+
+  typeImpl.prototype[key] = value: (func) ->
+    @_componentType[key] func
+
+# Proxy just the getter.
+[ "_willMount", "_didMount", "_willUnmount" ].forEach (key) ->
+
+  typeImpl.prototype[key] = get: ->
+    @_componentType[key]
 
 typeImpl.initInstance = ->
-
   @_willBuild.push instImpl.willBuild
-
-  type = @_viewType
-  type.definePrototype viewImpl.prototype
-  type.initInstance viewImpl.initInstance
-  type.willBuild viewImpl.willBuild
+  @_componentType.willBuild viewImpl.willBuild
 
 #
-# The 'instance' is a subclass of 'Type.Builder'
+# The 'instance' is a 'Component.Type.Builder' that is not yet built.
 #
 
 instImpl = {}
 
-instImpl.values =
-
-  _view: null
-
 instImpl.prototype =
-
-  view: get: ->
-    @_view
 
   props: get: ->
     @_view.props
 
-  render: (props) ->
-    props = {} if not props
-    props._instance = this
-    return @constructor.View props
+  view: get: ->
+    @_view
+
+instImpl.values =
+
+  render: ->
+    ElementType @constructor.View, (props) =>
+      props._delegate = this
+      return props
+
+  _view: null
 
 instImpl.willBuild = ->
-  @defineStatics View: @_viewType.build()
-  return if @_kind
+  @defineStatics View: @_componentType.build()
+  return if @_kind instanceof Component.Type
   @defineValues instImpl.values
   @definePrototype instImpl.prototype
 
 #
-# The 'view' is a subclass of 'ReactComponent'
+# The 'view' is a 'Type.Builder' that inherits from 'ReactComponent'
 #
 
 viewImpl = {}
 
 viewImpl.prototype =
 
-  _instance: get: ->
-    @props._instance
-
-viewImpl.initInstance = ->
-  @_instance._view = this
+  _delegate: get: ->
+    @props._delegate
 
 viewImpl.willBuild = ->
-  @_willUnmount.push ->
-    @_instance._view = null
+  return if @_kind instanceof Component.Type
+  @definePrototype viewImpl.prototype
+  @_willBuild.push -> # Try to be the very last phase.
+    @_initInstance.unshift viewImpl.initInstance
+    @_willUnmount.push viewImpl.willUnmount
+
+viewImpl.initInstance = ->
+  @_delegate._view = this
+
+viewImpl.willUnmount = ->
+  @_delegate._view = null

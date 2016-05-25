@@ -7,49 +7,47 @@ Property = require "Property"
 StyleMap = require "./StyleMap"
 
 module.exports = (type) ->
-  type.defineValues typeValues
-  type.defineMethods typeMethods
-  type.willBuild typePhases.willBuild
-  return 1
+  type.defineProperties typeImpl.properties
+  type.defineMethods typeImpl.methods
+  type.willBuild typeImpl.willBuild
 
-typeValues =
+#
+# The 'type' is the Component.Builder constructor
+#
 
-  _styles: null
+typeImpl = {}
 
-typeMethods =
+typeImpl.properties =
+
+  _styles: lazy: ->
+    StyleMap @_kind and @_kind.styles
+
+typeImpl.methods =
 
   defineStyles: (styles) ->
     assertType styles, Object
-    @_initStyleMap()
     @_styles.define styles
     return
 
   overrideStyles: (styles) ->
     assertType styles, Object
-    @_initStyleMap()
     @_styles.override styles
     return
 
-  _initStyleMap: ->
-    return if @_styles
-    @_styles = StyleMap @_kind and @_kind.styles
+typeImpl.willBuild = ->
 
-typePhases =
+  styles = @_styles
+  inherited = @_kind and @_kind.styles
 
-  willBuild: ->
+  if not styles
+    return if not inherited
+    styles = inherited
 
-    styles = @_styles
-    inherited = @_kind and @_kind.styles
+  @defineStatics { styles }
 
-    if not styles
-      return if not inherited
-      styles = inherited
-
-    @defineStatics { styles }
-
-    if not inherited
-      prop = Property { frozen: isDev }
-      @defineProperties
-        styles: get: ->
-          styles = @constructor.styles.bind this
-          prop.define this, "styles", styles
+  if not inherited
+    prop = Property { frozen: isDev }
+    @defineProperties
+      styles: get: ->
+        styles = @constructor.styles.bind this
+        prop.define this, "styles", styles

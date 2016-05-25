@@ -1,4 +1,6 @@
-var Reaction, assert, assertType, gatedRender, hook, instanceReactions, instanceValues, shift, typeMethods, typePhases, typeValues;
+var Reaction, assert, assertType, hook, instImpl, shift, typeImpl;
+
+require("isDev");
 
 assertType = require("assertType");
 
@@ -11,40 +13,52 @@ hook = require("hook");
 shift = Array.prototype.shift;
 
 module.exports = function(type) {
-  type.defineValues(typeValues);
-  return type.defineMethods(typeMethods);
+  type.defineValues(typeImpl.values);
+  return type.defineMethods(typeImpl.methods);
 };
 
-typeValues = {
+typeImpl = {};
+
+typeImpl.values = {
   _isRenderPrevented: null
 };
 
-typeMethods = {
-  isRenderPrevented: function(isRenderPrevented) {
-    assertType(isRenderPrevented, Function);
+typeImpl.methods = {
+  isRenderPrevented: function(func) {
+    assertType(func, Function);
     assert(!this._isRenderPrevented, "'isRenderPrevented' is already defined!");
-    this._isRenderPrevented = isRenderPrevented;
-    this.defineValues(instanceValues);
-    this.defineReactions(instanceReactions);
+    this._isRenderPrevented = func;
+    this.defineValues(instImpl.values);
+    this.defineReactions(instImpl.reactions);
     this.defineMethods({
-      isRenderPrevented: isRenderPrevented
+      isRenderPrevented: func
     });
-    this._willBuild.push(typePhases.build);
+    this._willBuild.push(typeImpl.willBuild);
   }
 };
 
-typePhases = {
-  willBuild: function() {
-    hook(this, "_render", gatedRender);
-    return hook(this, "_shouldUpdate", gatedRender);
-  }
+typeImpl.willBuild = function() {
+  hook(this, "_render", typeImpl.gatedRender);
+  return hook(this, "_shouldUpdate", typeImpl.gatedRender);
 };
 
-instanceValues = {
+typeImpl.gatedRender = function() {
+  var orig;
+  if (this.view.shouldRender.value) {
+    orig = shift.call(arguments);
+    return orig.call(this);
+  }
+  this.needsRender = true;
+  return false;
+};
+
+instImpl = {};
+
+instImpl.values = {
   needsRender: false
 };
 
-instanceReactions = {
+instImpl.reactions = {
   shouldRender: function() {
     return {
       get: (function(_this) {
@@ -65,16 +79,6 @@ instanceReactions = {
       })(this)
     };
   }
-};
-
-gatedRender = function() {
-  var orig;
-  if (this.view.shouldRender.value) {
-    orig = shift.call(arguments);
-    return orig.apply(this, arguments);
-  }
-  this.needsRender = true;
-  return false;
 };
 
 //# sourceMappingURL=../../../map/src/Component/GatedRenderMixin.map

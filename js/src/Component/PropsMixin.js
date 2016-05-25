@@ -1,22 +1,30 @@
-var assert, assertType, define, guard, instancePhases, mergeDefaults, typePhases, typePrototype, typeValues;
+var ReactComponent, assert, assertType, define, getKind, guard, has, instImpl, mergeDefaults, superWrap, typeImpl;
+
+ReactComponent = require("ReactComponent");
 
 mergeDefaults = require("mergeDefaults");
 
 assertType = require("assertType");
 
-assert = require("assert");
+getKind = require("getKind");
 
 define = require("define");
 
+assert = require("assert");
+
 guard = require("guard");
 
+has = require("has");
+
 module.exports = function(type) {
-  type.defineValues(typeValues);
-  type.definePrototype(typePrototype);
-  return type.initInstance(typePhases.initInstance);
+  type.defineValues(typeImpl.values);
+  type.definePrototype(typeImpl.prototype);
+  return type.initInstance(typeImpl.initInstance);
 };
 
-typeValues = {
+typeImpl = {};
+
+typeImpl.values = {
   _propTypes: null,
   _propDefaults: null,
   _initProps: function() {
@@ -24,7 +32,7 @@ typeValues = {
   }
 };
 
-typePrototype = {
+typeImpl.prototype = {
   propTypes: {
     get: function() {
       return this._propTypes;
@@ -93,38 +101,62 @@ typePrototype = {
   }
 };
 
-typePhases = {
-  initInstance: function() {
-    return this._willBuild.push(instancePhases.willBuild);
+typeImpl.initInstance = function() {
+  return this._willBuild.push(instImpl.willBuild);
+};
+
+instImpl = {};
+
+instImpl.willBuild = function() {
+  var phases, processProps, superImpl;
+  this._didBuild.push((function(_this) {
+    return function() {
+      return _this._didBuild.push(instImpl.didBuild);
+    };
+  })(this));
+  phases = this._initProps;
+  if (phases.length) {
+    processProps = function(props) {
+      var i, len, phase;
+      for (i = 0, len = phases.length; i < len; i++) {
+        phase = phases[i];
+        props = phase.call(null, props);
+      }
+      return props;
+    };
+  }
+  if (superImpl = this._kind && this._kind.prototype._processProps) {
+    processProps = superWrap(processProps, superImpl);
+  }
+  if (processProps) {
+    return this._didBuild.push(function(type) {
+      return define(type.prototype, "_processProps", processProps);
+    });
   }
 };
 
-instancePhases = {
-  willBuild: function() {
-    var phase, phases, processProps;
-    phases = this._initProps;
-    if (phases.length === 0) {
-      return;
-    }
-    if (phases.length === 1) {
-      phase = phases[0];
-      processProps = function(props) {
-        return phase.call(null, props);
-      };
-    } else {
-      processProps = function(props) {
-        var i, len;
-        for (i = 0, len = phases.length; i < len; i++) {
-          phase = phases[i];
-          props = phase.call(null, props);
-        }
-        return props;
-      };
-    }
-    return this._didBuild.push(function(type) {
-      return define(type, "_processProps", processProps);
-    });
+instImpl.didBuild = function(type) {
+  if (ReactComponent !== getKind(type)) {
+    return;
   }
+  if (has(type.prototype, "_delegate")) {
+    return;
+  }
+  return define(type.prototype, "_delegate", {
+    get: function() {
+      return this;
+    }
+  });
+};
+
+superWrap = function(processProps, superImpl) {
+  if (!processProps) {
+    return superImpl;
+  }
+  return function(props) {
+    props = processProps(props);
+    return superImpl(props);
+  };
 };
 
 //# sourceMappingURL=../../../map/src/Component/PropsMixin.map

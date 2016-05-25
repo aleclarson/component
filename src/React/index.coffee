@@ -14,23 +14,23 @@ module.exports =
 
   View: lazy: ->
     render = require "View"
-    NativeComponent render
+    NativeComponent "View", render
 
   ImageView: lazy: ->
     render = require "Image"
-    NativeComponent render
+    NativeComponent "ImageView", render
 
   TextView: lazy: ->
     render = require "Text"
-    NativeComponent render
+    NativeComponent "TextView", render
 
   TextInput: lazy: ->
     render = require "TextInput"
-    NativeComponent render
+    NativeComponent "TextInput", render
 
   WebView: lazy: ->
     render = require "WebView"
-    NativeComponent render
+    NativeComponent "WebView", render
 
   StaticRenderer: lazy: ->
     StaticRenderer = require "StaticRenderer"

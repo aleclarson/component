@@ -20,13 +20,20 @@ type = Type("ComponentTypeBuilder");
 
 type.inherits(Type.Builder);
 
-type.overrideMethods({
+type._initInstance.unshift(function() {
+  return this._tracer.trace();
+});
+
+type.defineMethods({
   inherits: function(kind) {
     this.__super(arguments);
+    if (kind instanceof Component.Type) {
+      this._componentType.inherits(kind.View);
+    }
   }
 });
 
-type.addMixins([require("./ViewMixin"), require("../StyleMixin"), require("../NativeValueMixin"), require("../ListenerMixin")]);
+type.addMixins([require("./ViewMixin")]);
 
 module.exports = type.build();
 

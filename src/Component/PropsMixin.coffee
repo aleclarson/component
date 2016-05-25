@@ -1,19 +1,27 @@
 
+# TODO: Write a codemod that removes 'propTypes'.
+
+ReactComponent = require "ReactComponent"
 mergeDefaults = require "mergeDefaults"
 assertType = require "assertType"
-assert = require "assert"
+getKind = require "getKind"
 define = require "define"
+assert = require "assert"
 guard = require "guard"
+has = require "has"
 
 module.exports = (type) ->
+  type.defineValues typeImpl.values
+  type.definePrototype typeImpl.prototype
+  type.initInstance typeImpl.initInstance
 
-  type.defineValues typeValues
+#
+# The 'type' is the Component.Builder constructor
+#
 
-  type.definePrototype typePrototype
+typeImpl = {}
 
-  type.initInstance typePhases.initInstance
-
-typeValues =
+typeImpl.values =
 
   _propTypes: null
 
@@ -21,7 +29,7 @@ typeValues =
 
   _initProps: -> []
 
-typePrototype =
+typeImpl.prototype =
 
   propTypes:
     get: -> @_propTypes
@@ -87,29 +95,46 @@ typePrototype =
     @_initProps.push fn
     return
 
-typePhases =
+typeImpl.initInstance = ->
+  @_willBuild.push instImpl.willBuild
 
-  initInstance: ->
-    @_willBuild.push instancePhases.willBuild
+#
+# The 'instance' is a Component.Builder
+#
 
-instancePhases =
+instImpl = {}
 
-  willBuild: ->
+# NOTE: Inherited 'propPhases' come after the phases of the subtype.
+#       This allows for the subtype to edit the 'props' before the
+#       supertype gets to inspect them.
+instImpl.willBuild = ->
 
-    phases = @_initProps
+  # Try to be the last 'didBuild' phase.
+  @_didBuild.push => @_didBuild.push instImpl.didBuild
 
-    return if phases.length is 0
+  phases = @_initProps
+  if phases.length
+    processProps = (props) ->
+      for phase in phases
+        props = phase.call null, props
+      return props
 
-    if phases.length is 1
-      phase = phases[0]
-      processProps = (props) ->
-        phase.call null, props
+  if superImpl = @_kind and @_kind::_processProps
+    processProps = superWrap processProps, superImpl
 
-    else
-      processProps = (props) ->
-        for phase in phases
-          props = phase.call null, props
-        return props
-
+  if processProps
     @_didBuild.push (type) ->
-      define type, "_processProps", processProps
+      define type.prototype, "_processProps", processProps
+
+instImpl.didBuild = (type) ->
+  return if ReactComponent isnt getKind type
+  return if has type.prototype, "_delegate"
+  define type.prototype, "_delegate", get: -> this
+
+# Wraps a 'processProps' static method
+# with the implementation of its supertype.
+superWrap = (processProps, superImpl) ->
+  return superImpl if not processProps
+  return (props) ->
+    props = processProps props
+    return superImpl props

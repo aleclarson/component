@@ -1,4 +1,4 @@
-var Property, StyleMap, assertType, typeMethods, typePhases, typeValues;
+var Property, StyleMap, assertType, typeImpl;
 
 require("isDev");
 
@@ -9,62 +9,57 @@ Property = require("Property");
 StyleMap = require("./StyleMap");
 
 module.exports = function(type) {
-  type.defineValues(typeValues);
-  type.defineMethods(typeMethods);
-  type.willBuild(typePhases.willBuild);
-  return 1;
+  type.defineProperties(typeImpl.properties);
+  type.defineMethods(typeImpl.methods);
+  return type.willBuild(typeImpl.willBuild);
 };
 
-typeValues = {
-  _styles: null
+typeImpl = {};
+
+typeImpl.properties = {
+  _styles: {
+    lazy: function() {
+      return StyleMap(this._kind && this._kind.styles);
+    }
+  }
 };
 
-typeMethods = {
+typeImpl.methods = {
   defineStyles: function(styles) {
     assertType(styles, Object);
-    this._initStyleMap();
     this._styles.define(styles);
   },
   overrideStyles: function(styles) {
     assertType(styles, Object);
-    this._initStyleMap();
     this._styles.override(styles);
-  },
-  _initStyleMap: function() {
-    if (this._styles) {
-      return;
-    }
-    return this._styles = StyleMap(this._kind && this._kind.styles);
   }
 };
 
-typePhases = {
-  willBuild: function() {
-    var inherited, prop, styles;
-    styles = this._styles;
-    inherited = this._kind && this._kind.styles;
-    if (!styles) {
-      if (!inherited) {
-        return;
-      }
-      styles = inherited;
-    }
-    this.defineStatics({
-      styles: styles
-    });
+typeImpl.willBuild = function() {
+  var inherited, prop, styles;
+  styles = this._styles;
+  inherited = this._kind && this._kind.styles;
+  if (!styles) {
     if (!inherited) {
-      prop = Property({
-        frozen: isDev
-      });
-      return this.defineProperties({
-        styles: {
-          get: function() {
-            styles = this.constructor.styles.bind(this);
-            return prop.define(this, "styles", styles);
-          }
-        }
-      });
+      return;
     }
+    styles = inherited;
+  }
+  this.defineStatics({
+    styles: styles
+  });
+  if (!inherited) {
+    prop = Property({
+      frozen: isDev
+    });
+    return this.defineProperties({
+      styles: {
+        get: function() {
+          styles = this.constructor.styles.bind(this);
+          return prop.define(this, "styles", styles);
+        }
+      }
+    });
   }
 };
 

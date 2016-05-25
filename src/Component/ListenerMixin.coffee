@@ -1,40 +1,74 @@
 
 assertType = require "assertType"
+Property = require "Property"
+Random = require "random"
 define = require "define"
 Event = require "event"
 
-module.exports = (type) ->
-  type.defineMethods typeMethods
+hasListeners = Symbol "Component.hasListeners"
 
-typeMethods =
+frozen = Property { frozen: yes }
+
+module.exports = (type) ->
+  type.defineMethods typeImpl.methods
+
+#
+# The 'type' is the Component.Builder constructor
+#
+
+typeImpl = {}
+
+typeImpl.methods =
 
   defineListeners: (createListeners) ->
 
     assertType createListeners, Function
 
-    if not @_hasListeners
-      define this, "_hasListeners", yes
-      @_hasListeners = yes
+    delegate = @_delegate
+    kind = delegate._kind
 
-      @_initInstance.push ->
-        define this, "__listeners", []
+    if not this[hasListeners]
+      define this, hasListeners, yes
 
-      @willMount ->
-        for listener in @__listeners
-          listener.start()
-        return
+      # Since lifecyle phases are inherited, make sure
+      # we're the first subclass to call 'defineListeners'.
+      unless kind and kind::[hasListeners]
 
-      @willUnmount ->
-        for listener in @__listeners
-          listener.stop()
-        return
+        delegate._didBuild.push (type) ->
+          define type.prototype, hasListeners, yes
 
-    @_initInstance.push (args) ->
+        delegate._initInstance.push ->
+          define this, "__listeners", Object.create null
 
-      # Implicitly retain each created listener.
-      onListen = Event.didListen (listener) =>
-        listener.stop()
-        @__listeners.push listener
+    phaseId = Random.id()
 
+    delegate._initInstance.push (args) ->
+
+      listeners = []
+
+      # Implicitly retain every new listener.
+      onListen = Event.didListen (listener) ->
+        listener.stop() # Stop listeners until the component is mounted.
+        listeners.push listener
+
+      # Create the listeners.
       createListeners.apply this, args
+
+      # Stop listening for new listeners.
       onListen.stop()
+
+      # Store the listeners for the 'willUnmount' phase.
+      @__listeners[phaseId] = listeners
+      return
+
+    @_willMount.push ->
+      for listener in @_delegate.__listeners[phaseId]
+        listener.start()
+      return
+
+    @_willUnmount.push ->
+      for listener in @_delegate.__listeners[phaseId]
+        listener.stop()
+      return
+
+    return
