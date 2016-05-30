@@ -36,5 +36,3 @@ type.defineMethods({
 type.addMixins([require("./ViewMixin")]);
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../../map/src/Component/Type/Builder.map

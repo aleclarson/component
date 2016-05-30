@@ -1,14 +1,20 @@
 
 # TODO: Write a codemod that removes 'propTypes'.
 
+require "isDev"
+
 ReactComponent = require "ReactComponent"
 mergeDefaults = require "mergeDefaults"
+assertTypes = require "assertTypes"
 assertType = require "assertType"
+Property = require "Property"
 getKind = require "getKind"
 define = require "define"
 assert = require "assert"
 guard = require "guard"
 has = require "has"
+
+frozen = Property { frozen: yes }
 
 module.exports = (type) ->
   type.defineValues typeImpl.values
@@ -43,23 +49,15 @@ typeImpl.prototype =
       @_didBuild.push (type) ->
         type.propTypes = propTypes
 
-      unless @_propDefaults
-        @createProps (props) ->
-          return props or {}
+      # unless @_propDefaults
+      #   @createProps (props) ->
+      #     return props or {}
 
-      @initProps (props) ->
-
-        return if isDev
-
-        assertType props, Object
-
-        guard ->
-          validateTypes props, propTypes
-
-        .fail (error) ->
-          throwFailure error, { method: "_processProps", element: this, props, propTypes }
-
-        return props
+      if isDev
+        @initProps (props) ->
+          assertType props, Object
+          guard -> assertTypes props, propTypes
+          .fail (error) -> throwFailure error, { method: "_processProps", element: this, props, propTypes }
 
   propDefaults:
     get: -> @_propDefaults
@@ -73,26 +71,24 @@ typeImpl.prototype =
       @_didBuild.push (type) ->
         type.propDefaults = propDefaults
 
-      unless @_propTypes
-        @createProps (props) ->
-          return props or {}
+      # unless @_propTypes
+      #   @createProps (props) ->
+      #     return props or {}
 
       @initProps (props) ->
-
         assertType props, Object
-
         mergeDefaults props, propDefaults
 
-        return props
-
-  createProps: (fn) ->
-    assertType fn, Function
-    @_initProps.unshift fn
+  createProps: (func) ->
+    assertType func, Function
+    @_initProps.unshift func
     return
 
-  initProps: (fn) ->
-    assertType fn, Function
-    @_initProps.push fn
+  initProps: (func) ->
+    assertType func, Function
+    @_initProps.push (props) ->
+      func.call this, props
+      return props
     return
 
 typeImpl.initInstance = ->
@@ -109,9 +105,6 @@ instImpl = {}
 #       supertype gets to inspect them.
 instImpl.willBuild = ->
 
-  # Try to be the last 'didBuild' phase.
-  @_didBuild.push => @_didBuild.push instImpl.didBuild
-
   phases = @_initProps
   if phases.length
     processProps = (props) ->
@@ -126,6 +119,9 @@ instImpl.willBuild = ->
     @_didBuild.push (type) ->
       define type.prototype, "_processProps", processProps
 
+  # Try to be the last 'didBuild' phase.
+  @_didBuild.push => @_didBuild.push instImpl.didBuild
+
 instImpl.didBuild = (type) ->
   return if ReactComponent isnt getKind type
   return if has type.prototype, "_delegate"
@@ -135,6 +131,4 @@ instImpl.didBuild = (type) ->
 # with the implementation of its supertype.
 superWrap = (processProps, superImpl) ->
   return superImpl if not processProps
-  return (props) ->
-    props = processProps props
-    return superImpl props
+  return (props) -> superImpl processProps props

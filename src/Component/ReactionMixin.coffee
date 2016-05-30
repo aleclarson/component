@@ -68,18 +68,13 @@ typeImpl.methods =
       return
 
     @_willMount.push ->
-      delegate = @_delegate
-      for key in delegate.__reactionKeys[phaseId]
-        reaction = delegate[key]
-        guard -> reaction.start()
-        .fail (error) ->
-          throwFailure error, { key, reaction, phaseId, delegate }
+      for key in @__reactionKeys[phaseId]
+        this[key].start()
       return
 
     @_willUnmount.push ->
-      delegate = @_delegate
-      for key, reaction of delegate.__reactionKeys[phaseId]
-        delegate[key].stop()
+      for key in @__reactionKeys[phaseId]
+        this[key].stop()
       return
 
     return

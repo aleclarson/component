@@ -2,29 +2,31 @@
 { throwFailure } = require "failure"
 
 ReactElement = require "ReactElement"
+assertTypes = require "assertTypes"
 assertType = require "assertType"
 
 NativeProps = require "./Props"
 Component = require "../Component"
 
+configTypes =
+  render: Function
+  propTypes: Object
+
 module.exports =
-NativeComponent = (name, render) ->
+NativeComponent = (name, config) ->
 
   assertType name, String
-  assertType render, Function
+  assertTypes config, configTypes
 
   type = Component "Native" + name
 
   type.definePrototype
-    _render: render
-
-  if render.propTypes
-    type.didBuild (type) ->
-      type.propTypes = render.propTypes
+    _propTypes: { value: config.propTypes }
+    _renderChild: ReactElement.createElement.bind null, config.render
 
   type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
   type.defineListeners typeImpl.listeners
+  type.render typeImpl.render
   type.willUnmount typeImpl.willUnmount
 
   return type.build()
@@ -38,32 +40,30 @@ typeImpl.values =
   _queuedProps: null
 
   _nativeProps: ->
-    NativeProps @props, @_render.propTypes
+    NativeProps @props, @_propTypes
 
-typeImpl.methods =
-
-  render: ->
-    props = @_nativeProps.values
-    props.ref = (view) => @_onRef view
-    ReactElement.createElement @_render, props
-
-  _onRef: (view) ->
-    @child = view
-    if view and @_queuedProps
-      @child.setNativeProps @_queuedProps
-      @_queuedProps = null
+typeImpl.render = ->
+  props = @_nativeProps.values
+  props.ref = onRef.bind this
+  @_renderChild props
 
 typeImpl.listeners = ->
 
   @_nativeProps.didSet (newProps) =>
-
-    guard =>
-      if @child isnt null
-        @child.setNativeProps newProps
-      else @_queuedProps = newProps
-
-    .fail (error) =>
-      throwFailure error, { component: this, newProps }
+    if @child isnt null
+      @child.setNativeProps newProps
+    else @_queuedProps = newProps
 
 typeImpl.willUnmount = ->
   @_nativeProps.detach()
+
+#
+# Helpers
+#
+
+onRef = (view) ->
+  @child = view
+  if view and @_queuedProps
+    @child.setNativeProps @_queuedProps
+    @_queuedProps = null
+  return

@@ -9,5 +9,3 @@ define(exports, {
 define(exports, require("./Native"));
 
 define(exports, require("./React"));
-
-//# sourceMappingURL=../../map/src/index.map

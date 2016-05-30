@@ -1,5 +1,6 @@
 
 ReactComponent = require "ReactComponent"
+assertType = require "assertType"
 Builder = require "Builder"
 Type = require "Type"
 
@@ -34,7 +35,7 @@ type.overrideMethods
 type.addMixins [
   require "./PropsMixin"
   require "./LifecycleMixin"
-  require "./StyleMixin"
+  require "./StylesMixin"
   require "./NativeValueMixin"
   require "./ListenerMixin"
   require "./ReactionMixin"

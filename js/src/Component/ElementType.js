@@ -128,5 +128,3 @@ defineHiddenProperties = function(element) {
   }
   return hidden.define(element, "_trace", Tracer("ReactElement()"));
 };
-
-//# sourceMappingURL=../../../map/src/Component/ElementType.map

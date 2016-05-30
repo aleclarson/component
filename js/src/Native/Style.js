@@ -1,14 +1,6 @@
-var NativeMap, NativeTransform, Style, Type, assert, assertType, isType, sync, type;
+var NativeMap, NativeTransform, Style, Type, flattenStyle, type;
 
-require("isDev");
-
-assertType = require("assertType");
-
-isType = require("isType");
-
-assert = require("assert");
-
-sync = require("sync");
+flattenStyle = require("flattenStyle");
 
 Type = require("Type");
 
@@ -35,6 +27,12 @@ type.initInstance(function(values) {
 });
 
 type.defineMethods({
+  attach: function(newValues) {
+    if (Array.isArray(newValues)) {
+      newValues = flattenStyle(newValues);
+    }
+    return this.__super(arguments);
+  },
   __attachValue: function(value, key) {
     if (key === "transform") {
       if (!Array.isArray(value)) {
@@ -45,10 +43,8 @@ type.defineMethods({
       }
       value = NativeTransform(value);
     }
-    return NativeMap.prototype.__attachValue.call(this, value, key);
+    return this.__super(arguments);
   }
 });
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Style.map

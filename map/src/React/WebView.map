@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "WebView.js",
+  "sourceRoot": "../../../src/React",
+  "sources": [
+    "WebView.coffee"
+  ],
+  "names": [],
+  "mappings": ""
+}

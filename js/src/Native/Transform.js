@@ -1,12 +1,10 @@
-var NativeMap, NativeValue, Type, isType, sync, type;
+var NativeMap, NativeValue, Type, isConstructor, type;
 
 require("isDev");
 
-isType = require("isType");
+isConstructor = require("isConstructor");
 
 Type = require("Type");
-
-sync = require("sync");
 
 NativeValue = require("./Value");
 
@@ -28,48 +26,48 @@ type.initInstance(function(values) {
   return this.attach(values);
 });
 
-type.defineMethods({
+type.overrideMethods({
   __didSet: function(newValues) {
     return this.didSet.emit(this.values);
   },
   __getValues: function() {
-    var values;
-    values = [];
-    sync.each(this.__values, function(value, key) {
-      var index, ref, transform;
-      ref = key.split("."), index = ref[0], key = ref[1];
-      transform = values[index] != null ? values[index] : values[index] = {};
-      return transform[key] = value;
-    });
-    sync.each(this.__nativeValues, function(nativeValue, key) {
-      var index, ref, transform;
-      ref = key.split("."), index = ref[0], key = ref[1];
-      transform = values[index] != null ? values[index] : values[index] = {};
-      return transform[key] = nativeValue.value;
-    });
-    return values;
+    var index, key, nativeValue, ref, ref1, ref2, ref3, transform, transforms, value;
+    transforms = [];
+    ref = this.__values;
+    for (key in ref) {
+      value = ref[key];
+      ref1 = key.split("."), index = ref1[0], key = ref1[1];
+      transform = transforms[index] != null ? transforms[index] : transforms[index] = {};
+      transform[key] = value;
+    }
+    ref2 = this.__nativeValues;
+    for (key in ref2) {
+      nativeValue = ref2[key];
+      ref3 = key.split("."), index = ref3[0], key = ref3[1];
+      transform = transforms[index] != null ? transforms[index] : transforms[index] = {};
+      transform[key] = nativeValue.value;
+    }
+    return transforms;
   },
-  _attachValue: function(transform, index) {
-    if (!isType(transform, Object)) {
+  __attachValue: function(transform, index) {
+    var key, value;
+    if (!isConstructor(transform, Object)) {
       return;
     }
-    return sync.each(transform, (function(_this) {
-      return function(value, key) {
-        key = index + "." + key;
-        if (isType(value, NativeValue.Kind)) {
-          _this.__nativeValues[key] = value;
-          _this.__attachNativeValue(value, key);
-          return;
-        }
-        return _this.__values[key] = value;
-      };
-    })(this));
+    for (key in transform) {
+      value = transform[key];
+      key = index + "." + key;
+      if (value instanceof NativeValue) {
+        this.__nativeValues[key] = value;
+        this.__attachNativeValue(value, key);
+        return;
+      }
+      this.__values[key] = value;
+    }
   },
-  _detachOldValues: function(newValues) {
+  __detachOldValues: function(newValues) {
     return this.detach();
   }
 });
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Transform.map

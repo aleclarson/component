@@ -47,5 +47,3 @@ define(Component, {
     }
   }
 });
-
-//# sourceMappingURL=../../../map/src/Component/index.map

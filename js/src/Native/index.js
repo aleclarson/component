@@ -30,5 +30,3 @@ module.exports = {
     }
   }
 };
-
-//# sourceMappingURL=../../../map/src/Native/index.map

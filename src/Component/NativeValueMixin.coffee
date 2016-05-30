@@ -61,15 +61,13 @@ typeImpl.methods =
       return
 
     @_willMount.push ->
-      delegate = @_delegate
-      for key in delegate.__nativeKeys[phaseId]
-        delegate[key].__attach()
+      for key in @__nativeKeys[phaseId]
+        this[key].__attach()
       return
 
     @_willUnmount.push ->
-      delegate = @_delegate
-      for key in delegate.__nativeKeys[phaseId]
-        delegate[key].__detach()
+      for key in @__nativeKeys[phaseId]
+        this[key].__detach()
       return
 
     return

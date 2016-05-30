@@ -52,11 +52,13 @@ typeImpl.methods =
 
   shouldUpdate: (func) ->
     assertType func, Function
+    func = bindDelegate func if @_delegate
     @_shouldUpdate = func
     return
 
   render: (func) ->
     assertType func, Function
+    func = bindDelegate func if @_delegate
     @_render = func
     return
 
@@ -114,6 +116,11 @@ viewImpl.methods =
 #
 # Helpers
 #
+
+bindDelegate = (func) ->
+  bound = -> func.apply @_delegate, arguments
+  if isDev then bound.toString = -> func.toString()
+  return bound
 
 inheritArray = (obj, key, type) ->
   inherited = type.prototype[key]

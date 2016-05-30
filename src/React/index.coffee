@@ -13,24 +13,21 @@ module.exports =
     require "./Style"
 
   View: lazy: ->
-    render = require "View"
-    NativeComponent "View", render
+    require "./View"
 
   ImageView: lazy: ->
-    render = require "Image"
-    NativeComponent "ImageView", render
+    require "./ImageView"
 
   TextView: lazy: ->
-    render = require "Text"
-    NativeComponent "TextView", render
+    require "./TextView"
 
-  TextInput: lazy: ->
-    render = require "TextInput"
-    NativeComponent "TextInput", render
-
-  WebView: lazy: ->
-    render = require "WebView"
-    NativeComponent "WebView", render
+  # TextInput: lazy: ->
+  #   render = require "TextInput"
+  #   NativeComponent "TextInput", render
+  #
+  # WebView: lazy: ->
+  #   render = require "WebView"
+  #   NativeComponent "WebView", render
 
   StaticRenderer: lazy: ->
     StaticRenderer = require "StaticRenderer"

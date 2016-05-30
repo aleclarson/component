@@ -1,9 +1,10 @@
 
+cloneObject = require "cloneObject"
 assertType = require "assertType"
+getArgProp = require "getArgProp"
 isType = require "isType"
 Event = require "event"
 Type = require "Type"
-sync = require "sync"
 
 NativeValue = require "./Value"
 
@@ -20,7 +21,7 @@ type.defineFrozenValues
 
 type.defineValues
 
-  __values: (values) -> values
+  __values: getArgProp 0
 
   __nativeMaps: -> {}
 
@@ -33,33 +34,30 @@ type.defineMethods
   attach: (newValues) ->
     @__detachOldValues newValues
     @__attachNewValues newValues
+    return
 
   detach: ->
-
     @__detachNativeValues()
     @__detachNativeMaps()
-
     @__nativeMaps = {}
     @__nativeValues = {}
     @__nativeListeners = {}
+    return
 
   __didSet: (newValues) ->
     @didSet.emit newValues
 
   __getValues: ->
 
-    values = {}
+    values = cloneObject @__values
 
-    sync.each @__values, (value, key) ->
-      values[key] = value
-
-    sync.each @__nativeValues, (nativeValue, key) ->
+    for key, nativeValue of @__nativeValues
       values[key] = nativeValue.value
 
-    sync.each @__nativeMaps, (nativeMap, key) ->
+    for key, nativeMap of @__nativeMaps
       values[key] = nativeMap.values
 
-    values
+    return values
 
   __attachValue: (value, key) ->
 
@@ -81,45 +79,58 @@ type.defineMethods
       return
 
     @__values[key] = value
+    return
 
   __attachNewValues: (newValues) ->
-    return unless newValues?
-    sync.each newValues, (value, key) =>
+    return if not newValues
+    for key, value of newValues
       @__attachValue value, key
+    return
 
   __detachOldValues: (newValues) ->
 
     assertType newValues, Object
 
-    sync.each @__nativeValues, (nativeValue, key) =>
-      if nativeValue isnt newValues[key]
-        @__detachNativeValue nativeValue, key
-        delete @__nativeValues[key]
+    nativeValues = @__nativeValues
+    for key, nativeValue of nativeValues
+      continue if nativeValue is newValues[key]
+      @__detachNativeValue nativeValue, key
+      delete nativeValues[key]
 
-    sync.each @__nativeMaps, (nativeMap, key) =>
-      if nativeMap isnt newValues[key]
-        @__detachNativeValue nativeMap, key
-        delete @__nativeMaps[key]
-      else
+    nativeMaps = @__nativeMaps
+    for key, nativeMap of nativeMaps
+
+      # Detach native maps recursively.
+      if nativeMap is newValues[key]
         nativeMap._detachOldValues newValues[key]
+        continue
+
+      @__detachNativeValue nativeMap, key
+      delete nativeMaps[key]
+
+    return
 
   __detachNativeValues: ->
-    sync.each @__nativeValues, (nativeValue, key) =>
+    for key, nativeValue of @__nativeValues
       @__detachNativeValue nativeValue, key
+    return
 
   __detachNativeMaps: ->
-    sync.each @__nativeMaps, (nativeMap, key) =>
+    for key, nativeMap of @__nativeMaps
       @__detachNativeValue nativeMap, key
       nativeMap.detach()
+    return
 
   __attachNativeValue: (nativeValue, key) ->
     @__nativeListeners[key] = nativeValue.didSet (newValue) =>
       newValues = {}
       newValues[key] = newValue
       @__didSet newValues
+    return
 
   __detachNativeValue: (nativeValue, key) ->
     @__nativeListeners[key].stop()
     delete @__nativeListeners[key]
+    return
 
 module.exports = NativeMap = type.build()

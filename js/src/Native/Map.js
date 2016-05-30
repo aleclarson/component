@@ -1,14 +1,16 @@
-var Event, NativeMap, NativeValue, Type, assertType, isType, sync, type;
+var Event, NativeMap, NativeValue, Type, assertType, cloneObject, getArgProp, isType, type;
+
+cloneObject = require("cloneObject");
 
 assertType = require("assertType");
+
+getArgProp = require("getArgProp");
 
 isType = require("isType");
 
 Event = require("event");
 
 Type = require("Type");
-
-sync = require("sync");
 
 NativeValue = require("./Value");
 
@@ -29,9 +31,7 @@ type.defineFrozenValues({
 });
 
 type.defineValues({
-  __values: function(values) {
-    return values;
-  },
+  __values: getArgProp(0),
   __nativeMaps: function() {
     return {};
   },
@@ -46,30 +46,31 @@ type.defineValues({
 type.defineMethods({
   attach: function(newValues) {
     this.__detachOldValues(newValues);
-    return this.__attachNewValues(newValues);
+    this.__attachNewValues(newValues);
   },
   detach: function() {
     this.__detachNativeValues();
     this.__detachNativeMaps();
     this.__nativeMaps = {};
     this.__nativeValues = {};
-    return this.__nativeListeners = {};
+    this.__nativeListeners = {};
   },
   __didSet: function(newValues) {
     return this.didSet.emit(newValues);
   },
   __getValues: function() {
-    var values;
-    values = {};
-    sync.each(this.__values, function(value, key) {
-      return values[key] = value;
-    });
-    sync.each(this.__nativeValues, function(nativeValue, key) {
-      return values[key] = nativeValue.value;
-    });
-    sync.each(this.__nativeMaps, function(nativeMap, key) {
-      return values[key] = nativeMap.values;
-    });
+    var key, nativeMap, nativeValue, ref, ref1, values;
+    values = cloneObject(this.__values);
+    ref = this.__nativeValues;
+    for (key in ref) {
+      nativeValue = ref[key];
+      values[key] = nativeValue.value;
+    }
+    ref1 = this.__nativeMaps;
+    for (key in ref1) {
+      nativeMap = ref1[key];
+      values[key] = nativeMap.values;
+    }
     return values;
   },
   __attachValue: function(value, key) {
@@ -95,56 +96,60 @@ type.defineMethods({
       this.__attachNativeValue(value, key);
       return;
     }
-    return this.__values[key] = value;
+    this.__values[key] = value;
   },
   __attachNewValues: function(newValues) {
-    if (newValues == null) {
+    var key, value;
+    if (!newValues) {
       return;
     }
-    return sync.each(newValues, (function(_this) {
-      return function(value, key) {
-        return _this.__attachValue(value, key);
-      };
-    })(this));
+    for (key in newValues) {
+      value = newValues[key];
+      this.__attachValue(value, key);
+    }
   },
   __detachOldValues: function(newValues) {
+    var key, nativeMap, nativeMaps, nativeValue, nativeValues;
     assertType(newValues, Object);
-    sync.each(this.__nativeValues, (function(_this) {
-      return function(nativeValue, key) {
-        if (nativeValue !== newValues[key]) {
-          _this.__detachNativeValue(nativeValue, key);
-          return delete _this.__nativeValues[key];
-        }
-      };
-    })(this));
-    return sync.each(this.__nativeMaps, (function(_this) {
-      return function(nativeMap, key) {
-        if (nativeMap !== newValues[key]) {
-          _this.__detachNativeValue(nativeMap, key);
-          return delete _this.__nativeMaps[key];
-        } else {
-          return nativeMap._detachOldValues(newValues[key]);
-        }
-      };
-    })(this));
+    nativeValues = this.__nativeValues;
+    for (key in nativeValues) {
+      nativeValue = nativeValues[key];
+      if (nativeValue === newValues[key]) {
+        continue;
+      }
+      this.__detachNativeValue(nativeValue, key);
+      delete nativeValues[key];
+    }
+    nativeMaps = this.__nativeMaps;
+    for (key in nativeMaps) {
+      nativeMap = nativeMaps[key];
+      if (nativeMap === newValues[key]) {
+        nativeMap._detachOldValues(newValues[key]);
+        continue;
+      }
+      this.__detachNativeValue(nativeMap, key);
+      delete nativeMaps[key];
+    }
   },
   __detachNativeValues: function() {
-    return sync.each(this.__nativeValues, (function(_this) {
-      return function(nativeValue, key) {
-        return _this.__detachNativeValue(nativeValue, key);
-      };
-    })(this));
+    var key, nativeValue, ref;
+    ref = this.__nativeValues;
+    for (key in ref) {
+      nativeValue = ref[key];
+      this.__detachNativeValue(nativeValue, key);
+    }
   },
   __detachNativeMaps: function() {
-    return sync.each(this.__nativeMaps, (function(_this) {
-      return function(nativeMap, key) {
-        _this.__detachNativeValue(nativeMap, key);
-        return nativeMap.detach();
-      };
-    })(this));
+    var key, nativeMap, ref;
+    ref = this.__nativeMaps;
+    for (key in ref) {
+      nativeMap = ref[key];
+      this.__detachNativeValue(nativeMap, key);
+      nativeMap.detach();
+    }
   },
   __attachNativeValue: function(nativeValue, key) {
-    return this.__nativeListeners[key] = nativeValue.didSet((function(_this) {
+    this.__nativeListeners[key] = nativeValue.didSet((function(_this) {
       return function(newValue) {
         var newValues;
         newValues = {};
@@ -155,10 +160,8 @@ type.defineMethods({
   },
   __detachNativeValue: function(nativeValue, key) {
     this.__nativeListeners[key].stop();
-    return delete this.__nativeListeners[key];
+    delete this.__nativeListeners[key];
   }
 });
 
 module.exports = NativeMap = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Map.map

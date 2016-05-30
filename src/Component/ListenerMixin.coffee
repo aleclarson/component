@@ -48,7 +48,7 @@ typeImpl.methods =
 
       # Implicitly retain every new listener.
       onListen = Event.didListen (listener) ->
-        listener.stop() # Stop listeners until the component is mounted.
+        listener._defuse() # Deactivate each listener until mounted.
         listeners.push listener
 
       # Create the listeners.
@@ -62,12 +62,12 @@ typeImpl.methods =
       return
 
     @_willMount.push ->
-      for listener in @_delegate.__listeners[phaseId]
+      for listener in @__listeners[phaseId]
         listener.start()
       return
 
     @_willUnmount.push ->
-      for listener in @_delegate.__listeners[phaseId]
+      for listener in @__listeners[phaseId]
         listener.stop()
       return
 

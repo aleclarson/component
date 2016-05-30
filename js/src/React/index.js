@@ -20,37 +20,17 @@ module.exports = {
   },
   View: {
     lazy: function() {
-      var render;
-      render = require("View");
-      return NativeComponent("View", render);
+      return require("./View");
     }
   },
   ImageView: {
     lazy: function() {
-      var render;
-      render = require("Image");
-      return NativeComponent("ImageView", render);
+      return require("./ImageView");
     }
   },
   TextView: {
     lazy: function() {
-      var render;
-      render = require("Text");
-      return NativeComponent("TextView", render);
-    }
-  },
-  TextInput: {
-    lazy: function() {
-      var render;
-      render = require("TextInput");
-      return NativeComponent("TextInput", render);
-    }
-  },
-  WebView: {
-    lazy: function() {
-      var render;
-      render = require("WebView");
-      return NativeComponent("WebView", render);
+      return require("./TextView");
     }
   },
   StaticRenderer: {
@@ -67,5 +47,3 @@ module.exports = {
     }
   }
 };
-
-//# sourceMappingURL=../../../map/src/React/index.map

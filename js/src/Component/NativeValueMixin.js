@@ -67,23 +67,19 @@ typeImpl.methods = {
     });
     this._willMount.push(function() {
       var i, len, ref;
-      delegate = this._delegate;
-      ref = delegate.__nativeKeys[phaseId];
+      ref = this.__nativeKeys[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         key = ref[i];
-        delegate[key].__attach();
+        this[key].__attach();
       }
     });
     this._willUnmount.push(function() {
       var i, len, ref;
-      delegate = this._delegate;
-      ref = delegate.__nativeKeys[phaseId];
+      ref = this.__nativeKeys[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         key = ref[i];
-        delegate[key].__detach();
+        this[key].__detach();
       }
     });
   }
 };
-
-//# sourceMappingURL=../../../map/src/Component/NativeValueMixin.map

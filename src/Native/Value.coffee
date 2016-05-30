@@ -4,6 +4,7 @@ require "isDev"
 { AnimatedValue } = require "Animated"
 
 emptyFunction = require "emptyFunction"
+isConstructor = require "isConstructor"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 roundValue = require "roundValue"
@@ -14,11 +15,11 @@ combine = require "combine"
 assert = require "assert"
 Tracer = require "tracer"
 isType = require "isType"
-Maybe = require "Maybe"
 Event = require "event"
+steal = require "steal"
+Void = require "Void"
 Null = require "Null"
 Type = require "Type"
-sync = require "sync"
 Any = require "Any"
 
 Animation = require "./Animation"
@@ -29,9 +30,9 @@ if isDev
 
   configTypes.animate =
     type: Function.Kind
-    onUpdate: Maybe Function.Kind
-    onEnd: Maybe Function.Kind
-    onFinish: Maybe Function.Kind
+    onUpdate: [ Function.Kind, Void ]
+    onEnd: [ Function.Kind, Void ]
+    onFinish: [ Function.Kind, Void ]
 
   configTypes.track =
     fromRange: Progress.Range
@@ -39,7 +40,7 @@ if isDev
 
   configTypes.setValue =
     clamp: Boolean.Maybe
-    round: Maybe [ Number, Null ]
+    round: [ Number, Null, Void ]
 
   configTypes.setProgress =
     fromValue: Number
@@ -54,7 +55,7 @@ type.argumentTypes =
   keyPath: String.Maybe
 
 type.returnExisting (value) ->
-  return value if isType value, NativeValue.Kind
+  return value if value instanceof NativeValue
 
 type.defineProperties
 
@@ -158,7 +159,7 @@ type.defineReactiveValues
 
 type.initInstance (value, keyPath) ->
 
-  if isType value, Reaction
+  if isConstructor value, Reaction
     throw Error "NativeValue must create its own Reaction!"
 
   @_keyPath = keyPath
@@ -264,7 +265,7 @@ type.defineMethods
 
     @_assertNonReactive()
 
-    if isType value, Object
+    if isConstructor value, Object
       config = value
       value = @_value
     else
@@ -323,7 +324,7 @@ type.defineMethods
 
   _attachReaction: (reaction) ->
 
-    if isType reaction, Object
+    if isConstructor reaction, Object
       reaction = Reaction.sync reaction
 
     else if reaction instanceof Function

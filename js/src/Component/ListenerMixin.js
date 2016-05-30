@@ -44,7 +44,7 @@ typeImpl.methods = {
       var listeners, onListen;
       listeners = [];
       onListen = Event.didListen(function(listener) {
-        listener.stop();
+        listener._defuse();
         return listeners.push(listener);
       });
       createListeners.apply(this, args);
@@ -53,7 +53,7 @@ typeImpl.methods = {
     });
     this._willMount.push(function() {
       var i, len, listener, ref;
-      ref = this._delegate.__listeners[phaseId];
+      ref = this.__listeners[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         listener = ref[i];
         listener.start();
@@ -61,7 +61,7 @@ typeImpl.methods = {
     });
     this._willUnmount.push(function() {
       var i, len, listener, ref;
-      ref = this._delegate.__listeners[phaseId];
+      ref = this.__listeners[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         listener = ref[i];
         listener.stop();
@@ -69,5 +69,3 @@ typeImpl.methods = {
     });
   }
 };
-
-//# sourceMappingURL=../../../map/src/Component/ListenerMixin.map

@@ -21,5 +21,3 @@ module.exports = ComponentType = NamedFunction("ComponentType", function(name) {
 });
 
 setKind(ComponentType, Type);
-
-//# sourceMappingURL=../../../../map/src/Component/Type/index.map

@@ -1,4 +1,5 @@
 
+getArgProp = require "getArgProp"
 isType = require "isType"
 Type = require "Type"
 
@@ -20,10 +21,9 @@ type.createInstance ->
 
 type.defineValues
 
-  _propTypes: (_, propTypes) -> propTypes
+  _propTypes: getArgProp 1
 
 type.initInstance (props) ->
-
   @attach props
 
 type.defineMethods
@@ -32,15 +32,15 @@ type.defineMethods
 
     type = @_propTypes[key] if @_propTypes
 
-    if (type is Children) or (key is "children")
+    if type is Children
       @__values[key] = value
       return
 
-    if (type is Style) or (key is "style")
-      return unless value?
+    if type is Style
+      return if not value?
       return if @__nativeMaps[key]
       value = NativeStyle value
 
-    NativeMap::__attachValue.call this, value, key
+    @__super arguments
 
 module.exports = type.build()

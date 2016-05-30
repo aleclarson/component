@@ -2,6 +2,8 @@
 { throwFailure } = require "failure"
 
 Validator = require "Validator"
+wrongType = require "wrongType"
+isType = require "isType"
 Void = require "Void"
 
 Element = require "./Element"

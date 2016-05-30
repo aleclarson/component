@@ -1,8 +1,12 @@
-var Element, Validator, Void, throwFailure, validTypes;
+var Element, Validator, Void, isType, throwFailure, validTypes, wrongType;
 
 throwFailure = require("failure").throwFailure;
 
 Validator = require("Validator");
+
+wrongType = require("wrongType");
+
+isType = require("isType");
 
 Void = require("Void");
 
@@ -21,5 +25,3 @@ module.exports = Validator("ReactChildren", {
     return wrongType(validTypes, key);
   }
 });
-
-//# sourceMappingURL=../../../map/src/React/Children.map

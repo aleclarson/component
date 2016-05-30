@@ -61,34 +61,20 @@ typeImpl.methods = {
       this.__reactionKeys[phaseId] = keys;
     });
     this._willMount.push(function() {
-      var i, key, len, reaction, ref;
-      delegate = this._delegate;
-      ref = delegate.__reactionKeys[phaseId];
+      var i, key, len, ref;
+      ref = this.__reactionKeys[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         key = ref[i];
-        reaction = delegate[key];
-        guard(function() {
-          return reaction.start();
-        }).fail(function(error) {
-          return throwFailure(error, {
-            key: key,
-            reaction: reaction,
-            phaseId: phaseId,
-            delegate: delegate
-          });
-        });
+        this[key].start();
       }
     });
     this._willUnmount.push(function() {
-      var key, reaction, ref;
-      delegate = this._delegate;
-      ref = delegate.__reactionKeys[phaseId];
-      for (key in ref) {
-        reaction = ref[key];
-        delegate[key].stop();
+      var i, key, len, ref;
+      ref = this.__reactionKeys[phaseId];
+      for (i = 0, len = ref.length; i < len; i++) {
+        key = ref[i];
+        this[key].stop();
       }
     });
   }
 };
-
-//# sourceMappingURL=../../../map/src/Component/ReactionMixin.map

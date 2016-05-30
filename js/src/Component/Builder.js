@@ -1,6 +1,8 @@
-var Builder, Component, ReactComponent, Type, type;
+var Builder, Component, ReactComponent, Type, assertType, type;
 
 ReactComponent = require("ReactComponent");
+
+assertType = require("assertType");
 
 Builder = require("Builder");
 
@@ -44,8 +46,6 @@ type.overrideMethods({
   }
 });
 
-type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StyleMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
+type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StylesMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../map/src/Component/Builder.map

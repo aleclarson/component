@@ -1,9 +1,8 @@
 
 require "isDev"
 
-isType = require "isType"
+isConstructor = require "isConstructor"
 Type = require "Type"
-sync = require "sync"
 
 NativeValue = require "./Value"
 NativeMap = require "./Map"
@@ -19,10 +18,9 @@ type.createInstance ->
   return NativeMap {}
 
 type.initInstance (values) ->
-
   @attach values
 
-type.defineMethods
+type.overrideMethods
 
   # All values are refreshed when attaching new values.
   __didSet: (newValues) ->
@@ -30,29 +28,29 @@ type.defineMethods
 
   __getValues: ->
 
-    values = []
+    transforms = []
 
-    sync.each @__values, (value, key) ->
+    for key, value of @__values
       [ index, key ] = key.split "."
-      transform = values[index] ?= {}
+      transform = transforms[index] ?= {}
       transform[key] = value
 
-    sync.each @__nativeValues, (nativeValue, key) ->
+    for key, nativeValue of @__nativeValues
       [ index, key ] = key.split "."
-      transform = values[index] ?= {}
+      transform = transforms[index] ?= {}
       transform[key] = nativeValue.value
 
-    values
+    return transforms
 
-  _attachValue: (transform, index) ->
+  __attachValue: (transform, index) ->
 
-    return unless isType transform, Object
+    return if not isConstructor transform, Object
 
-    sync.each transform, (value, key) =>
+    for key, value of transform
 
       key = index + "." + key
 
-      if isType value, NativeValue.Kind
+      if value instanceof NativeValue
         @__nativeValues[key] = value
         @__attachNativeValue value, key
         return
@@ -60,7 +58,7 @@ type.defineMethods
       @__values[key] = value
 
   # All values are refreshed when attaching new values.
-  _detachOldValues: (newValues) ->
+  __detachOldValues: (newValues) ->
     @detach()
 
 module.exports = type.build()

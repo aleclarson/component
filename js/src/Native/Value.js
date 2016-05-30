@@ -1,10 +1,12 @@
-var AnimatedValue, Animation, Any, Event, Maybe, NativeValue, Null, Progress, Reaction, Tracer, Type, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, isType, roundValue, sync, type;
+var AnimatedValue, Animation, Any, Event, NativeValue, Null, Progress, Reaction, Tracer, Type, Void, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, isConstructor, isType, roundValue, steal, type;
 
 require("isDev");
 
 AnimatedValue = require("Animated").AnimatedValue;
 
 emptyFunction = require("emptyFunction");
+
+isConstructor = require("isConstructor");
 
 assertTypes = require("assertTypes");
 
@@ -26,15 +28,15 @@ Tracer = require("tracer");
 
 isType = require("isType");
 
-Maybe = require("Maybe");
-
 Event = require("event");
+
+steal = require("steal");
+
+Void = require("Void");
 
 Null = require("Null");
 
 Type = require("Type");
-
-sync = require("sync");
 
 Any = require("Any");
 
@@ -44,9 +46,9 @@ if (isDev) {
   configTypes = {};
   configTypes.animate = {
     type: Function.Kind,
-    onUpdate: Maybe(Function.Kind),
-    onEnd: Maybe(Function.Kind),
-    onFinish: Maybe(Function.Kind)
+    onUpdate: [Function.Kind, Void],
+    onEnd: [Function.Kind, Void],
+    onFinish: [Function.Kind, Void]
   };
   configTypes.track = {
     fromRange: Progress.Range,
@@ -54,7 +56,7 @@ if (isDev) {
   };
   configTypes.setValue = {
     clamp: Boolean.Maybe,
-    round: Maybe([Number, Null])
+    round: [Number, Null, Void]
   };
   configTypes.setProgress = {
     fromValue: Number,
@@ -72,7 +74,7 @@ type.argumentTypes = {
 };
 
 type.returnExisting(function(value) {
-  if (isType(value, NativeValue.Kind)) {
+  if (value instanceof NativeValue) {
     return value;
   }
 });
@@ -210,7 +212,7 @@ type.defineReactiveValues({
 });
 
 type.initInstance(function(value, keyPath) {
-  if (isType(value, Reaction)) {
+  if (isConstructor(value, Reaction)) {
     throw Error("NativeValue must create its own Reaction!");
   }
   this._keyPath = keyPath;
@@ -334,7 +336,7 @@ type.defineMethods({
   },
   getProgress: function(value, config) {
     this._assertNonReactive();
-    if (isType(value, Object)) {
+    if (isConstructor(value, Object)) {
       config = value;
       value = this._value;
     } else {
@@ -407,7 +409,7 @@ type.defineMethods({
   },
   _attachReaction: function(reaction) {
     var base;
-    if (isType(reaction, Object)) {
+    if (isConstructor(reaction, Object)) {
       reaction = Reaction.sync(reaction);
     } else if (reaction instanceof Function) {
       reaction = Reaction.sync({
@@ -466,5 +468,3 @@ type.defineMethods({
 });
 
 module.exports = NativeValue = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Value.map

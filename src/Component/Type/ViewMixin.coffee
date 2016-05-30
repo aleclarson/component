@@ -1,6 +1,4 @@
 
-require "isDev"
-
 Property = require "Property"
 
 ComponentBuilder = require "../Builder"
@@ -37,20 +35,9 @@ typeImpl.prototype = {}
     set: (newValue) ->
       @_componentType[key] = newValue
 
-# Proxy a higher-order function.
-[  ].forEach (key) ->
-
-# Proxy a bound, higher-order function.
-[ "render", "shouldUpdate", "defineListeners", "isRenderPrevented" ].forEach (key) ->
-
-  typeImpl.prototype[key] = value: (func) ->
-    bound = -> func.apply @_delegate, arguments
-    if isDev then bound.toString = -> func.toString()
-    @_componentType[key] bound
-
-# Proxy a function that takes an argument.
-[ "willMount", "didMount", "willUnmount", "defineStyles",
-  "overrideStyles", "defineNativeValues", "defineReactions" ].forEach (key) ->
+# Proxy a 1-argument function.
+[ "render", "shouldUpdate", "isRenderPrevented", "willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles",
+  "defineNativeValues", "defineListeners", "defineReactions" ].forEach (key) ->
 
   typeImpl.prototype[key] = value: (func) ->
     @_componentType[key] func
@@ -74,7 +61,7 @@ instImpl = {}
 instImpl.prototype =
 
   props: get: ->
-    @_view.props
+    @_props
 
   view: get: ->
     @_view
@@ -84,7 +71,9 @@ instImpl.values =
   render: ->
     ElementType @constructor.View, (props) =>
       props._delegate = this
-      return props
+      return @_props = props
+
+  _props: null
 
   _view: null
 

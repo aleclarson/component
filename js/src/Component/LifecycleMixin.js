@@ -1,4 +1,4 @@
-var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, guard, inheritArray, instImpl, sync, typeImpl, viewImpl;
+var Builder, ReactComponent, applyChain, assert, assertType, bindDelegate, emptyFunction, guard, inheritArray, instImpl, sync, typeImpl, viewImpl;
 
 require("isDev");
 
@@ -55,10 +55,16 @@ typeImpl.methods = {
   },
   shouldUpdate: function(func) {
     assertType(func, Function);
+    if (this._delegate) {
+      func = bindDelegate(func);
+    }
     this._shouldUpdate = func;
   },
   render: function(func) {
     assertType(func, Function);
+    if (this._delegate) {
+      func = bindDelegate(func);
+    }
     this._render = func;
   }
 };
@@ -110,6 +116,19 @@ viewImpl.methods = {
   }
 };
 
+bindDelegate = function(func) {
+  var bound;
+  bound = function() {
+    return func.apply(this._delegate, arguments);
+  };
+  if (isDev) {
+    bound.toString = function() {
+      return func.toString();
+    };
+  }
+  return bound;
+};
+
 inheritArray = function(obj, key, type) {
   var inherited;
   inherited = type.prototype[key];
@@ -123,5 +142,3 @@ inheritArray = function(obj, key, type) {
     obj[key] = inherited;
   }
 };
-
-//# sourceMappingURL=../../../map/src/Component/LifecycleMixin.map

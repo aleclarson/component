@@ -132,5 +132,3 @@ type.defineMethods({
 });
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Animation.map

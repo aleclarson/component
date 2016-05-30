@@ -1,4 +1,6 @@
-var Children, NativeMap, NativeStyle, Style, Type, isType, type;
+var Children, NativeMap, NativeStyle, Style, Type, getArgProp, isType, type;
+
+getArgProp = require("getArgProp");
 
 isType = require("isType");
 
@@ -26,9 +28,7 @@ type.createInstance(function() {
 });
 
 type.defineValues({
-  _propTypes: function(_, propTypes) {
-    return propTypes;
-  }
+  _propTypes: getArgProp(1)
 });
 
 type.initInstance(function(props) {
@@ -40,11 +40,11 @@ type.defineMethods({
     if (this._propTypes) {
       type = this._propTypes[key];
     }
-    if ((type === Children) || (key === "children")) {
+    if (type === Children) {
       this.__values[key] = value;
       return;
     }
-    if ((type === Style) || (key === "style")) {
+    if (type === Style) {
       if (value == null) {
         return;
       }
@@ -53,10 +53,8 @@ type.defineMethods({
       }
       value = NativeStyle(value);
     }
-    return NativeMap.prototype.__attachValue.call(this, value, key);
+    return this.__super(arguments);
   }
 });
 
 module.exports = type.build();
-
-//# sourceMappingURL=../../../map/src/Native/Props.map

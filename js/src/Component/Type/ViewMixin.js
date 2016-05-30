@@ -1,7 +1,5 @@
 var ComponentBuilder, ElementType, Property, frozen, instImpl, typeImpl, viewImpl;
 
-require("isDev");
-
 Property = require("Property");
 
 ComponentBuilder = require("../Builder");
@@ -43,26 +41,7 @@ typeImpl.prototype = {};
   };
 });
 
-[].forEach(function(key) {});
-
-["render", "shouldUpdate", "defineListeners", "isRenderPrevented"].forEach(function(key) {
-  return typeImpl.prototype[key] = {
-    value: function(func) {
-      var bound;
-      bound = function() {
-        return func.apply(this._delegate, arguments);
-      };
-      if (isDev) {
-        bound.toString = function() {
-          return func.toString();
-        };
-      }
-      return this._componentType[key](bound);
-    }
-  };
-});
-
-["willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles", "defineNativeValues", "defineReactions"].forEach(function(key) {
+["render", "shouldUpdate", "isRenderPrevented", "willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles", "defineNativeValues", "defineListeners", "defineReactions"].forEach(function(key) {
   return typeImpl.prototype[key] = {
     value: function(func) {
       return this._componentType[key](func);
@@ -88,7 +67,7 @@ instImpl = {};
 instImpl.prototype = {
   props: {
     get: function() {
-      return this._view.props;
+      return this._props;
     }
   },
   view: {
@@ -103,10 +82,11 @@ instImpl.values = {
     return ElementType(this.constructor.View, (function(_this) {
       return function(props) {
         props._delegate = _this;
-        return props;
+        return _this._props = props;
       };
     })(this));
   },
+  _props: null,
   _view: null
 };
 
@@ -149,5 +129,3 @@ viewImpl.initInstance = function() {
 viewImpl.willUnmount = function() {
   return this._delegate._view = null;
 };
-
-//# sourceMappingURL=../../../../map/src/Component/Type/ViewMixin.map

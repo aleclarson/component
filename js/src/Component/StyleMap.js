@@ -201,5 +201,3 @@ pairKeyValue = function(key, value) {
   pair[key] = value;
   return pair;
 };
-
-//# sourceMappingURL=../../../map/src/Component/StyleMap.map
