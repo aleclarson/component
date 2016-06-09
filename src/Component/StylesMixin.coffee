@@ -1,6 +1,7 @@
 
 assertType = require "assertType"
 Property = require "Property"
+isType = require "isType"
 
 StyleMap = require "./StyleMap"
 
@@ -52,11 +53,11 @@ instImpl.willBuild = ->
 
   styles = @_styles
   delegate = @_delegate
-  inherited = delegate._kind.styles if delegate._kind
-  if not styles
-    return if not inherited
-    styles = inherited
 
+  inherited = delegate._kind.styles if delegate._kind
+  styles = inherited unless styles or not inherited
+
+  return if not isType styles, StyleMap
   delegate.defineStatics { styles }
 
   # Only define 'instance.styles' once in the inheritance chain.

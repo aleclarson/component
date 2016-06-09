@@ -26,7 +26,7 @@ type.defineValues
 type.initInstance (props) ->
   @attach props
 
-type.defineMethods
+type.overrideMethods
 
   __attachValue: (value, key) ->
 

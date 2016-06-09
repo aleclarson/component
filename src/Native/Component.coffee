@@ -5,12 +5,13 @@ ReactElement = require "ReactElement"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 
+ElementType = require "../Component/ElementType"
 NativeProps = require "./Props"
 Component = require "../Component"
 
 configTypes =
   render: Function
-  propTypes: Object
+  propTypes: Object.Maybe
 
 module.exports =
 NativeComponent = (name, config) ->
@@ -20,14 +21,16 @@ NativeComponent = (name, config) ->
 
   type = Component "Native" + name
 
+  if config.propTypes
+    type.propTypes = config.propTypes
+
   type.definePrototype
-    _propTypes: { value: config.propTypes }
-    _renderChild: ReactElement.createElement.bind null, config.render
+    renderChild: ElementType config.render
 
   type.defineValues typeImpl.values
   type.defineListeners typeImpl.listeners
-  type.render typeImpl.render
   type.willUnmount typeImpl.willUnmount
+  type.render typeImpl.render
 
   return type.build()
 
@@ -40,12 +43,12 @@ typeImpl.values =
   _queuedProps: null
 
   _nativeProps: ->
-    NativeProps @props, @_propTypes
+    NativeProps @props, @constructor.propTypes
 
 typeImpl.render = ->
   props = @_nativeProps.values
-  props.ref = onRef.bind this
-  @_renderChild props
+  props.ref = setChild.bind this
+  @renderChild props
 
 typeImpl.listeners = ->
 
@@ -61,7 +64,7 @@ typeImpl.willUnmount = ->
 # Helpers
 #
 
-onRef = (view) ->
+setChild = (view) ->
   @child = view
   if view and @_queuedProps
     @child.setNativeProps @_queuedProps

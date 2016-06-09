@@ -26,7 +26,7 @@ type.initInstance(function(values) {
   return this.attach(values);
 });
 
-type.defineMethods({
+type.overrideMethods({
   attach: function(newValues) {
     if (Array.isArray(newValues)) {
       newValues = flattenStyle(newValues);
@@ -48,3 +48,5 @@ type.defineMethods({
 });
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Style.map

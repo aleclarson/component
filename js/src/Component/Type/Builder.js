@@ -1,4 +1,4 @@
-var Component, Reaction, Type, assert, assertType, define, guard, isType, type;
+var Component, Reaction, Type, assert, assertType, define, isType, type;
 
 assertType = require("assertType");
 
@@ -9,8 +9,6 @@ isType = require("isType");
 assert = require("assert");
 
 define = require("define");
-
-guard = require("guard");
 
 Type = require("Type");
 
@@ -24,7 +22,7 @@ type._initInstance.unshift(function() {
   return this._tracer.trace();
 });
 
-type.defineMethods({
+type.overrideMethods({
   inherits: function(kind) {
     this.__super(arguments);
     if (kind instanceof Component.Type) {
@@ -36,3 +34,5 @@ type.defineMethods({
 type.addMixins([require("./ViewMixin")]);
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../../map/src/Component/Type/Builder.map

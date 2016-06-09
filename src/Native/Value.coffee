@@ -20,6 +20,7 @@ steal = require "steal"
 Void = require "Void"
 Null = require "Null"
 Type = require "Type"
+hook = require "hook"
 Any = require "Any"
 
 Animation = require "./Animation"
@@ -247,11 +248,11 @@ type.defineMethods
       @value = Progress.toValue progress, toRange
 
     # Update the value immediately.
-    @_tracking._onEvent nativeValue.value
+    @_tracking._onNotify nativeValue.value
 
     # Clean up even if the listener was
     # stopped without calling 'stopTracking()'.
-    @_tracking._onDefuse = =>
+    hook.before @_tracking, "_onDefuse", =>
       @_tracking = null
 
     return @_tracking

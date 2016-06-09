@@ -44,7 +44,7 @@ typeImpl.methods = {
       var listeners, onListen;
       listeners = [];
       onListen = Event.didListen(function(listener) {
-        listener._defuse();
+        listener.stop();
         return listeners.push(listener);
       });
       createListeners.apply(this, args);
@@ -64,8 +64,10 @@ typeImpl.methods = {
       ref = this.__listeners[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         listener = ref[i];
-        listener.stop();
+        listener.defuse();
       }
     });
   }
 };
+
+//# sourceMappingURL=../../../map/src/Component/ListenerMixin.map

@@ -48,7 +48,7 @@ typeImpl.methods =
 
       # Implicitly retain every new listener.
       onListen = Event.didListen (listener) ->
-        listener._defuse() # Deactivate each listener until mounted.
+        listener.stop() # Pause each listener until mounted.
         listeners.push listener
 
       # Create the listeners.
@@ -68,7 +68,7 @@ typeImpl.methods =
 
     @_willUnmount.push ->
       for listener in @__listeners[phaseId]
-        listener.stop()
+        listener.defuse()
       return
 
     return

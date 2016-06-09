@@ -6,6 +6,7 @@ NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 assertType = require "assertType"
+wrapValue = require "wrapValue"
 Property = require "Property"
 setType = require "setType"
 setKind = require "setKind"
@@ -29,16 +30,27 @@ ElementType = NamedFunction "ElementType", (componentType, initProps) ->
   if not initProps
     initProps = emptyFunction.thatReturnsArgument
 
-  self = (props) ->
+  self = (props, children) ->
+
     props = {} if not props
     assertType props, Object, "props"
-    applyMixins props
-    key = stealKey props
-    element = {}
-    defineHiddenProperties element
-    element.key = key if key isnt null
-    element.type = componentType
-    element.props = initProps props
+
+    if children
+      props.children = children
+
+    elementKey = stealKeyFromProps props
+    applyMixinsToProps props
+
+    element =
+      key: elementKey
+      type: componentType
+      props: initProps props
+
+    hidden.define element, "$$typeof", ReactElement.type
+    hidden.define element, "_owner", ReactCurrentOwner.current
+    hidden.define element, "_store", validated: no
+    hidden.define element, "_trace", Tracer "ReactElement()"
+
     return element
 
   self.componentType = componentType
@@ -51,12 +63,10 @@ setKind ElementType, Function
 # Helpers
 #
 
-define ElementType.prototype,
+define ElementType.prototype, "propTypes",
+  get: -> @componentType.propTypes
 
-  propTypes: get: ->
-    @componentType.propTypes
-
-applyMixins = (props) ->
+applyMixinsToProps = (props) ->
   return if not props.mixins
   mixins = steal props, "mixins"
   assertType mixins, Array, "props.mixins"
@@ -66,19 +76,8 @@ applyMixins = (props) ->
       props[key] = value
   return
 
-stealKey = (props) ->
-  key = steal props, "key", null
-  return key if key is null
+stealKeyFromProps = (props) ->
+  key = steal props, "key"
+  return if key is undefined
   return key if isType key, String
   return key + ""
-
-hiddenProperties =
-  $$typeof: -> ReactElement.type
-  _owner: -> ReactCurrentOwner.current
-  _store: -> validated: no
-
-defineHiddenProperties = (element) ->
-  for key, getValue of hiddenProperties
-    hidden.define element, key, getValue()
-  return if not isDev
-  hidden.define element, "_trace", Tracer "ReactElement()"

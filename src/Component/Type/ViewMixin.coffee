@@ -58,6 +58,13 @@ typeImpl.initInstance = ->
 
 instImpl = {}
 
+instImpl.willBuild = ->
+  @defineStatics View: @_componentType.build()
+  return if @_kind instanceof Component.Type
+  @defineValues instImpl.values
+  @defineMethods instImpl.methods
+  @definePrototype instImpl.prototype
+
 instImpl.prototype =
 
   props: get: ->
@@ -71,17 +78,24 @@ instImpl.values =
   render: ->
     ElementType @constructor.View, (props) =>
       props._delegate = this
+      @_mixinStyles props if @_styles
       return @_props = props
+
+  _styles: (options) ->
+    options and options.styles
 
   _props: null
 
   _view: null
 
-instImpl.willBuild = ->
-  @defineStatics View: @_componentType.build()
-  return if @_kind instanceof Component.Type
-  @defineValues instImpl.values
-  @definePrototype instImpl.prototype
+instImpl.methods =
+
+  _mixinStyles: (props) ->
+    if props.styles
+      combine props.styles, @_styles
+    else
+      props.styles = @_styles
+    return
 
 #
 # The 'view' is a 'Type.Builder' that inherits from 'ReactComponent'

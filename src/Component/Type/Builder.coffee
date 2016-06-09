@@ -4,7 +4,6 @@ Reaction = require "reaction"
 isType = require "isType"
 assert = require "assert"
 define = require "define"
-guard = require "guard"
 Type = require "Type"
 
 Component = require ".."
@@ -16,7 +15,7 @@ type.inherits Type.Builder
 type._initInstance.unshift ->
   @_tracer.trace()
 
-type.defineMethods
+type.overrideMethods
 
   inherits: (kind) ->
 

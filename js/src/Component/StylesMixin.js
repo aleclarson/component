@@ -1,8 +1,10 @@
-var Property, StyleMap, assertType, frozen, instImpl, typeImpl;
+var Property, StyleMap, assertType, frozen, instImpl, isType, typeImpl;
 
 assertType = require("assertType");
 
 Property = require("Property");
+
+isType = require("isType");
 
 StyleMap = require("./StyleMap");
 
@@ -55,11 +57,11 @@ instImpl.willBuild = function() {
   if (delegate._kind) {
     inherited = delegate._kind.styles;
   }
-  if (!styles) {
-    if (!inherited) {
-      return;
-    }
+  if (!(styles || !inherited)) {
     styles = inherited;
+  }
+  if (!isType(styles, StyleMap)) {
+    return;
   }
   delegate.defineStatics({
     styles: styles
@@ -76,3 +78,5 @@ instImpl.willBuild = function() {
     });
   }
 };
+
+//# sourceMappingURL=../../../map/src/Component/StylesMixin.map

@@ -17,7 +17,13 @@ type.inherits(Builder);
 type._initInstance.unshift(function() {
   this._tracer.trace();
   return this._willBuild.push(function() {
-    return this._kind != null ? this._kind : this._kind = ReactComponent;
+    if (this._kind == null) {
+      this._kind = ReactComponent;
+    }
+    return this._initInstance.push(function() {
+      var inst;
+      return inst = this;
+    });
   });
 });
 
@@ -49,3 +55,5 @@ type.overrideMethods({
 type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StylesMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../map/src/Component/Builder.map

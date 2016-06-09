@@ -1,4 +1,4 @@
-var AnimatedValue, Animation, Any, Event, NativeValue, Null, Progress, Reaction, Tracer, Type, Void, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, isConstructor, isType, roundValue, steal, type;
+var AnimatedValue, Animation, Any, Event, NativeValue, Null, Progress, Reaction, Tracer, Type, Void, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, hook, isConstructor, isType, roundValue, steal, type;
 
 require("isDev");
 
@@ -37,6 +37,8 @@ Void = require("Void");
 Null = require("Null");
 
 Type = require("Type");
+
+hook = require("hook");
 
 Any = require("Any");
 
@@ -319,12 +321,12 @@ type.defineMethods({
         return _this.value = Progress.toValue(progress, toRange);
       };
     })(this));
-    this._tracking._onEvent(nativeValue.value);
-    this._tracking._onDefuse = (function(_this) {
+    this._tracking._onNotify(nativeValue.value);
+    hook.before(this._tracking, "_onDefuse", (function(_this) {
       return function() {
         return _this._tracking = null;
       };
-    })(this);
+    })(this));
     return this._tracking;
   },
   stopTracking: function() {
@@ -468,3 +470,5 @@ type.defineMethods({
 });
 
 module.exports = NativeValue = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Value.map

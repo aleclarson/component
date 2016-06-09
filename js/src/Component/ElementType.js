@@ -1,4 +1,4 @@
-var ElementType, Kind, NamedFunction, Property, ReactCurrentOwner, ReactElement, Tracer, Void, applyMixins, assertType, define, defineHiddenProperties, emptyFunction, hidden, hiddenProperties, isType, setKind, setType, steal, stealKey;
+var ElementType, Kind, NamedFunction, Property, ReactCurrentOwner, ReactElement, Tracer, Void, applyMixinsToProps, assertType, define, emptyFunction, hidden, isType, setKind, setType, steal, stealKeyFromProps, wrapValue;
 
 require("isDev");
 
@@ -11,6 +11,8 @@ emptyFunction = require("emptyFunction");
 ReactElement = require("ReactElement");
 
 assertType = require("assertType");
+
+wrapValue = require("wrapValue");
 
 Property = require("Property");
 
@@ -41,21 +43,28 @@ module.exports = ElementType = NamedFunction("ElementType", function(componentTy
   if (!initProps) {
     initProps = emptyFunction.thatReturnsArgument;
   }
-  self = function(props) {
-    var element, key;
+  self = function(props, children) {
+    var element, elementKey;
     if (!props) {
       props = {};
     }
     assertType(props, Object, "props");
-    applyMixins(props);
-    key = stealKey(props);
-    element = {};
-    defineHiddenProperties(element);
-    if (key !== null) {
-      element.key = key;
+    if (children) {
+      props.children = children;
     }
-    element.type = componentType;
-    element.props = initProps(props);
+    elementKey = stealKeyFromProps(props);
+    applyMixinsToProps(props);
+    element = {
+      key: elementKey,
+      type: componentType,
+      props: initProps(props)
+    };
+    hidden.define(element, "$$typeof", ReactElement.type);
+    hidden.define(element, "_owner", ReactCurrentOwner.current);
+    hidden.define(element, "_store", {
+      validated: false
+    });
+    hidden.define(element, "_trace", Tracer("ReactElement()"));
     return element;
   };
   self.componentType = componentType;
@@ -64,15 +73,13 @@ module.exports = ElementType = NamedFunction("ElementType", function(componentTy
 
 setKind(ElementType, Function);
 
-define(ElementType.prototype, {
-  propTypes: {
-    get: function() {
-      return this.componentType.propTypes;
-    }
+define(ElementType.prototype, "propTypes", {
+  get: function() {
+    return this.componentType.propTypes;
   }
 });
 
-applyMixins = function(props) {
+applyMixinsToProps = function(props) {
   var i, key, len, mixin, mixins, value;
   if (!props.mixins) {
     return;
@@ -91,11 +98,11 @@ applyMixins = function(props) {
   }
 };
 
-stealKey = function(props) {
+stealKeyFromProps = function(props) {
   var key;
-  key = steal(props, "key", null);
-  if (key === null) {
-    return key;
+  key = steal(props, "key");
+  if (key === void 0) {
+    return;
   }
   if (isType(key, String)) {
     return key;
@@ -103,28 +110,4 @@ stealKey = function(props) {
   return key + "";
 };
 
-hiddenProperties = {
-  $$typeof: function() {
-    return ReactElement.type;
-  },
-  _owner: function() {
-    return ReactCurrentOwner.current;
-  },
-  _store: function() {
-    return {
-      validated: false
-    };
-  }
-};
-
-defineHiddenProperties = function(element) {
-  var getValue, key;
-  for (key in hiddenProperties) {
-    getValue = hiddenProperties[key];
-    hidden.define(element, key, getValue());
-  }
-  if (!isDev) {
-    return;
-  }
-  return hidden.define(element, "_trace", Tracer("ReactElement()"));
-};
+//# sourceMappingURL=../../../map/src/Component/ElementType.map

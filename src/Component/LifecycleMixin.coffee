@@ -7,7 +7,6 @@ assertType = require "assertType"
 applyChain = require "applyChain"
 Builder = require "Builder"
 assert = require "assert"
-guard = require "guard"
 sync = require "sync"
 
 module.exports = (type) ->

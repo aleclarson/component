@@ -1,8 +1,12 @@
-var Property, PureObject, StyleMap, TRANSFORMS, Type, applyPreset, assert, assertType, cloneObject, fillValue, has, pairKeyValue, sync, type;
+var Property, PureObject, StyleMap, Type, applyPreset, assert, assertType, assign, cloneObject, emptyObject, fillValue, frozen, has, inArray, isConstructor, parseTransform, run, sync, type;
 
 require("isDev");
 
+isConstructor = require("isConstructor");
+
 cloneObject = require("cloneObject");
+
+emptyObject = require("emptyObject");
 
 PureObject = require("PureObject");
 
@@ -12,6 +16,8 @@ fillValue = require("fillValue");
 
 Property = require("Property");
 
+inArray = require("in-array");
+
 assert = require("assert");
 
 Type = require("Type");
@@ -20,10 +26,16 @@ sync = require("sync");
 
 has = require("has");
 
+run = require("run");
+
+frozen = Property({
+  frozen: true
+});
+
 type = Type("StyleMap");
 
 type.defineValues({
-  _styles: function() {
+  _styleNames: function() {
     return Object.create(null);
   },
   _constantStyles: function() {
@@ -39,10 +51,10 @@ type.initInstance(function(inherited) {
     return;
   }
   assertType(inherited, StyleMap);
-  return sync.keys(inherited._styles, (function(_this) {
+  return sync.keys(inherited._styleNames, (function(_this) {
     return function(styleName) {
       var style;
-      _this._styles[styleName] = true;
+      _this._styleNames[styleName] = true;
       style = inherited._constantStyles[styleName];
       if (style) {
         _this._constantStyles[styleName] = cloneObject(style);
@@ -57,17 +69,27 @@ type.initInstance(function(inherited) {
 
 type.defineMethods({
   bind: function(context) {
-    var computedStyles, constantStyles, prop, styles;
-    prop = Property({
-      frozen: isDev
-    });
+    var contextStyles, props, styleNames, styles;
+    styleNames = this._styleNames;
     styles = Object.create(null);
-    constantStyles = this._constantStyles;
-    computedStyles = this._computedStyles;
-    sync.keys(this._styles, (function(_this) {
+    props = context.props;
+    if (props && props.styles) {
+      contextStyles = sync.map(props.styles, (function(_this) {
+        return function(style, styleName) {
+          style = sync.map(style, parseTransform);
+          if (!_this._styleNames[styleName]) {
+            frozen.define(styles, styleName, function() {
+              return _this._buildStyle(styleName, contextStyles, context, arguments);
+            });
+          }
+          return style;
+        };
+      })(this));
+    }
+    sync.keys(this._styleNames, (function(_this) {
       return function(styleName) {
-        return prop.define(styles, styleName, function() {
-          return _this._buildStyle(styleName, context, arguments);
+        return frozen.define(styles, styleName, function() {
+          return _this._buildStyle(styleName, contextStyles, context, arguments);
         });
       };
     })(this));
@@ -77,11 +99,8 @@ type.defineMethods({
     var style, styleName;
     for (styleName in styles) {
       style = styles[styleName];
-      if (!style) {
-        continue;
-      }
-      this._styles[styleName] = true;
-      this._parseStyle(styleName, style);
+      this._styleNames[styleName] = true;
+      this._parseStyle(styleName, style || emptyObject);
     }
   },
   override: function(styles) {
@@ -113,74 +132,121 @@ type.defineMethods({
         continue;
       }
       if (value instanceof Function) {
-        computedValues[key] = value;
+        computedValues[key] = parseTransform(value, key);
         if (has(constantValues, key)) {
           delete constantValues[key];
         }
       } else {
         assert(value !== void 0, "Invalid style value: '" + styleName + "." + key + "'");
-        constantValues[key] = value;
+        constantValues[key] = parseTransform(value, key);
         if (has(computedValues, key)) {
           delete computedValues[key];
         }
       }
     }
   },
-  _buildStyle: function(styleName, context, args) {
-    var computedValues, constantValues, key, style, transform, value;
-    style = {};
-    constantValues = this._constantStyles[styleName];
-    if (constantValues) {
-      for (key in constantValues) {
-        value = constantValues[key];
-        if (TRANSFORMS[key]) {
-          if (!transform) {
-            transform = [];
-          }
-          transform.push(pairKeyValue(key, value));
-        } else {
-          style[key] = value;
-        }
-      }
+  _buildStyle: function(styleName, contextStyles, context, args) {
+    var style;
+    style = {
+      transform: []
+    };
+    this._buildConstantStyle(style, this._constantStyles[styleName]);
+    this._buildComputedStyle(style, this._computedStyles[styleName], context, args);
+    if (contextStyles) {
+      this._buildContextStyle(style, contextStyles[styleName]);
     }
-    computedValues = this._computedStyles[styleName];
-    if (computedValues) {
-      for (key in computedValues) {
-        value = computedValues[key];
-        value = value.apply(context, args);
-        if (TRANSFORMS[key]) {
-          if (!transform) {
-            transform = [];
-          }
-          transform.push(pairKeyValue(key, value));
-        } else {
-          style[key] = value;
-        }
-      }
-    }
-    if (transform) {
-      style.transform = transform;
+    if (!style.transform.length) {
+      delete style.transform;
     }
     return style;
+  },
+  _buildConstantStyle: function(style, values) {
+    var isTransform, key, ref, value;
+    if (!values) {
+      return;
+    }
+    for (key in values) {
+      ref = values[key], value = ref.value, isTransform = ref.isTransform;
+      if (!isTransform) {
+        style[key] = value;
+      } else {
+        style.transform.push(assign({}, key, value));
+      }
+    }
+  },
+  _buildComputedStyle: function(style, values, context, args) {
+    var isTransform, key, ref, value;
+    if (!values) {
+      return;
+    }
+    for (key in values) {
+      ref = values[key], value = ref.value, isTransform = ref.isTransform;
+      value = value.apply(context, args);
+      if (!isTransform) {
+        style[key] = value;
+      } else {
+        style.transform.push(assign({}, key, value));
+      }
+    }
+  },
+  _buildContextStyle: function(style, values) {
+    var isTransform, key, ref, value;
+    for (key in values) {
+      ref = values[key], value = ref.value, isTransform = ref.isTransform;
+      if (!isTransform) {
+        style[key] = value;
+      } else {
+        style.transform.push(assign({}, key, value));
+      }
+    }
   }
 });
 
 type.defineStatics({
   _presets: Object.create(null),
-  addPreset: function(presetName, createStyle) {
+  addPreset: function(presetName, style) {
+    var preset;
     assertType(presetName, String);
-    assertType(createStyle, Function);
-    StyleMap._presets[presetName] = createStyle;
+    assertType(style, [Object, Function]);
+    if (isConstructor(style, Object)) {
+      style = sync.map(style, parseTransform);
+      preset = function() {
+        return style;
+      };
+    } else {
+      preset = function() {
+        var values;
+        values = style.apply(this, arguments);
+        return sync.map(values, parseTransform);
+      };
+    }
+    StyleMap._presets[presetName] = preset;
+  },
+  addPresets: function(presets) {
+    var createStyle, presetName;
+    for (presetName in presets) {
+      createStyle = presets[presetName];
+      this.addPreset(presetName, createStyle);
+    }
   }
 });
 
 module.exports = StyleMap = type.build();
 
-TRANSFORMS = {
-  scale: 1,
-  translateX: 1,
-  translateY: 1,
-  rotate: 1
+parseTransform = run(function() {
+  var keys;
+  keys = ["scale", "translateX", "translateY", "rotate"];
+  return function(value, key) {
+    return {
+      value: value,
+      isTransform: inArray(keys, key)
+    };
+  };
+});
+
+assign = function(obj, key, value) {
+  obj[key] = value;
+  return obj;
 };
 
 applyPreset = function(presetName, presetArg, constantValues) {
@@ -195,9 +261,4 @@ applyPreset = function(presetName, presetArg, constantValues) {
   }
 };
 
-pairKeyValue = function(key, value) {
-  var pair;
-  pair = {};
-  pair[key] = value;
-  return pair;
-};
+//# sourceMappingURL=../../../map/src/Component/StyleMap.map

@@ -19,7 +19,7 @@ type.createInstance ->
 type.initInstance (values) ->
   @attach values
 
-type.defineMethods
+type.overrideMethods
 
   attach: (newValues) ->
 

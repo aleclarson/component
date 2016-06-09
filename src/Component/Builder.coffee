@@ -14,6 +14,8 @@ type._initInstance.unshift ->
   @_tracer.trace()
   @_willBuild.push ->
     @_kind ?= ReactComponent
+    @_initInstance.push ->
+      inst = this
 
 type.definePrototype
 

@@ -1,4 +1,4 @@
-var Property, ReactComponent, assert, assertType, assertTypes, define, frozen, getKind, guard, has, instImpl, mergeDefaults, superWrap, typeImpl;
+var Property, ReactComponent, assert, assertType, assertTypes, define, frozen, getKind, has, instImpl, mergeDefaults, superWrap, typeImpl;
 
 require("isDev");
 
@@ -17,8 +17,6 @@ getKind = require("getKind");
 define = require("define");
 
 assert = require("assert");
-
-guard = require("guard");
 
 has = require("has");
 
@@ -56,17 +54,7 @@ typeImpl.prototype = {
       });
       if (isDev) {
         return this.initProps(function(props) {
-          assertType(props, Object);
-          return guard(function() {
-            return assertTypes(props, propTypes);
-          }).fail(function(error) {
-            return throwFailure(error, {
-              method: "_processProps",
-              element: this,
-              props: props,
-              propTypes: propTypes
-            });
-          });
+          return assertTypes(props, propTypes);
         });
       }
     }
@@ -83,7 +71,6 @@ typeImpl.prototype = {
         return type.propDefaults = propDefaults;
       });
       return this.initProps(function(props) {
-        assertType(props, Object);
         return mergeDefaults(props, propDefaults);
       });
     }
@@ -125,7 +112,21 @@ instImpl.willBuild = function() {
   }
   if (processProps) {
     this._didBuild.push(function(type) {
-      return define(type.prototype, "_processProps", processProps);
+      return define(type.prototype, "_processProps", function(props) {
+        return guard(function() {
+          return processProps(props);
+        }).fail((function(_this) {
+          return function(error) {
+            var ReactInstanceMap, element, failure;
+            ReactInstanceMap = require("ReactInstanceMap");
+            element = ReactInstanceMap.get(_this)._currentElement;
+            failure = Failure(error, {
+              stack: element._trace()
+            });
+            return failure.stacks.print();
+          };
+        })(this));
+      });
     });
   }
   return this._didBuild.push((function(_this) {
@@ -157,3 +158,5 @@ superWrap = function(processProps, superImpl) {
     return superImpl(processProps(props));
   };
 };
+
+//# sourceMappingURL=../../../map/src/Component/PropsMixin.map

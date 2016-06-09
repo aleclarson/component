@@ -1,21 +1,27 @@
 
 require "isDev"
 
+isConstructor = require "isConstructor"
 cloneObject = require "cloneObject"
+emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
 fillValue = require "fillValue"
 Property = require "Property"
+inArray = require "in-array"
 assert = require "assert"
 Type = require "Type"
 sync = require "sync"
 has = require "has"
+run = require "run"
+
+frozen = Property { frozen: yes }
 
 type = Type "StyleMap"
 
 type.defineValues
 
-  _styles: -> Object.create null
+  _styleNames: -> Object.create null
 
   _constantStyles: -> Object.create null
 
@@ -27,9 +33,9 @@ type.initInstance (inherited) ->
 
   assertType inherited, StyleMap
 
-  sync.keys inherited._styles, (styleName) =>
+  sync.keys inherited._styleNames, (styleName) =>
 
-    @_styles[styleName] = yes
+    @_styleNames[styleName] = yes
 
     style = inherited._constantStyles[styleName]
     @_constantStyles[styleName] = cloneObject style if style
@@ -41,22 +47,28 @@ type.defineMethods
 
   bind: (context) ->
 
-    prop = Property { frozen: isDev }
+    styleNames = @_styleNames
     styles = Object.create null
 
-    constantStyles = @_constantStyles
-    computedStyles = @_computedStyles
-    sync.keys @_styles, (styleName) =>
-      prop.define styles, styleName, =>
-        @_buildStyle styleName, context, arguments
+    { props } = context
+    if props and props.styles
+      contextStyles = sync.map props.styles, (style, styleName) =>
+        style = sync.map style, parseTransform
+        if not @_styleNames[styleName]
+          frozen.define styles, styleName, =>
+            @_buildStyle styleName, contextStyles, context, arguments
+        return style
+
+    sync.keys @_styleNames, (styleName) =>
+      frozen.define styles, styleName, =>
+        @_buildStyle styleName, contextStyles, context, arguments
 
     return styles
 
   define: (styles) ->
     for styleName, style of styles
-      continue if not style
-      @_styles[styleName] = yes
-      @_parseStyle styleName, style
+      @_styleNames[styleName] = yes
+      @_parseStyle styleName, style or emptyObject
     return
 
   override: (styles) ->
@@ -91,52 +103,91 @@ type.defineMethods
         continue
 
       if value instanceof Function
-        computedValues[key] = value
+        computedValues[key] = parseTransform value, key
         delete constantValues[key] if has constantValues, key
       else
         assert value isnt undefined, "Invalid style value: '#{styleName}.#{key}'"
-        constantValues[key] = value
+        constantValues[key] = parseTransform value, key
         delete computedValues[key] if has computedValues, key
 
     return
 
-  _buildStyle: (styleName, context, args) ->
+  _buildStyle: (styleName, contextStyles, context, args) ->
 
-    style = {}
+    style =
+      transform: []
 
-    constantValues = @_constantStyles[styleName]
-    if constantValues
-      for key, value of constantValues
-        if TRANSFORMS[key]
-          transform = [] if not transform
-          transform.push pairKeyValue key, value
-        else style[key] = value
+    @_buildConstantStyle style, @_constantStyles[styleName]
+    @_buildComputedStyle style, @_computedStyles[styleName], context, args
+    @_buildContextStyle style, contextStyles[styleName] if contextStyles
 
-    computedValues = @_computedStyles[styleName]
-    if computedValues
-      for key, value of computedValues
-        value = value.apply context, args
-        if TRANSFORMS[key]
-          transform = [] if not transform
-          transform.push pairKeyValue key, value
-        else style[key] = value
+    # TODO: It might not hurt to keep an empty 'transform'.
+    if not style.transform.length
+      delete style.transform
 
-    style.transform = transform if transform
     return style
+
+  _buildConstantStyle: (style, values) ->
+    return if not values
+    for key, { value, isTransform } of values
+      if not isTransform then style[key] = value
+      else style.transform.push assign {}, key, value
+    return
+
+  _buildComputedStyle: (style, values, context, args) ->
+    return if not values
+    for key, { value, isTransform } of values
+      value = value.apply context, args
+      if not isTransform then style[key] = value
+      else style.transform.push assign {}, key, value
+    return
+
+  _buildContextStyle: (style, values) ->
+    for key, { value, isTransform } of values
+      if not isTransform then style[key] = value
+      else style.transform.push assign {}, key, value
+    return
 
 type.defineStatics
 
   _presets: Object.create null
 
-  addPreset: (presetName, createStyle) ->
+  addPreset: (presetName, style) ->
+
     assertType presetName, String
-    assertType createStyle, Function
-    StyleMap._presets[presetName] = createStyle
+    assertType style, [ Object, Function ]
+
+    if isConstructor style, Object
+      style = sync.map style, parseTransform
+      preset = ->
+        return style
+
+    else
+      preset = ->
+        values = style.apply this, arguments
+        return sync.map values, parseTransform
+
+    StyleMap._presets[presetName] = preset
+    return
+
+  addPresets: (presets) ->
+    for presetName, createStyle of presets
+      @addPreset presetName, createStyle
     return
 
 module.exports = StyleMap = type.build()
 
-TRANSFORMS = { scale: 1, translateX: 1, translateY: 1, rotate: 1 }
+#
+# Helpers
+#
+
+parseTransform = run ->
+  keys = [ "scale", "translateX", "translateY", "rotate" ]
+  return (value, key) -> { value, isTransform: inArray keys, key }
+
+assign = (obj, key, value) ->
+  obj[key] = value
+  return obj
 
 applyPreset = (presetName, presetArg, constantValues) ->
   createStyle = StyleMap._presets[presetName]
@@ -146,8 +197,3 @@ applyPreset = (presetName, presetArg, constantValues) ->
     assert value isnt undefined, "Invalid style value: '#{presetName}.#{key}'"
     constantValues[key] = value
   return
-
-pairKeyValue = (key, value) ->
-  pair = {}
-  pair[key] = value
-  return pair

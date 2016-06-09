@@ -64,6 +64,18 @@ typeImpl.initInstance = function() {
 
 instImpl = {};
 
+instImpl.willBuild = function() {
+  this.defineStatics({
+    View: this._componentType.build()
+  });
+  if (this._kind instanceof Component.Type) {
+    return;
+  }
+  this.defineValues(instImpl.values);
+  this.defineMethods(instImpl.methods);
+  return this.definePrototype(instImpl.prototype);
+};
+
 instImpl.prototype = {
   props: {
     get: function() {
@@ -82,23 +94,28 @@ instImpl.values = {
     return ElementType(this.constructor.View, (function(_this) {
       return function(props) {
         props._delegate = _this;
+        if (_this._styles) {
+          _this._mixinStyles(props);
+        }
         return _this._props = props;
       };
     })(this));
+  },
+  _styles: function(options) {
+    return options && options.styles;
   },
   _props: null,
   _view: null
 };
 
-instImpl.willBuild = function() {
-  this.defineStatics({
-    View: this._componentType.build()
-  });
-  if (this._kind instanceof Component.Type) {
-    return;
+instImpl.methods = {
+  _mixinStyles: function(props) {
+    if (props.styles) {
+      combine(props.styles, this._styles);
+    } else {
+      props.styles = this._styles;
+    }
   }
-  this.defineValues(instImpl.values);
-  return this.definePrototype(instImpl.prototype);
 };
 
 viewImpl = {};
@@ -129,3 +146,5 @@ viewImpl.initInstance = function() {
 viewImpl.willUnmount = function() {
   return this._delegate._view = null;
 };
+
+//# sourceMappingURL=../../../../map/src/Component/Type/ViewMixin.map

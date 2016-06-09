@@ -1,4 +1,4 @@
-var Component, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, onRef, throwFailure, typeImpl;
+var Component, ElementType, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, setChild, throwFailure, typeImpl;
 
 throwFailure = require("failure").throwFailure;
 
@@ -8,13 +8,15 @@ assertTypes = require("assertTypes");
 
 assertType = require("assertType");
 
+ElementType = require("../Component/ElementType");
+
 NativeProps = require("./Props");
 
 Component = require("../Component");
 
 configTypes = {
   render: Function,
-  propTypes: Object
+  propTypes: Object.Maybe
 };
 
 module.exports = NativeComponent = function(name, config) {
@@ -22,16 +24,16 @@ module.exports = NativeComponent = function(name, config) {
   assertType(name, String);
   assertTypes(config, configTypes);
   type = Component("Native" + name);
+  if (config.propTypes) {
+    type.propTypes = config.propTypes;
+  }
   type.definePrototype({
-    _propTypes: {
-      value: config.propTypes
-    },
-    _renderChild: ReactElement.createElement.bind(null, config.render)
+    renderChild: ElementType(config.render)
   });
   type.defineValues(typeImpl.values);
   type.defineListeners(typeImpl.listeners);
-  type.render(typeImpl.render);
   type.willUnmount(typeImpl.willUnmount);
+  type.render(typeImpl.render);
   return type.build();
 };
 
@@ -41,15 +43,15 @@ typeImpl.values = {
   child: null,
   _queuedProps: null,
   _nativeProps: function() {
-    return NativeProps(this.props, this._propTypes);
+    return NativeProps(this.props, this.constructor.propTypes);
   }
 };
 
 typeImpl.render = function() {
   var props;
   props = this._nativeProps.values;
-  props.ref = onRef.bind(this);
-  return this._renderChild(props);
+  props.ref = setChild.bind(this);
+  return this.renderChild(props);
 };
 
 typeImpl.listeners = function() {
@@ -68,10 +70,12 @@ typeImpl.willUnmount = function() {
   return this._nativeProps.detach();
 };
 
-onRef = function(view) {
+setChild = function(view) {
   this.child = view;
   if (view && this._queuedProps) {
     this.child.setNativeProps(this._queuedProps);
     this._queuedProps = null;
   }
 };
+
+//# sourceMappingURL=../../../map/src/Native/Component.map

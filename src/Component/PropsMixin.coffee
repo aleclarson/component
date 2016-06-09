@@ -11,7 +11,6 @@ Property = require "Property"
 getKind = require "getKind"
 define = require "define"
 assert = require "assert"
-guard = require "guard"
 has = require "has"
 
 frozen = Property { frozen: yes }
@@ -49,15 +48,9 @@ typeImpl.prototype =
       @_didBuild.push (type) ->
         type.propTypes = propTypes
 
-      # unless @_propDefaults
-      #   @createProps (props) ->
-      #     return props or {}
-
       if isDev
         @initProps (props) ->
-          assertType props, Object
-          guard -> assertTypes props, propTypes
-          .fail (error) -> throwFailure error, { method: "_processProps", element: this, props, propTypes }
+          assertTypes props, propTypes
 
   propDefaults:
     get: -> @_propDefaults
@@ -71,12 +64,7 @@ typeImpl.prototype =
       @_didBuild.push (type) ->
         type.propDefaults = propDefaults
 
-      # unless @_propTypes
-      #   @createProps (props) ->
-      #     return props or {}
-
       @initProps (props) ->
-        assertType props, Object
         mergeDefaults props, propDefaults
 
   createProps: (func) ->
@@ -117,7 +105,13 @@ instImpl.willBuild = ->
 
   if processProps
     @_didBuild.push (type) ->
-      define type.prototype, "_processProps", processProps
+      define type.prototype, "_processProps", (props) ->
+        guard -> processProps props
+        .fail (error) =>
+          ReactInstanceMap = require "ReactInstanceMap"
+          element = ReactInstanceMap.get(this)._currentElement
+          failure = Failure error, stack: element._trace()
+          failure.stacks.print()
 
   # Try to be the last 'didBuild' phase.
   @_didBuild.push => @_didBuild.push instImpl.didBuild

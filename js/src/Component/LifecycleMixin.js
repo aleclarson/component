@@ -1,4 +1,4 @@
-var Builder, ReactComponent, applyChain, assert, assertType, bindDelegate, emptyFunction, guard, inheritArray, instImpl, sync, typeImpl, viewImpl;
+var Builder, ReactComponent, applyChain, assert, assertType, bindDelegate, emptyFunction, inheritArray, instImpl, sync, typeImpl, viewImpl;
 
 require("isDev");
 
@@ -13,8 +13,6 @@ applyChain = require("applyChain");
 Builder = require("Builder");
 
 assert = require("assert");
-
-guard = require("guard");
 
 sync = require("sync");
 
@@ -142,3 +140,5 @@ inheritArray = function(obj, key, type) {
     obj[key] = inherited;
   }
 };
+
+//# sourceMappingURL=../../../map/src/Component/LifecycleMixin.map

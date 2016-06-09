@@ -35,7 +35,7 @@ type.initInstance(function(props) {
   return this.attach(props);
 });
 
-type.defineMethods({
+type.overrideMethods({
   __attachValue: function(value, key) {
     if (this._propTypes) {
       type = this._propTypes[key];
@@ -58,3 +58,5 @@ type.defineMethods({
 });
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Props.map
