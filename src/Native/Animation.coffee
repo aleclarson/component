@@ -1,7 +1,9 @@
 
 { AnimatedValue } = require "Animated"
 
+getArgProp = require "getArgProp"
 Progress = require "progress"
+isType = require "isType"
 Type = require "Type"
 hook = require "hook"
 
@@ -37,23 +39,24 @@ type.defineProperties
 
   velocity: get: ->
     velocity = @_animation._curVelocity
-    if (isType velocity, Number) then velocity else 0
+    if isType(velocity, Number) then velocity else 0
 
 type.defineFrozenValues
 
-  _animated: (options) -> options.animated
+  _animated: getArgProp "animated"
 
-  _animation: (options) -> new options.type options.config
+  _animation: (options) ->
+    options.type options.config
 
 type.defineValues
 
   _fromValue: -> @value
 
-  _toValue: (options) -> options.config.toValue
+  _toValue: getArgProp "config.toValue"
 
-  _onUpdate: (options) -> options.onUpdate
+  _onUpdate: getArgProp "onUpdate"
 
-  _onEnd: (options) -> options.onEnd
+  _onEnd: getArgProp "onEnd"
 
 type.initInstance ->
 

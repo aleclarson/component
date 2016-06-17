@@ -1,4 +1,4 @@
-var ComponentBuilder, ElementType, Property, frozen, instImpl, typeImpl, viewImpl;
+var $, ComponentBuilder, ElementType, Property, frozen, instImpl, mergeStyles, mutable, typeImpl, viewImpl;
 
 Property = require("Property");
 
@@ -6,9 +6,7 @@ ComponentBuilder = require("../Builder");
 
 ElementType = require("../ElementType");
 
-frozen = Property({
-  frozen: true
-});
+mutable = Property.mutable, frozen = Property.frozen;
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);
@@ -62,29 +60,35 @@ typeImpl.initInstance = function() {
   return this._componentType.willBuild(viewImpl.willBuild);
 };
 
+$ = {
+  delegate: Symbol("Component.delegate"),
+  styles: Symbol("Component.styles"),
+  props: Symbol("Component.props"),
+  view: Symbol("Component.view")
+};
+
 instImpl = {};
 
 instImpl.willBuild = function() {
   this.defineStatics({
     View: this._componentType.build()
   });
-  if (this._kind instanceof Component.Type) {
-    return;
+  if (!(this._kind instanceof Component.Type)) {
+    this.definePrototype(instImpl.prototype);
+    this.defineValues(instImpl.values);
+    return this.initInstance(instImpl.initInstance);
   }
-  this.defineValues(instImpl.values);
-  this.defineMethods(instImpl.methods);
-  return this.definePrototype(instImpl.prototype);
 };
 
 instImpl.prototype = {
   props: {
     get: function() {
-      return this._props;
+      return this[$.props];
     }
   },
   view: {
     get: function() {
-      return this._view;
+      return this[$.view];
     }
   }
 };
@@ -93,29 +97,32 @@ instImpl.values = {
   render: function() {
     return ElementType(this.constructor.View, (function(_this) {
       return function(props) {
-        props._delegate = _this;
-        if (_this._styles) {
-          _this._mixinStyles(props);
-        }
-        return _this._props = props;
+        props[$.delegate] = _this;
+        mergeStyles(props, _this[$.styles]);
+        return _this[$.props] = props;
       };
     })(this));
-  },
-  _styles: function(options) {
-    return options && options.styles;
-  },
-  _props: null,
-  _view: null
+  }
 };
 
-instImpl.methods = {
-  _mixinStyles: function(props) {
-    if (props.styles) {
-      combine(props.styles, this._styles);
-    } else {
-      props.styles = this._styles;
-    }
+instImpl.initInstance = function(options) {
+  if (options == null) {
+    options = {};
   }
+  mutable.define(this, $.props, null);
+  mutable.define(this, $.view, null);
+  return mutable.define(this, $.styles, options.styles || null);
+};
+
+mergeStyles = function(props, styles) {
+  if (!styles) {
+    return;
+  }
+  if (props.styles) {
+    combine(props.styles, styles);
+    return;
+  }
+  props.styles = styles;
 };
 
 viewImpl = {};
@@ -123,7 +130,7 @@ viewImpl = {};
 viewImpl.prototype = {
   _delegate: {
     get: function() {
-      return this.props._delegate;
+      return this.props[$.delegate];
     }
   }
 };
@@ -140,11 +147,14 @@ viewImpl.willBuild = function() {
 };
 
 viewImpl.initInstance = function() {
-  return this._delegate._view = this;
+  return this._delegate[$.view] = this;
 };
 
 viewImpl.willUnmount = function() {
-  return this._delegate._view = null;
+  var delegate;
+  delegate = this._delegate;
+  delegate[$.props] = null;
+  return delegate[$.view] = null;
 };
 
 //# sourceMappingURL=../../../../map/src/Component/Type/ViewMixin.map

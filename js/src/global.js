@@ -9,3 +9,5 @@ define(global, {
 define(global, require("./Native"));
 
 define(global, require("./React"));
+
+//# sourceMappingURL=../../map/src/global.map

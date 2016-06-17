@@ -1,6 +1,5 @@
 
 assertType = require "assertType"
-Reaction = require "reaction"
 isType = require "isType"
 assert = require "assert"
 define = require "define"

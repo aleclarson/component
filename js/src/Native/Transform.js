@@ -71,3 +71,5 @@ type.overrideMethods({
 });
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Transform.map

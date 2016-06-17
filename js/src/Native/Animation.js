@@ -1,8 +1,12 @@
-var AnimatedValue, Progress, Type, hook, type;
+var AnimatedValue, Progress, Type, getArgProp, hook, isType, type;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
+getArgProp = require("getArgProp");
+
 Progress = require("progress");
+
+isType = require("isType");
 
 Type = require("Type");
 
@@ -62,11 +66,9 @@ type.defineProperties({
 });
 
 type.defineFrozenValues({
-  _animated: function(options) {
-    return options.animated;
-  },
+  _animated: getArgProp("animated"),
   _animation: function(options) {
-    return new options.type(options.config);
+    return options.type(options.config);
   }
 });
 
@@ -74,15 +76,9 @@ type.defineValues({
   _fromValue: function() {
     return this.value;
   },
-  _toValue: function(options) {
-    return options.config.toValue;
-  },
-  _onUpdate: function(options) {
-    return options.onUpdate;
-  },
-  _onEnd: function(options) {
-    return options.onEnd;
-  }
+  _toValue: getArgProp("config.toValue"),
+  _onUpdate: getArgProp("onUpdate"),
+  _onEnd: getArgProp("onEnd")
 });
 
 type.initInstance(function() {
@@ -132,3 +128,5 @@ type.defineMethods({
 });
 
 module.exports = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Animation.map

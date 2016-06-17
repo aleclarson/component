@@ -1,20 +1,16 @@
-var Event, Property, Random, assertType, define, frozen, hasListeners, typeImpl;
+var Event, Random, assertType, baseImpl, define, frozen, hasListeners, typeImpl;
+
+frozen = require("Property").frozen;
 
 assertType = require("assertType");
-
-Property = require("Property");
 
 Random = require("random");
 
 define = require("define");
 
-Event = require("event");
+Event = require("Event");
 
 hasListeners = Symbol("Component.hasListeners");
-
-frozen = Property({
-  frozen: true
-});
 
 module.exports = function(type) {
   return type.defineMethods(typeImpl.methods);
@@ -23,51 +19,60 @@ module.exports = function(type) {
 typeImpl = {};
 
 typeImpl.methods = {
-  defineListeners: function(createListeners) {
-    var delegate, kind, phaseId;
-    assertType(createListeners, Function);
+  defineListeners: function(func) {
+    var createListeners, delegate, kind, phaseId, startListeners, stopListeners;
+    assertType(func, Function);
     delegate = this._delegate;
-    kind = delegate._kind;
     if (!this[hasListeners]) {
-      define(this, hasListeners, true);
+      frozen.define(this, hasListeners, true);
+      kind = delegate._kind;
       if (!(kind && kind.prototype[hasListeners])) {
-        delegate._didBuild.push(function(type) {
-          return define(type.prototype, hasListeners, true);
-        });
-        delegate._initInstance.push(function() {
-          return define(this, "__listeners", Object.create(null));
-        });
+        delegate._didBuild.push(baseImpl.didBuild);
+        delegate._initInstance.push(baseImpl.initInstance);
       }
     }
     phaseId = Random.id();
-    delegate._initInstance.push(function(args) {
-      var listeners, onListen;
+    createListeners = function(args) {
+      var listeners, onAttach;
       listeners = [];
-      onListen = Event.didListen(function(listener) {
-        listener.stop();
+      onAttach = Event.didAttach(function(listener) {
         return listeners.push(listener);
       });
-      createListeners.apply(this, args);
-      onListen.stop();
+      onAttach.start();
+      func.apply(this, args);
+      onAttach.stop();
       this.__listeners[phaseId] = listeners;
-    });
-    this._willMount.push(function() {
+    };
+    delegate._initInstance.push(createListeners);
+    startListeners = function() {
       var i, len, listener, ref;
       ref = this.__listeners[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         listener = ref[i];
         listener.start();
       }
-    });
-    this._willUnmount.push(function() {
+    };
+    this._willMount.push(startListeners);
+    stopListeners = function() {
       var i, len, listener, ref;
       ref = this.__listeners[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         listener = ref[i];
-        listener.defuse();
+        listener.stop();
       }
-    });
+    };
+    this._willUnmount.push(stopListeners);
   }
+};
+
+baseImpl = {};
+
+baseImpl.didBuild = function(type) {
+  return frozen.define(type.prototype, hasListeners, true);
+};
+
+baseImpl.initInstance = function() {
+  return frozen.define(this, "__listeners", Object.create(null));
 };
 
 //# sourceMappingURL=../../../map/src/Component/ListenerMixin.map

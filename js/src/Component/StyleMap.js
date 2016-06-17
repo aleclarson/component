@@ -28,9 +28,7 @@ has = require("has");
 
 run = require("run");
 
-frozen = Property({
-  frozen: true
-});
+frozen = Property.frozen;
 
 type = Type("StyleMap");
 
@@ -182,6 +180,9 @@ type.defineMethods({
     for (key in values) {
       ref = values[key], value = ref.value, isTransform = ref.isTransform;
       value = value.apply(context, args);
+      if (value === void 0) {
+        continue;
+      }
       if (!isTransform) {
         style[key] = value;
       } else {

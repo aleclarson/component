@@ -5,7 +5,7 @@ isType = require "isType"
 
 StyleMap = require "./StyleMap"
 
-frozen = Property { frozen: yes }
+{ frozen } = Property
 
 module.exports = (type) ->
   type.defineValues typeImpl.values

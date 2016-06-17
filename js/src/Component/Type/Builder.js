@@ -1,8 +1,6 @@
-var Component, Reaction, Type, assert, assertType, define, isType, type;
+var Component, Type, assert, assertType, define, isType, type;
 
 assertType = require("assertType");
-
-Reaction = require("reaction");
 
 isType = require("isType");
 

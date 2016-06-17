@@ -29,14 +29,13 @@ typeImpl.methods =
     assert not @_isRenderPrevented, "'isRenderPrevented' is already defined!"
     assertType func, Function
 
-    func = bindDelegate func if @_delegate
     @_isRenderPrevented = func
-
-    @defineValues instImpl.values
-    @defineReactions instImpl.reactions
-    @defineMethods { isRenderPrevented: func }
-
     @_willBuild.push typeImpl.willBuild
+
+    delegate = @_delegate
+    delegate.defineValues instImpl.values
+    delegate.defineReactions instImpl.reactions
+    delegate.defineMethods { isRenderPrevented: func }
     return
 
 typeImpl.willBuild = ->
@@ -73,12 +72,3 @@ instImpl.reactions =
       return unless @needsRender and shouldRender
       @needsRender = no
       try @forceUpdate()
-
-#
-# Helpers
-#
-
-bindDelegate = (func) ->
-  bound = -> func.apply @_delegate, arguments
-  if isDev then bound.toString = -> func.toString()
-  return bound

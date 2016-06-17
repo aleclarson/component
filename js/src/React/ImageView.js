@@ -24,7 +24,7 @@ EdgeInsetsType = Shape("EdgeInsetsType", {
 });
 
 module.exports = NativeComponent("ImageView", {
-  render: require("Image"),
+  render: require("ImageView"),
   propTypes: {
     style: Style,
     source: ImageSource,
@@ -40,3 +40,5 @@ module.exports = NativeComponent("ImageView", {
     testID: String.Maybe
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/ImageView.map

@@ -1,4 +1,4 @@
-var Reaction, assert, assertType, bindDelegate, hook, instImpl, shift, typeImpl;
+var Reaction, assert, assertType, hook, instImpl, shift, typeImpl;
 
 require("isDev");
 
@@ -25,18 +25,17 @@ typeImpl.values = {
 
 typeImpl.methods = {
   isRenderPrevented: function(func) {
+    var delegate;
     assert(!this._isRenderPrevented, "'isRenderPrevented' is already defined!");
     assertType(func, Function);
-    if (this._delegate) {
-      func = bindDelegate(func);
-    }
     this._isRenderPrevented = func;
-    this.defineValues(instImpl.values);
-    this.defineReactions(instImpl.reactions);
-    this.defineMethods({
+    this._willBuild.push(typeImpl.willBuild);
+    delegate = this._delegate;
+    delegate.defineValues(instImpl.values);
+    delegate.defineReactions(instImpl.reactions);
+    delegate.defineMethods({
       isRenderPrevented: func
     });
-    this._willBuild.push(typeImpl.willBuild);
   }
 };
 
@@ -84,15 +83,4 @@ instImpl.reactions = {
   }
 };
 
-bindDelegate = function(func) {
-  var bound;
-  bound = function() {
-    return func.apply(this._delegate, arguments);
-  };
-  if (isDev) {
-    bound.toString = function() {
-      return func.toString();
-    };
-  }
-  return bound;
-};
+//# sourceMappingURL=../../../map/src/Component/GatedRenderMixin.map

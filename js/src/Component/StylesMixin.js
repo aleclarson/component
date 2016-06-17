@@ -8,9 +8,7 @@ isType = require("isType");
 
 StyleMap = require("./StyleMap");
 
-frozen = Property({
-  frozen: true
-});
+frozen = Property.frozen;
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);

@@ -1,13 +1,12 @@
 
+{ frozen } = require "Property"
+
 assertType = require "assertType"
-Property = require "Property"
 Random = require "random"
 define = require "define"
-Event = require "event"
+Event = require "Event"
 
 hasListeners = Symbol "Component.hasListeners"
-
-frozen = Property { frozen: yes }
 
 module.exports = (type) ->
   type.defineMethods typeImpl.methods
@@ -20,55 +19,72 @@ typeImpl = {}
 
 typeImpl.methods =
 
-  defineListeners: (createListeners) ->
+  defineListeners: (func) ->
 
-    assertType createListeners, Function
+    assertType func, Function
 
     delegate = @_delegate
-    kind = delegate._kind
 
+    # Some phases must only be defined once per inheritance chain.
     if not this[hasListeners]
-      define this, hasListeners, yes
-
-      # Since lifecyle phases are inherited, make sure
-      # we're the first subclass to call 'defineListeners'.
+      frozen.define this, hasListeners, yes
+      kind = delegate._kind
       unless kind and kind::[hasListeners]
-
-        delegate._didBuild.push (type) ->
-          define type.prototype, hasListeners, yes
-
-        delegate._initInstance.push ->
-          define this, "__listeners", Object.create null
+        delegate._didBuild.push baseImpl.didBuild
+        delegate._initInstance.push baseImpl.initInstance
 
     phaseId = Random.id()
 
-    delegate._initInstance.push (args) ->
+    #
+    # Create the Listener objects for each instance.
+    #
+
+    createListeners = (args) ->
 
       listeners = []
-
-      # Implicitly retain every new listener.
-      onListen = Event.didListen (listener) ->
-        listener.stop() # Pause each listener until mounted.
+      onAttach = Event.didAttach (listener) ->
         listeners.push listener
 
-      # Create the listeners.
-      createListeners.apply this, args
+      onAttach.start()
+      func.apply this, args
+      onAttach.stop()
 
-      # Stop listening for new listeners.
-      onListen.stop()
-
-      # Store the listeners for the 'willUnmount' phase.
       @__listeners[phaseId] = listeners
       return
 
-    @_willMount.push ->
+    delegate._initInstance.push createListeners
+
+    #
+    # Start each Listener when the instance is mounted.
+    #
+
+    startListeners = ->
       for listener in @__listeners[phaseId]
         listener.start()
       return
 
-    @_willUnmount.push ->
+    @_willMount.push startListeners
+
+    #
+    # Stop each Listener when the instance is unmounted.
+    #
+
+    stopListeners = ->
       for listener in @__listeners[phaseId]
-        listener.defuse()
+        listener.stop()
       return
 
+    @_willUnmount.push stopListeners
     return
+
+#
+# The 'base' is the first type in the inheritance chain to define listeners.
+#
+
+baseImpl = {}
+
+baseImpl.didBuild = (type) ->
+  frozen.define type.prototype, hasListeners, yes
+
+baseImpl.initInstance = ->
+  frozen.define this, "__listeners", Object.create null

@@ -1,13 +1,14 @@
 
 require "isDev"
 
+{ hidden } = require "Property"
+
 ReactCurrentOwner = require "ReactCurrentOwner"
 NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 assertType = require "assertType"
 wrapValue = require "wrapValue"
-Property = require "Property"
 setType = require "setType"
 setKind = require "setKind"
 Tracer = require "tracer"
@@ -16,8 +17,6 @@ define = require "define"
 steal = require "steal"
 Kind = require "Kind"
 Void = require "Void"
-
-hidden = Property { enumerable: no }
 
 # Created for every instance of 'Component.Type'
 # Created for every non-delegated subclass of 'Component'

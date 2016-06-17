@@ -13,8 +13,6 @@ define = require "define"
 assert = require "assert"
 has = require "has"
 
-frozen = Property { frozen: yes }
-
 module.exports = (type) ->
   type.defineValues typeImpl.values
   type.definePrototype typeImpl.prototype

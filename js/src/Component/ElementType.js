@@ -1,6 +1,8 @@
-var ElementType, Kind, NamedFunction, Property, ReactCurrentOwner, ReactElement, Tracer, Void, applyMixinsToProps, assertType, define, emptyFunction, hidden, isType, setKind, setType, steal, stealKeyFromProps, wrapValue;
+var ElementType, Kind, NamedFunction, ReactCurrentOwner, ReactElement, Tracer, Void, applyMixinsToProps, assertType, define, emptyFunction, hidden, isType, setKind, setType, steal, stealKeyFromProps, wrapValue;
 
 require("isDev");
+
+hidden = require("Property").hidden;
 
 ReactCurrentOwner = require("ReactCurrentOwner");
 
@@ -13,8 +15,6 @@ ReactElement = require("ReactElement");
 assertType = require("assertType");
 
 wrapValue = require("wrapValue");
-
-Property = require("Property");
 
 setType = require("setType");
 
@@ -31,10 +31,6 @@ steal = require("steal");
 Kind = require("Kind");
 
 Void = require("Void");
-
-hidden = Property({
-  enumerable: false
-});
 
 module.exports = ElementType = NamedFunction("ElementType", function(componentType, initProps) {
   var self;

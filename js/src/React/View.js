@@ -37,3 +37,5 @@ module.exports = NativeComponent("View", {
     collapsable: Boolean.Maybe
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/View.map

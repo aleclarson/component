@@ -14,18 +14,11 @@ type._initInstance.unshift ->
   @_tracer.trace()
   @_willBuild.push ->
     @_kind ?= ReactComponent
-    @_initInstance.push ->
-      inst = this
 
 type.definePrototype
 
   # 'Type.Builder' overrides this.
   _delegate: get: -> this
-
-type.defineStatics
-
-  # 'Type.Builder' overrides this.
-  _elementType: get: -> this
 
 type.overrideMethods
 

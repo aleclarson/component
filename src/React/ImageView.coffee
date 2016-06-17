@@ -20,7 +20,7 @@ EdgeInsetsType = Shape "EdgeInsetsType", {
 
 module.exports = NativeComponent "ImageView",
 
-  render: require "Image"
+  render: require "ImageView"
 
   propTypes:
     style: Style

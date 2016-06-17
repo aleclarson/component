@@ -1,4 +1,4 @@
-var Property, Random, Reaction, assert, assertType, define, frozen, hasReactions, isType, typeImpl;
+var Property, Random, Reaction, assert, assertType, baseImpl, define, frozen, hasReactions, isType, typeImpl;
 
 assertType = require("assertType");
 
@@ -28,23 +28,19 @@ typeImpl = {};
 
 typeImpl.methods = {
   defineReactions: function(reactions) {
-    var delegate, kind, phaseId;
+    var createReactions, delegate, kind, phaseId, startReactions, stopReactions;
     assertType(reactions, Object);
     delegate = this._delegate;
-    kind = delegate._kind;
     if (!this[hasReactions]) {
       frozen.define(this, hasReactions, true);
+      kind = delegate._kind;
       if (!(kind && kind.prototype[hasReactions])) {
-        this._didBuild(function(type) {
-          return frozen.define(type.prototype, hasReactions, true);
-        });
-        delegate._initInstance.push(function() {
-          return frozen.define(this, "__reactionKeys", Object.create(null));
-        });
+        delegate._didBuild.push(baseImpl.didBuild);
+        delegate._initInstance.push(baseImpl.initInstance);
       }
     }
     phaseId = Random.id();
-    delegate._initInstance.push(function(args) {
+    createReactions = function(args) {
       var key, keys, options, value;
       keys = [];
       for (key in reactions) {
@@ -59,22 +55,37 @@ typeImpl.methods = {
         frozen.define(this, key, value);
       }
       this.__reactionKeys[phaseId] = keys;
-    });
-    this._willMount.push(function() {
+    };
+    delegate._initInstance.push(createReactions);
+    startReactions = function() {
       var i, key, len, ref;
       ref = this.__reactionKeys[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         key = ref[i];
         this[key].start();
       }
-    });
-    this._willUnmount.push(function() {
+    };
+    this._willMount.push(startReactions);
+    stopReactions = function() {
       var i, key, len, ref;
       ref = this.__reactionKeys[phaseId];
       for (i = 0, len = ref.length; i < len; i++) {
         key = ref[i];
         this[key].stop();
       }
-    });
+    };
+    this._willUnmount.push(stopReactions);
   }
 };
+
+baseImpl = {};
+
+baseImpl.didBuild = function(type) {
+  return frozen.define(type.prototype, hasReactions, true);
+};
+
+baseImpl.initInstance = function() {
+  return frozen.define(this, "__reactionKeys", Object.create(null));
+};
+
+//# sourceMappingURL=../../../map/src/Component/ReactionMixin.map

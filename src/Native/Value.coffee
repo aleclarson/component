@@ -15,7 +15,7 @@ combine = require "combine"
 assert = require "assert"
 Tracer = require "tracer"
 isType = require "isType"
-Event = require "event"
+Event = require "Event"
 steal = require "steal"
 Void = require "Void"
 Null = require "Null"
@@ -24,30 +24,6 @@ hook = require "hook"
 Any = require "Any"
 
 Animation = require "./Animation"
-
-if isDev
-
-  configTypes = {}
-
-  configTypes.animate =
-    type: Function.Kind
-    onUpdate: [ Function.Kind, Void ]
-    onEnd: [ Function.Kind, Void ]
-    onFinish: [ Function.Kind, Void ]
-
-  configTypes.track =
-    fromRange: Progress.Range
-    toRange: Progress.Range
-
-  configTypes.setValue =
-    clamp: Boolean.Maybe
-    round: [ Number, Null, Void ]
-
-  configTypes.setProgress =
-    fromValue: Number
-    toValue: Number
-    clamp: Boolean.Maybe
-    round: Boolean.Maybe
 
 type = Type "NativeValue"
 
@@ -59,6 +35,11 @@ type.returnExisting (value) ->
   return value if value instanceof NativeValue
 
 type.defineProperties
+
+  getValue: lazy: ->
+    return => @_value
+
+type.definePrototype
 
   keyPath:
     get: -> @_keyPath
@@ -81,7 +62,7 @@ type.defineProperties
       @_setValue newValue
 
   isReactive: get: ->
-    @_reaction?
+    not not @_reaction
 
   reaction:
     get: -> @_reaction
@@ -90,9 +71,6 @@ type.defineProperties
       if newValue is null
         @_detachReaction()
       else @_attachReaction newValue
-
-  getValue: lazy: ->
-    => @_value
 
   fromValue: get: ->
     @_fromValue
@@ -122,7 +100,7 @@ type.defineFrozenValues
 
   didSet: -> Event()
 
-  didAnimationEnd: -> Event { maxRecursion: 10 }
+  didAnimationEnd: -> Event()
 
 type.defineValues
 
@@ -144,11 +122,7 @@ type.defineValues
 
   _retainCount: 1
 
-if isDev
-  type.defineValues
-    _traceInit: -> Tracer "NativeValue()"
-    _traceAnimate: null
-    _traceReaction: null
+  _tracers: -> {} if isDev
 
 type.defineReactiveValues
 
@@ -159,6 +133,8 @@ type.defineReactiveValues
   _toValue: null
 
 type.initInstance (value, keyPath) ->
+
+  isDev and @_tracers.init = Tracer "NativeValue()"
 
   if isConstructor value, Reaction
     throw Error "NativeValue must create its own Reaction!"
@@ -196,7 +172,7 @@ type.defineMethods
 
     @_assertNonReactive()
 
-    @_traceAnimate = Tracer "When the Animation was created" if isDev
+    isDev and @_tracers.animate = Tracer "When the Animation was created"
 
     @_animation.stop() if @_animation
 
@@ -204,23 +180,25 @@ type.defineMethods
 
     assertTypes config, configTypes.animate if isDev
 
-    callbacks =
-      onUpdate: steal config, "onUpdate"
-      onFinish: steal config, "onFinish", emptyFunction
-      onEnd: steal config, "onEnd", emptyFunction
-
-    onEnd = (finished) =>
-      @_animation = null
-      callbacks.onFinish() if finished
-      callbacks.onEnd finished
-      @didAnimationEnd.emit finished
+    onUpdate = steal config, "onUpdate"
+    onFinish = steal config, "onFinish", emptyFunction
+    onEnd = steal config, "onEnd", emptyFunction
 
     @_animation = Animation {
+
       animated: @_animated
+
       type: steal config, "type"
+
       config
-      onUpdate: callbacks.onUpdate
-      onEnd
+
+      onUpdate
+
+      onEnd: (finished) =>
+        @_animation = null
+        onFinish() if finished
+        onEnd finished
+        @didAnimationEnd.emit finished
     }
 
   stopAnimation: ->
@@ -335,19 +313,25 @@ type.defineMethods
 
     if @isReactive
       @_detachReaction()
-    else @_detachAnimated()
 
-    @_traceReaction = reaction._traceInit if isDev
+    else
+      @_detachAnimated()
+
+    isDev and @_tracers.reaction = reaction._traceInit
 
     @_reaction = reaction
     @_reaction.keyPath ?= @keyPath
-    @_reactionListener = @_reaction.didSet (newValue) => @_setValue newValue
+
+    listener = @_reaction.didSet (value) => @_setValue value
+    @_reactionListener = listener.start()
+
     @_setValue reaction.value
 
   _attachAnimated: ->
     return if @_animated
     @_animated = new AnimatedValue @_value
-    @_animatedListener = @_animated.didSet (value) => @_setValue value
+    listener = @_animated.didSet (value) => @_setValue value
+    @_animatedListener = listener.start()
 
   _detachReaction: ->
     return unless @isReactive
@@ -366,3 +350,27 @@ type.defineMethods
     return
 
 module.exports = NativeValue = type.build()
+
+if isDev
+
+  configTypes = {}
+
+  configTypes.animate =
+    type: Function.Kind
+    onUpdate: [ Function.Kind, Void ]
+    onEnd: [ Function.Kind, Void ]
+    onFinish: [ Function.Kind, Void ]
+
+  configTypes.track =
+    fromRange: Progress.Range
+    toRange: Progress.Range
+
+  configTypes.setValue =
+    clamp: Boolean.Maybe
+    round: [ Number, Null, Void ]
+
+  configTypes.setProgress =
+    fromValue: Number
+    toValue: Number
+    clamp: Boolean.Maybe
+    round: Boolean.Maybe

@@ -25,3 +25,5 @@ module.exports = Validator("ReactChildren", {
     return wrongType(validTypes, key);
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/Children.map

@@ -3,7 +3,7 @@ cloneObject = require "cloneObject"
 assertType = require "assertType"
 getArgProp = require "getArgProp"
 isType = require "isType"
-Event = require "event"
+Event = require "Event"
 Type = require "Type"
 
 NativeValue = require "./Value"

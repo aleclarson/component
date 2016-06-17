@@ -47,3 +47,5 @@ module.exports = {
     }
   }
 };
+
+//# sourceMappingURL=../../../map/src/React/index.map

@@ -8,7 +8,7 @@ getArgProp = require("getArgProp");
 
 isType = require("isType");
 
-Event = require("event");
+Event = require("Event");
 
 Type = require("Type");
 
@@ -165,3 +165,5 @@ type.defineMethods({
 });
 
 module.exports = NativeMap = type.build();
+
+//# sourceMappingURL=../../../map/src/Native/Map.map

@@ -15,7 +15,7 @@ sync = require "sync"
 has = require "has"
 run = require "run"
 
-frozen = Property { frozen: yes }
+{ frozen } = Property
 
 type = Type "StyleMap"
 
@@ -138,6 +138,7 @@ type.defineMethods
     return if not values
     for key, { value, isTransform } of values
       value = value.apply context, args
+      continue if value is undefined
       if not isTransform then style[key] = value
       else style.transform.push assign {}, key, value
     return

@@ -1,4 +1,4 @@
-var Property, ReactComponent, assert, assertType, assertTypes, define, frozen, getKind, has, instImpl, mergeDefaults, superWrap, typeImpl;
+var Property, ReactComponent, assert, assertType, assertTypes, define, getKind, has, instImpl, mergeDefaults, superWrap, typeImpl;
 
 require("isDev");
 
@@ -19,10 +19,6 @@ define = require("define");
 assert = require("assert");
 
 has = require("has");
-
-frozen = Property({
-  frozen: true
-});
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);

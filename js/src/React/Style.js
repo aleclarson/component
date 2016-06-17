@@ -23,3 +23,5 @@ module.exports = Style = Validator("Style", {
     return wrongType(validTypes, key);
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/Style.map

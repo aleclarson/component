@@ -17,26 +17,12 @@ type.inherits(Builder);
 type._initInstance.unshift(function() {
   this._tracer.trace();
   return this._willBuild.push(function() {
-    if (this._kind == null) {
-      this._kind = ReactComponent;
-    }
-    return this._initInstance.push(function() {
-      var inst;
-      return inst = this;
-    });
+    return this._kind != null ? this._kind : this._kind = ReactComponent;
   });
 });
 
 type.definePrototype({
   _delegate: {
-    get: function() {
-      return this;
-    }
-  }
-});
-
-type.defineStatics({
-  _elementType: {
     get: function() {
       return this;
     }

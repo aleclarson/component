@@ -19,3 +19,5 @@ module.exports = Validator("ReactElement", {
     return wrongType(this, key);
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/Element.map

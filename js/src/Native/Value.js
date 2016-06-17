@@ -28,7 +28,7 @@ Tracer = require("tracer");
 
 isType = require("isType");
 
-Event = require("event");
+Event = require("Event");
 
 steal = require("steal");
 
@@ -44,30 +44,6 @@ Any = require("Any");
 
 Animation = require("./Animation");
 
-if (isDev) {
-  configTypes = {};
-  configTypes.animate = {
-    type: Function.Kind,
-    onUpdate: [Function.Kind, Void],
-    onEnd: [Function.Kind, Void],
-    onFinish: [Function.Kind, Void]
-  };
-  configTypes.track = {
-    fromRange: Progress.Range,
-    toRange: Progress.Range
-  };
-  configTypes.setValue = {
-    clamp: Boolean.Maybe,
-    round: [Number, Null, Void]
-  };
-  configTypes.setProgress = {
-    fromValue: Number,
-    toValue: Number,
-    clamp: Boolean.Maybe,
-    round: Boolean.Maybe
-  };
-}
-
 type = Type("NativeValue");
 
 type.argumentTypes = {
@@ -82,6 +58,18 @@ type.returnExisting(function(value) {
 });
 
 type.defineProperties({
+  getValue: {
+    lazy: function() {
+      return (function(_this) {
+        return function() {
+          return _this._value;
+        };
+      })(this);
+    }
+  }
+});
+
+type.definePrototype({
   keyPath: {
     get: function() {
       return this._keyPath;
@@ -110,7 +98,7 @@ type.defineProperties({
   },
   isReactive: {
     get: function() {
-      return this._reaction != null;
+      return !!this._reaction;
     }
   },
   reaction: {
@@ -126,15 +114,6 @@ type.defineProperties({
       } else {
         return this._attachReaction(newValue);
       }
-    }
-  },
-  getValue: {
-    lazy: function() {
-      return (function(_this) {
-        return function() {
-          return _this._value;
-        };
-      })(this);
     }
   },
   fromValue: {
@@ -179,9 +158,7 @@ type.defineFrozenValues({
     return Event();
   },
   didAnimationEnd: function() {
-    return Event({
-      maxRecursion: 10
-    });
+    return Event();
   }
 });
 
@@ -194,18 +171,13 @@ type.defineValues({
   _animated: null,
   _animation: null,
   _animatedListener: null,
-  _retainCount: 1
+  _retainCount: 1,
+  _tracers: function() {
+    if (isDev) {
+      return {};
+    }
+  }
 });
-
-if (isDev) {
-  type.defineValues({
-    _traceInit: function() {
-      return Tracer("NativeValue()");
-    },
-    _traceAnimate: null,
-    _traceReaction: null
-  });
-}
 
 type.defineReactiveValues({
   _value: null,
@@ -214,6 +186,7 @@ type.defineReactiveValues({
 });
 
 type.initInstance(function(value, keyPath) {
+  isDev && (this._tracers.init = Tracer("NativeValue()"));
   if (isConstructor(value, Reaction)) {
     throw Error("NativeValue must create its own Reaction!");
   }
@@ -251,11 +224,9 @@ type.defineMethods({
     return this.value = newValue;
   },
   animate: function(config) {
-    var callbacks, onEnd;
+    var onEnd, onFinish, onUpdate;
     this._assertNonReactive();
-    if (isDev) {
-      this._traceAnimate = Tracer("When the Animation was created");
-    }
+    isDev && (this._tracers.animate = Tracer("When the Animation was created"));
     if (this._animation) {
       this._animation.stop();
     }
@@ -263,27 +234,24 @@ type.defineMethods({
     if (isDev) {
       assertTypes(config, configTypes.animate);
     }
-    callbacks = {
-      onUpdate: steal(config, "onUpdate"),
-      onFinish: steal(config, "onFinish", emptyFunction),
-      onEnd: steal(config, "onEnd", emptyFunction)
-    };
-    onEnd = (function(_this) {
-      return function(finished) {
-        _this._animation = null;
-        if (finished) {
-          callbacks.onFinish();
-        }
-        callbacks.onEnd(finished);
-        return _this.didAnimationEnd.emit(finished);
-      };
-    })(this);
+    onUpdate = steal(config, "onUpdate");
+    onFinish = steal(config, "onFinish", emptyFunction);
+    onEnd = steal(config, "onEnd", emptyFunction);
     return this._animation = Animation({
       animated: this._animated,
       type: steal(config, "type"),
       config: config,
-      onUpdate: callbacks.onUpdate,
-      onEnd: onEnd
+      onUpdate: onUpdate,
+      onEnd: (function(_this) {
+        return function(finished) {
+          _this._animation = null;
+          if (finished) {
+            onFinish();
+          }
+          onEnd(finished);
+          return _this.didAnimationEnd.emit(finished);
+        };
+      })(this)
     });
   },
   stopAnimation: function() {
@@ -410,7 +378,7 @@ type.defineMethods({
     return this.didSet.emit(newValue);
   },
   _attachReaction: function(reaction) {
-    var base;
+    var base, listener;
     if (isConstructor(reaction, Object)) {
       reaction = Reaction.sync(reaction);
     } else if (reaction instanceof Function) {
@@ -424,30 +392,31 @@ type.defineMethods({
     } else {
       this._detachAnimated();
     }
-    if (isDev) {
-      this._traceReaction = reaction._traceInit;
-    }
+    isDev && (this._tracers.reaction = reaction._traceInit);
     this._reaction = reaction;
     if ((base = this._reaction).keyPath == null) {
       base.keyPath = this.keyPath;
     }
-    this._reactionListener = this._reaction.didSet((function(_this) {
-      return function(newValue) {
-        return _this._setValue(newValue);
-      };
-    })(this));
-    return this._setValue(reaction.value);
-  },
-  _attachAnimated: function() {
-    if (this._animated) {
-      return;
-    }
-    this._animated = new AnimatedValue(this._value);
-    return this._animatedListener = this._animated.didSet((function(_this) {
+    listener = this._reaction.didSet((function(_this) {
       return function(value) {
         return _this._setValue(value);
       };
     })(this));
+    this._reactionListener = listener.start();
+    return this._setValue(reaction.value);
+  },
+  _attachAnimated: function() {
+    var listener;
+    if (this._animated) {
+      return;
+    }
+    this._animated = new AnimatedValue(this._value);
+    listener = this._animated.didSet((function(_this) {
+      return function(value) {
+        return _this._setValue(value);
+      };
+    })(this));
+    return this._animatedListener = listener.start();
   },
   _detachReaction: function() {
     if (!this.isReactive) {
@@ -470,5 +439,29 @@ type.defineMethods({
 });
 
 module.exports = NativeValue = type.build();
+
+if (isDev) {
+  configTypes = {};
+  configTypes.animate = {
+    type: Function.Kind,
+    onUpdate: [Function.Kind, Void],
+    onEnd: [Function.Kind, Void],
+    onFinish: [Function.Kind, Void]
+  };
+  configTypes.track = {
+    fromRange: Progress.Range,
+    toRange: Progress.Range
+  };
+  configTypes.setValue = {
+    clamp: Boolean.Maybe,
+    round: [Number, Null, Void]
+  };
+  configTypes.setProgress = {
+    fromValue: Number,
+    toValue: Number,
+    clamp: Boolean.Maybe,
+    round: Boolean.Maybe
+  };
+}
 
 //# sourceMappingURL=../../../map/src/Native/Value.map

@@ -16,3 +16,5 @@ module.exports = NativeComponent("TextView", {
     testID: String.Maybe
   }
 });
+
+//# sourceMappingURL=../../../map/src/React/TextView.map

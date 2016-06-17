@@ -4,7 +4,7 @@ Property = require "Property"
 ComponentBuilder = require "../Builder"
 ElementType = require "../ElementType"
 
-frozen = Property { frozen: yes }
+{ mutable, frozen } = Property
 
 module.exports = (type) ->
   type.defineValues typeImpl.values
@@ -56,46 +56,56 @@ typeImpl.initInstance = ->
 # The 'instance' is a 'Component.Type.Builder' that is not yet built.
 #
 
+$ =
+  delegate: Symbol "Component.delegate"
+  styles: Symbol "Component.styles"
+  props: Symbol "Component.props"
+  view: Symbol "Component.view"
+
 instImpl = {}
 
 instImpl.willBuild = ->
+
+  # Build the underlying component type.
   @defineStatics View: @_componentType.build()
-  return if @_kind instanceof Component.Type
-  @defineValues instImpl.values
-  @defineMethods instImpl.methods
-  @definePrototype instImpl.prototype
+
+  # Only define this stuff once per inheritance chain.
+  unless @_kind instanceof Component.Type
+    @definePrototype instImpl.prototype
+    @defineValues instImpl.values
+    @initInstance instImpl.initInstance
 
 instImpl.prototype =
 
   props: get: ->
-    @_props
+    this[$.props]
 
   view: get: ->
-    @_view
+    this[$.view]
 
 instImpl.values =
 
   render: ->
-    ElementType @constructor.View, (props) =>
-      props._delegate = this
-      @_mixinStyles props if @_styles
-      return @_props = props
+    return ElementType @constructor.View, (props) =>
+      props[$.delegate] = this
+      mergeStyles props, this[$.styles]
+      return this[$.props] = props
 
-  _styles: (options) ->
-    options and options.styles
+instImpl.initInstance = (options = {}) ->
+  mutable.define this, $.props, null
+  mutable.define this, $.view, null
+  mutable.define this, $.styles, options.styles or null
 
-  _props: null
+mergeStyles = (props, styles) ->
 
-  _view: null
+  return if not styles
 
-instImpl.methods =
-
-  _mixinStyles: (props) ->
-    if props.styles
-      combine props.styles, @_styles
-    else
-      props.styles = @_styles
+  if props.styles
+    combine props.styles, styles
     return
+
+  props.styles = styles
+  return
 
 #
 # The 'view' is a 'Type.Builder' that inherits from 'ReactComponent'
@@ -106,7 +116,7 @@ viewImpl = {}
 viewImpl.prototype =
 
   _delegate: get: ->
-    @props._delegate
+    @props[$.delegate]
 
 viewImpl.willBuild = ->
   return if @_kind instanceof Component.Type
@@ -116,7 +126,9 @@ viewImpl.willBuild = ->
     @_willUnmount.push viewImpl.willUnmount
 
 viewImpl.initInstance = ->
-  @_delegate._view = this
+  @_delegate[$.view] = this
 
 viewImpl.willUnmount = ->
-  @_delegate._view = null
+  delegate = @_delegate
+  delegate[$.props] = null
+  delegate[$.view] = null
