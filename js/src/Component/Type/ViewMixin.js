@@ -39,7 +39,7 @@ typeImpl.prototype = {};
   };
 });
 
-["render", "shouldUpdate", "isRenderPrevented", "willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles", "defineNativeValues", "defineListeners", "defineReactions"].forEach(function(key) {
+["render", "isRenderPrevented", "shouldUpdate", "willReceiveProps", "willMount", "didMount", "willUnmount", "defineNativeValues", "defineListeners", "defineReactions", "defineStyles", "overrideStyles"].forEach(function(key) {
   return typeImpl.prototype[key] = {
     value: function(func) {
       return this._componentType[key](func);

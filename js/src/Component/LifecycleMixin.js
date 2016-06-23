@@ -1,6 +1,8 @@
-var Builder, ReactComponent, applyChain, assert, assertType, bindDelegate, emptyFunction, inheritArray, instImpl, sync, typeImpl, viewImpl;
+var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, frozen, inheritArray, instImpl, sync, typeImpl, viewImpl;
 
 require("isDev");
+
+frozen = require("Property").frozen;
 
 ReactComponent = require("ReactComponent");
 
@@ -25,8 +27,6 @@ module.exports = function(type) {
 typeImpl = {};
 
 typeImpl.values = {
-  _render: null,
-  _shouldUpdate: null,
   _willMount: function() {
     return [];
   },
@@ -39,6 +39,18 @@ typeImpl.values = {
 };
 
 typeImpl.methods = {
+  render: function(func) {
+    assertType(func, Function);
+    frozen.define(this, "_render", func);
+  },
+  shouldUpdate: function(func) {
+    assertType(func, Function);
+    frozen.define(this, "_shouldUpdate", func);
+  },
+  willReceiveProps: function(func) {
+    assertType(func, Function);
+    frozen.define(this, "_willReceiveProps", func);
+  },
   willMount: function(func) {
     assertType(func, Function);
     this._willMount.push(func);
@@ -50,20 +62,6 @@ typeImpl.methods = {
   willUnmount: function(func) {
     assertType(func, Function);
     this._willUnmount.push(func);
-  },
-  shouldUpdate: function(func) {
-    assertType(func, Function);
-    if (this._delegate) {
-      func = bindDelegate(func);
-    }
-    this._shouldUpdate = func;
-  },
-  render: function(func) {
-    assertType(func, Function);
-    if (this._delegate) {
-      func = bindDelegate(func);
-    }
-    this._render = func;
   }
 };
 
@@ -79,57 +77,55 @@ instImpl.willBuild = function() {
   ownMethods = {};
   if (kind === ReactComponent) {
     this.defineMethods(viewImpl.methods);
-    ownMethods.render = this._render || emptyFunction.thatReturnsFalse;
-    ownMethods.shouldComponentUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
+    ownMethods.__render = this._render || emptyFunction.thatReturnsFalse;
+    ownMethods.__shouldUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
+    ownMethods.__willReceiveProps = this._willReceiveProps || emptyFunction;
   } else {
-    inheritArray(this, "_willMount", kind);
-    inheritArray(this, "_didMount", kind);
-    inheritArray(this, "_willUnmount", kind);
+    inheritArray(this, "_willMount", kind.prototype.__willMount);
+    inheritArray(this, "_didMount", kind.prototype.__didMount);
+    inheritArray(this, "_willUnmount", kind.prototype.__willUnmount);
     if (this._render) {
-      ownMethods.render = this._render;
+      ownMethods.__render = this._render;
     }
     if (this._shouldUpdate) {
-      ownMethods.shouldComponentUpdate = this._shouldUpdate;
+      ownMethods.__shouldUpdate = this._shouldUpdate;
+    }
+    if (this._willReceiveProps) {
+      ownMethods.__willReceiveProps = this._willReceiveProps;
     }
   }
-  this.defineMethods(ownMethods);
+  this._delegate.defineMethods(ownMethods);
   return this.definePrototype({
-    _willMount: this._willMount,
-    _didMount: this._didMount,
-    _willUnmount: this._willUnmount
+    __willMount: this._willMount,
+    __didMount: this._didMount,
+    __willUnmount: this._willUnmount
   });
 };
 
 viewImpl = {};
 
 viewImpl.methods = {
+  render: function() {
+    return this._delegate.__render();
+  },
+  shouldComponentUpdate: function(nextProps) {
+    return this._delegate.__shouldUpdate(nextProps);
+  },
+  componentWillReceiveProps: function(nextProps) {
+    return this._delegate.__willReceiveProps(nextProps);
+  },
   componentWillMount: function() {
-    return applyChain(this._willMount, this._delegate);
+    return applyChain(this.__willMount, this._delegate);
   },
   componentDidMount: function() {
-    return applyChain(this._didMount, this._delegate);
+    return applyChain(this.__didMount, this._delegate);
   },
   componentWillUnmount: function() {
-    return applyChain(this._willUnmount, this._delegate);
+    return applyChain(this.__willUnmount, this._delegate);
   }
 };
 
-bindDelegate = function(func) {
-  var bound;
-  bound = function() {
-    return func.apply(this._delegate, arguments);
-  };
-  if (isDev) {
-    bound.toString = function() {
-      return func.toString();
-    };
-  }
-  return bound;
-};
-
-inheritArray = function(obj, key, type) {
-  var inherited;
-  inherited = type.prototype[key];
+inheritArray = function(obj, key, inherited) {
   assertType(inherited, Array);
   if (obj[key].length) {
     if (!inherited.length) {

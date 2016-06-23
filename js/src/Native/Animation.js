@@ -83,17 +83,14 @@ type.defineValues({
 
 type.initInstance(function() {
   var onUpdate;
-  onUpdate = this._animated.didSet((function(_this) {
-    return function(result) {
-      if (_this._onUpdate) {
-        return _this._onUpdate(result);
-      }
-    };
-  })(this));
+  if (this._onUpdate) {
+    onUpdate = this._onUpdate && this._animated.didSet(this._onUpdate);
+    onUpdate.start();
+  }
   this._animated.animate(this._animation);
   if (!this.isActive) {
     if (onUpdate) {
-      onUpdate.stop();
+      onUpdate.detach();
     }
     this._onEnd((this._toValue === void 0) || (this._toValue === this.value));
     return;
@@ -101,7 +98,7 @@ type.initInstance(function() {
   return hook.before(this._animation, "__onEnd", (function(_this) {
     return function(result) {
       if (onUpdate) {
-        onUpdate.stop();
+        onUpdate.detach();
       }
       return _this._onEnd(result.finished);
     };

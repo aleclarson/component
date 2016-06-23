@@ -122,10 +122,14 @@ type.defineMethods
     return
 
   __attachNativeValue: (nativeValue, key) ->
-    @__nativeListeners[key] = nativeValue.didSet (newValue) =>
+
+    onChange = (newValue) =>
       newValues = {}
       newValues[key] = newValue
       @__didSet newValues
+
+    listener = nativeValue.didSet onChange
+    @__nativeListeners[key] = listener.start()
     return
 
   __detachNativeValue: (nativeValue, key) ->

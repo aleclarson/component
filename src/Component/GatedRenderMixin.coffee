@@ -30,7 +30,7 @@ typeImpl.methods =
     assertType func, Function
 
     @_isRenderPrevented = func
-    @_willBuild.push typeImpl.willBuild
+    @_didBuild.push typeImpl.didBuild
 
     delegate = @_delegate
     delegate.defineValues instImpl.values
@@ -38,9 +38,9 @@ typeImpl.methods =
     delegate.defineMethods { isRenderPrevented: func }
     return
 
-typeImpl.willBuild = ->
-  hook this, "_render", typeImpl.gatedRender
-  hook this, "_shouldUpdate", typeImpl.gatedRender
+typeImpl.didBuild = (type) ->
+  hook type.prototype, "__render", typeImpl.gatedRender
+  hook type.prototype, "__shouldUpdate", typeImpl.gatedRender
 
 # Must be used with 'hook()'.
 typeImpl.gatedRender = ->

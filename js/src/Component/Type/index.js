@@ -14,7 +14,7 @@ module.exports = ComponentType = NamedFunction("ComponentType", function(name) {
   var self;
   self = ComponentTypeBuilder(name);
   self.didBuild(function(type) {
-    Type.augment(type);
+    Type.augment(type, true);
     return setType(type, ComponentType);
   });
   return self;

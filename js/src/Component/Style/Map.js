@@ -262,4 +262,4 @@ applyPreset = function(presetName, presetArg, constantValues) {
   }
 };
 
-//# sourceMappingURL=../../../map/src/Component/StyleMap.map
+//# sourceMappingURL=../../../../map/src/Component/Style/Map.map

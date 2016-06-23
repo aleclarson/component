@@ -149,14 +149,17 @@ type.defineMethods({
     }
   },
   __attachNativeValue: function(nativeValue, key) {
-    this.__nativeListeners[key] = nativeValue.didSet((function(_this) {
+    var listener, onChange;
+    onChange = (function(_this) {
       return function(newValue) {
         var newValues;
         newValues = {};
         newValues[key] = newValue;
         return _this.__didSet(newValues);
       };
-    })(this));
+    })(this);
+    listener = nativeValue.didSet(onChange);
+    this.__nativeListeners[key] = listener.start();
   },
   __detachNativeValue: function(nativeValue, key) {
     this.__nativeListeners[key].stop();

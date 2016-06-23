@@ -57,6 +57,49 @@ type.returnExisting(function(value) {
   }
 });
 
+type.trace();
+
+type.defineFrozenValues({
+  didSet: function() {
+    return Event();
+  },
+  didAnimationEnd: function() {
+    return Event();
+  }
+});
+
+type.defineValues({
+  clamp: false,
+  round: null,
+  _keyPath: null,
+  _reaction: null,
+  _reactionListener: null,
+  _animated: null,
+  _animation: null,
+  _animatedListener: null,
+  _retainCount: 1
+});
+
+type.defineReactiveValues({
+  _value: null,
+  _fromValue: null,
+  _toValue: null
+});
+
+type.initInstance(function(value, keyPath) {
+  if (isConstructor(value, Reaction)) {
+    throw Error("NativeValue must create its own Reaction!");
+  }
+  this._keyPath = keyPath;
+  if (isType(value, [Object, Function.Kind])) {
+    return this._attachReaction(value);
+  } else {
+    return this.value = value;
+  }
+});
+
+type.exposeGetters(["animation"]);
+
 type.defineProperties({
   getValue: {
     lazy: function() {
@@ -151,53 +194,6 @@ type.definePrototype({
   }
 });
 
-type.exposeGetters(["animation"]);
-
-type.defineFrozenValues({
-  didSet: function() {
-    return Event();
-  },
-  didAnimationEnd: function() {
-    return Event();
-  }
-});
-
-type.defineValues({
-  clamp: false,
-  round: null,
-  _keyPath: null,
-  _reaction: null,
-  _reactionListener: null,
-  _animated: null,
-  _animation: null,
-  _animatedListener: null,
-  _retainCount: 1,
-  _tracers: function() {
-    if (isDev) {
-      return {};
-    }
-  }
-});
-
-type.defineReactiveValues({
-  _value: null,
-  _fromValue: null,
-  _toValue: null
-});
-
-type.initInstance(function(value, keyPath) {
-  isDev && (this._tracers.init = Tracer("NativeValue()"));
-  if (isConstructor(value, Reaction)) {
-    throw Error("NativeValue must create its own Reaction!");
-  }
-  this._keyPath = keyPath;
-  if (isType(value, [Object, Function.Kind])) {
-    return this._attachReaction(value);
-  } else {
-    return this.value = value;
-  }
-});
-
 type.defineMethods({
   setValue: function(newValue, config) {
     assertType(newValue, Number);
@@ -226,7 +222,7 @@ type.defineMethods({
   animate: function(config) {
     var onEnd, onFinish, onUpdate;
     this._assertNonReactive();
-    isDev && (this._tracers.animate = Tracer("When the Animation was created"));
+    isDev && (this._tracers.animate = Tracer("NativeValue::animate()"));
     if (this._animation) {
       this._animation.stop();
     }
@@ -262,7 +258,7 @@ type.defineMethods({
     }
   },
   track: function(nativeValue, config) {
-    var fromRange, toRange;
+    var fromRange, listener, onChange, toRange;
     assert(!this._tracking, "Already tracking another value!");
     assertType(nativeValue, NativeValue.Kind);
     fromRange = config.fromRange != null ? config.fromRange : config.fromRange = {};
@@ -282,20 +278,16 @@ type.defineMethods({
     if (isDev) {
       assertTypes(config, configTypes.track);
     }
-    this._tracking = nativeValue.didSet((function(_this) {
+    onChange = (function(_this) {
       return function(value) {
         var progress;
         progress = Progress.fromValue(value, fromRange);
         return _this.value = Progress.toValue(progress, toRange);
       };
-    })(this));
-    this._tracking._onNotify(nativeValue.value);
-    hook.before(this._tracking, "_onDefuse", (function(_this) {
-      return function() {
-        return _this._tracking = null;
-      };
-    })(this));
-    return this._tracking;
+    })(this);
+    onChange(nativeValue.value);
+    listener = nativeValue.didSet(onChange);
+    return this._tracking = listener.start();
   },
   stopTracking: function() {
     var tracking;

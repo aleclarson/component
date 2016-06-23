@@ -28,23 +28,36 @@ typeImpl.values =
 typeImpl.prototype = {}
 
 # Proxy both the getter and setter.
-[ "propTypes", "propDefaults" ].forEach (key) ->
-
+[ "propTypes"
+  "propDefaults"
+].forEach (key) ->
   typeImpl.prototype[key] =
     get: -> @_componentType[key]
     set: (newValue) ->
       @_componentType[key] = newValue
 
 # Proxy a 1-argument function.
-[ "render", "shouldUpdate", "isRenderPrevented", "willMount", "didMount", "willUnmount", "defineStyles", "overrideStyles",
-  "defineNativeValues", "defineListeners", "defineReactions" ].forEach (key) ->
-
+[ "render"
+  "isRenderPrevented"
+  "shouldUpdate"
+  "willReceiveProps"
+  "willMount"
+  "didMount"
+  "willUnmount"
+  "defineNativeValues"
+  "defineListeners"
+  "defineReactions"
+  "defineStyles"
+  "overrideStyles"
+].forEach (key) ->
   typeImpl.prototype[key] = value: (func) ->
     @_componentType[key] func
 
 # Proxy just the getter.
-[ "_willMount", "_didMount", "_willUnmount" ].forEach (key) ->
-
+[ "_willMount"
+  "_didMount"
+  "_willUnmount"
+].forEach (key) ->
   typeImpl.prototype[key] = get: ->
     @_componentType[key]
 

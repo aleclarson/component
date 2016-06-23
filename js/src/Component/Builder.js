@@ -38,7 +38,7 @@ type.overrideMethods({
   }
 });
 
-type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StylesMixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
+type.addMixins([require("./PropsMixin"), require("./LifecycleMixin"), require("./StyleMap/Mixin"), require("./NativeValueMixin"), require("./ListenerMixin"), require("./ReactionMixin"), require("./GatedRenderMixin")]);
 
 module.exports = type.build();
 

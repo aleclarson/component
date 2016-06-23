@@ -184,7 +184,10 @@ module.exports = StyleMap = type.build()
 
 parseTransform = run ->
   keys = [ "scale", "translateX", "translateY", "rotate" ]
-  return (value, key) -> { value, isTransform: inArray keys, key }
+  return (value, key) ->
+    result = { value }
+    result.isTransform = yes if inArray keys, key
+    return result
 
 assign = (obj, key, value) ->
   obj[key] = value
@@ -198,3 +201,10 @@ applyPreset = (presetName, presetArg, constantValues) ->
     assert value isnt undefined, "Invalid style value: '#{presetName}.#{key}'"
     constantValues[key] = value
   return
+
+#
+# Initialize default presets
+#
+
+presets = require "./Presets"
+StyleMap.addPresets presets

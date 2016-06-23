@@ -34,6 +34,56 @@ type.argumentTypes =
 type.returnExisting (value) ->
   return value if value instanceof NativeValue
 
+type.trace()
+
+type.defineFrozenValues
+
+  didSet: -> Event()
+
+  didAnimationEnd: -> Event()
+
+type.defineValues
+
+  clamp: no
+
+  round: null
+
+  _keyPath: null
+
+  _reaction: null
+
+  _reactionListener: null
+
+  _animated: null
+
+  _animation: null
+
+  _animatedListener: null
+
+  _retainCount: 1
+
+type.defineReactiveValues
+
+  _value: null
+
+  _fromValue: null
+
+  _toValue: null
+
+type.initInstance (value, keyPath) ->
+
+  if isConstructor value, Reaction
+    throw Error "NativeValue must create its own Reaction!"
+
+  @_keyPath = keyPath
+  if isType value, [ Object, Function.Kind ]
+    @_attachReaction value
+  else @value = value
+
+type.exposeGetters [
+  "animation"
+]
+
 type.defineProperties
 
   getValue: lazy: ->
@@ -92,58 +142,6 @@ type.definePrototype
   isAnimating: get: ->
     @_animation isnt null
 
-type.exposeGetters [
-  "animation"
-]
-
-type.defineFrozenValues
-
-  didSet: -> Event()
-
-  didAnimationEnd: -> Event()
-
-type.defineValues
-
-  clamp: no
-
-  round: null
-
-  _keyPath: null
-
-  _reaction: null
-
-  _reactionListener: null
-
-  _animated: null
-
-  _animation: null
-
-  _animatedListener: null
-
-  _retainCount: 1
-
-  _tracers: -> {} if isDev
-
-type.defineReactiveValues
-
-  _value: null
-
-  _fromValue: null
-
-  _toValue: null
-
-type.initInstance (value, keyPath) ->
-
-  isDev and @_tracers.init = Tracer "NativeValue()"
-
-  if isConstructor value, Reaction
-    throw Error "NativeValue must create its own Reaction!"
-
-  @_keyPath = keyPath
-  if isType value, [ Object, Function.Kind ]
-    @_attachReaction value
-  else @value = value
-
 type.defineMethods
 
   setValue: (newValue, config) ->
@@ -172,7 +170,7 @@ type.defineMethods
 
     @_assertNonReactive()
 
-    isDev and @_tracers.animate = Tracer "When the Animation was created"
+    isDev and @_tracers.animate = Tracer "NativeValue::animate()"
 
     @_animation.stop() if @_animation
 
@@ -221,19 +219,15 @@ type.defineMethods
 
     assertTypes config, configTypes.track if isDev
 
-    @_tracking = nativeValue.didSet (value) =>
+    onChange = (value) =>
       progress = Progress.fromValue value, fromRange
       @value = Progress.toValue progress, toRange
 
     # Update the value immediately.
-    @_tracking._onNotify nativeValue.value
+    onChange nativeValue.value
 
-    # Clean up even if the listener was
-    # stopped without calling 'stopTracking()'.
-    hook.before @_tracking, "_onDefuse", =>
-      @_tracking = null
-
-    return @_tracking
+    listener = nativeValue.didSet onChange
+    return @_tracking = listener.start()
 
   stopTracking: ->
     tracking = @_tracking

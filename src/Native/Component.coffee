@@ -29,6 +29,7 @@ NativeComponent = (name, config) ->
 
   type.defineValues typeImpl.values
   type.defineListeners typeImpl.listeners
+  type.willReceiveProps typeImpl.willReceiveProps
   type.willUnmount typeImpl.willUnmount
   type.render typeImpl.render
 
@@ -49,6 +50,9 @@ typeImpl.render = ->
   props = @_nativeProps.values
   props.ref = setChild.bind this
   @renderChild props
+
+typeImpl.willReceiveProps = (nextProps) ->
+  @_nativeProps.attach nextProps
 
 typeImpl.listeners = ->
 

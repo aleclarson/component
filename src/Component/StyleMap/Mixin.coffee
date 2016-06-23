@@ -3,7 +3,7 @@ assertType = require "assertType"
 Property = require "Property"
 isType = require "isType"
 
-StyleMap = require "./StyleMap"
+StyleMap = require "."
 
 { frozen } = Property
 

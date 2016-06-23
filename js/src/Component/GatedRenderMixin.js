@@ -29,7 +29,7 @@ typeImpl.methods = {
     assert(!this._isRenderPrevented, "'isRenderPrevented' is already defined!");
     assertType(func, Function);
     this._isRenderPrevented = func;
-    this._willBuild.push(typeImpl.willBuild);
+    this._didBuild.push(typeImpl.didBuild);
     delegate = this._delegate;
     delegate.defineValues(instImpl.values);
     delegate.defineReactions(instImpl.reactions);
@@ -39,9 +39,9 @@ typeImpl.methods = {
   }
 };
 
-typeImpl.willBuild = function() {
-  hook(this, "_render", typeImpl.gatedRender);
-  return hook(this, "_shouldUpdate", typeImpl.gatedRender);
+typeImpl.didBuild = function(type) {
+  hook(type.prototype, "__render", typeImpl.gatedRender);
+  return hook(type.prototype, "__shouldUpdate", typeImpl.gatedRender);
 };
 
 typeImpl.gatedRender = function() {

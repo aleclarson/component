@@ -61,20 +61,21 @@ type.defineValues
 type.initInstance ->
 
   # Attach the value listener.
-  onUpdate = @_animated.didSet (result) =>
-    @_onUpdate result if @_onUpdate
+  if @_onUpdate
+    onUpdate = @_onUpdate and @_animated.didSet @_onUpdate
+    onUpdate.start()
 
   # Start the animation.
   @_animated.animate @_animation
 
   # Detect instant animations.
   unless @isActive
-    onUpdate.stop() if onUpdate
+    onUpdate.detach() if onUpdate
     @_onEnd (@_toValue is undefined) or (@_toValue is @value)
     return
 
   hook.before @_animation, "__onEnd", (result) =>
-    onUpdate.stop() if onUpdate
+    onUpdate.detach() if onUpdate
     @_onEnd result.finished
 
 type.defineMethods

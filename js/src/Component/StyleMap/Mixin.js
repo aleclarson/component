@@ -6,7 +6,7 @@ Property = require("Property");
 
 isType = require("isType");
 
-StyleMap = require("./StyleMap");
+StyleMap = require(".");
 
 frozen = Property.frozen;
 
@@ -77,4 +77,4 @@ instImpl.willBuild = function() {
   }
 };
 
-//# sourceMappingURL=../../../map/src/Component/StylesMixin.map
+//# sourceMappingURL=../../../../map/src/Component/StyleMap/Mixin.map

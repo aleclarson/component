@@ -12,7 +12,7 @@ ComponentType = NamedFunction "ComponentType", (name) ->
   self = ComponentTypeBuilder name
 
   self.didBuild (type) ->
-    Type.augment type
+    Type.augment type, yes
     setType type, ComponentType
 
   return self

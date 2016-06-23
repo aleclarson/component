@@ -32,6 +32,7 @@ module.exports = NativeComponent = function(name, config) {
   });
   type.defineValues(typeImpl.values);
   type.defineListeners(typeImpl.listeners);
+  type.willReceiveProps(typeImpl.willReceiveProps);
   type.willUnmount(typeImpl.willUnmount);
   type.render(typeImpl.render);
   return type.build();
@@ -52,6 +53,10 @@ typeImpl.render = function() {
   props = this._nativeProps.values;
   props.ref = setChild.bind(this);
   return this.renderChild(props);
+};
+
+typeImpl.willReceiveProps = function(nextProps) {
+  return this._nativeProps.attach(nextProps);
 };
 
 typeImpl.listeners = function() {

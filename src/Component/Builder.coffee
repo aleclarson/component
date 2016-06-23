@@ -30,7 +30,7 @@ type.overrideMethods
 type.addMixins [
   require "./PropsMixin"
   require "./LifecycleMixin"
-  require "./StylesMixin"
+  require "./StyleMap/Mixin"
   require "./NativeValueMixin"
   require "./ListenerMixin"
   require "./ReactionMixin"

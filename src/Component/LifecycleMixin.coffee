@@ -1,6 +1,8 @@
 
 require "isDev"
 
+{ frozen } = require "Property"
+
 ReactComponent = require "ReactComponent"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
@@ -22,10 +24,6 @@ typeImpl = {}
 
 typeImpl.values =
 
-  _render: null
-
-  _shouldUpdate: null
-
   _willMount: -> []
 
   _didMount: -> []
@@ -33,6 +31,21 @@ typeImpl.values =
   _willUnmount: -> []
 
 typeImpl.methods =
+
+  render: (func) ->
+    assertType func, Function
+    frozen.define this, "_render", func
+    return
+
+  shouldUpdate: (func) ->
+    assertType func, Function
+    frozen.define this, "_shouldUpdate", func
+    return
+
+  willReceiveProps: (func) ->
+    assertType func, Function
+    frozen.define this, "_willReceiveProps", func
+    return
 
   willMount: (func) ->
     assertType func, Function
@@ -47,18 +60,6 @@ typeImpl.methods =
   willUnmount: (func) ->
     assertType func, Function
     @_willUnmount.push func
-    return
-
-  shouldUpdate: (func) ->
-    assertType func, Function
-    func = bindDelegate func if @_delegate
-    @_shouldUpdate = func
-    return
-
-  render: (func) ->
-    assertType func, Function
-    func = bindDelegate func if @_delegate
-    @_render = func
     return
 
 typeImpl.initInstance = ->
@@ -77,22 +78,26 @@ instImpl.willBuild = ->
 
   if kind is ReactComponent
     @defineMethods viewImpl.methods
-    ownMethods.render = @_render or emptyFunction.thatReturnsFalse
-    ownMethods.shouldComponentUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
+    ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
+    ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
+    ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
 
   else
-    inheritArray this, "_willMount", kind
-    inheritArray this, "_didMount", kind
-    inheritArray this, "_willUnmount", kind
-    ownMethods.render = @_render if @_render
-    ownMethods.shouldComponentUpdate = @_shouldUpdate if @_shouldUpdate
+    inheritArray this, "_willMount", kind::__willMount
+    inheritArray this, "_didMount", kind::__didMount
+    inheritArray this, "_willUnmount", kind::__willUnmount
+    ownMethods.__render = @_render if @_render
+    ownMethods.__shouldUpdate = @_shouldUpdate if @_shouldUpdate
+    ownMethods.__willReceiveProps = @_willReceiveProps if @_willReceiveProps
 
-  @defineMethods ownMethods
-  @definePrototype {
-    @_willMount
-    @_didMount
-    @_willUnmount
-  }
+  # Define these methods on the delegate so they can be overridden.
+  @_delegate.defineMethods ownMethods
+
+  # Define the arrays on the view to avoid crowding the delegate namespace.
+  @definePrototype
+    __willMount: @_willMount
+    __didMount: @_didMount
+    __willUnmount: @_willUnmount
 
 #
 # The 'view' is a subclass of 'ReactComponent'
@@ -103,26 +108,29 @@ viewImpl = {}
 
 viewImpl.methods =
 
+  render: ->
+    @_delegate.__render()
+
+  shouldComponentUpdate: (nextProps) ->
+    @_delegate.__shouldUpdate nextProps
+
+  componentWillReceiveProps: (nextProps) ->
+    @_delegate.__willReceiveProps nextProps
+
   componentWillMount: ->
-    applyChain @_willMount, @_delegate
+    applyChain @__willMount, @_delegate
 
   componentDidMount: ->
-    applyChain @_didMount, @_delegate
+    applyChain @__didMount, @_delegate
 
   componentWillUnmount: ->
-    applyChain @_willUnmount, @_delegate
+    applyChain @__willUnmount, @_delegate
 
 #
 # Helpers
 #
 
-bindDelegate = (func) ->
-  bound = -> func.apply @_delegate, arguments
-  if isDev then bound.toString = -> func.toString()
-  return bound
-
-inheritArray = (obj, key, type) ->
-  inherited = type.prototype[key]
+inheritArray = (obj, key, inherited) ->
   assertType inherited, Array
   if obj[key].length
     return if not inherited.length
