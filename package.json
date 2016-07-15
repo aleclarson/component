@@ -1,7 +1,7 @@
 {
   "name": "component",
   "version": "2.0.0",
-  "main": "js/src/index",
+  "main": "js/index",
   "dependencies": {
     "Animated": "aleclarson/Animated#2.0.0",
     "Any": "aleclarson/Any#1.0.0",
@@ -28,7 +28,7 @@
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "failure": "aleclarson/failure#1.0.0",
     "fillValue": "aleclarson/fillValue#1.0.0",
-    "getArgProp": "aleclarson/getArgProp#1.0.0",
+    "fromArgs": "aleclarson/fromArgs#1.0.0",
     "getKind": "aleclarson/getKind#1.0.0",
     "has": "aleclarson/has#1.0.0",
     "hook": "aleclarson/hook#1.0.0",

@@ -1,5 +1,5 @@
 
-getArgProp = require "getArgProp"
+fromArgs = require "fromArgs"
 isType = require "isType"
 Type = require "Type"
 
@@ -21,7 +21,7 @@ type.createInstance ->
 
 type.defineValues
 
-  _propTypes: getArgProp 1
+  _propTypes: fromArgs 1
 
 type.initInstance (props) ->
   @attach props

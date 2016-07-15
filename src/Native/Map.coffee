@@ -1,7 +1,7 @@
 
 cloneObject = require "cloneObject"
 assertType = require "assertType"
-getArgProp = require "getArgProp"
+fromArgs = require "fromArgs"
 isType = require "isType"
 Event = require "Event"
 Type = require "Type"
@@ -21,7 +21,7 @@ type.defineFrozenValues
 
 type.defineValues
 
-  __values: getArgProp 0
+  __values: fromArgs 0
 
   __nativeMaps: -> {}
 

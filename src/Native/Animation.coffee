@@ -1,7 +1,7 @@
 
 { AnimatedValue } = require "Animated"
 
-getArgProp = require "getArgProp"
+fromArgs = require "fromArgs"
 Progress = require "progress"
 isType = require "isType"
 Type = require "Type"
@@ -43,7 +43,7 @@ type.defineProperties
 
 type.defineFrozenValues
 
-  _animated: getArgProp "animated"
+  _animated: fromArgs "animated"
 
   _animation: (options) ->
     options.type options.config
@@ -52,11 +52,11 @@ type.defineValues
 
   _fromValue: -> @value
 
-  _toValue: getArgProp "config.toValue"
+  _toValue: fromArgs "config.toValue"
 
-  _onUpdate: getArgProp "onUpdate"
+  _onUpdate: fromArgs "onUpdate"
 
-  _onEnd: getArgProp "onEnd"
+  _onEnd: fromArgs "onEnd"
 
 type.initInstance ->
 
