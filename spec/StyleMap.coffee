@@ -3,7 +3,7 @@
 
 # require("./lotus-require").register()
 #
-# StyleMap = require "component/js/src/Component/StyleMap"
+# StyleMap = require "../js/styles/StyleMap"
 #
 # StyleMap.addPresets
 #

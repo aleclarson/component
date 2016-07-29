@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "TextInput.js",
+  "sourceRoot": "../../../src/views",
+  "sources": [
+    "TextInput.coffee"
+  ],
+  "names": [],
+  "mappings": "AACA,IAAA;;AAAA,eAAA,GAAkB,OAAA,CAAQ,2BAAR;;AAElB,MAAA,GAAS,OAAA,CAAQ,WAAR;;AACT,MAAM,CAAC,OAAP,GAAiB,eAAA,CAAgB,WAAhB,EAA6B,MAA7B"
+}

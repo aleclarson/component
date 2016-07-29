@@ -1,0 +1,25 @@
+var ComponentType, ComponentTypeBuilder, NamedFunction, Type, setKind, setType;
+
+NamedFunction = require("NamedFunction");
+
+setKind = require("setKind");
+
+setType = require("setType");
+
+Type = require("Type");
+
+ComponentTypeBuilder = require("./ComponentTypeBuilder");
+
+module.exports = ComponentType = NamedFunction("ComponentType", function(name) {
+  var self;
+  self = ComponentTypeBuilder(name);
+  self.didBuild(function(type) {
+    Type.augment(type, true);
+    return setType(type, ComponentType);
+  });
+  return self;
+});
+
+setKind(ComponentType, Type);
+
+//# sourceMappingURL=map/ComponentType.map
