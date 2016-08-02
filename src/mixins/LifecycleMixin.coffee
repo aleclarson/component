@@ -76,7 +76,7 @@ instImpl.willBuild = ->
   kind = @_kind
   ownMethods = {}
 
-  if kind is ReactComponent
+  if (kind is no) or (kind is ReactComponent)
     @defineMethods viewImpl.methods
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue

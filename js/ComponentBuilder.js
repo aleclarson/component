@@ -1,4 +1,4 @@
-var Builder, Component, ReactComponent, Type, assertType, type;
+var Builder, ReactComponent, Type, assertType, type;
 
 ReactComponent = require("ReactComponent");
 
@@ -8,37 +8,32 @@ Builder = require("Builder");
 
 Type = require("Type");
 
-Component = require("./Component");
-
-type = Type("ComponentBuilder");
+type = Type("modx_ComponentBuilder");
 
 type.inherits(Builder);
 
-type._initInstance.unshift(function() {
-  this._tracer.trace();
-  return this._willBuild.push(function() {
-    return this._kind != null ? this._kind : this._kind = ReactComponent;
-  });
+type.trace();
+
+type.initInstance(function() {
+  return this._defaultKind = ReactComponent;
 });
 
-type.definePrototype({
-  _delegate: {
-    get: function() {
-      return this;
-    }
+type.defineGetters({
+  _delegate: function() {
+    return this;
   }
 });
 
 type.overrideMethods({
-  __createBaseObject: function(args) {
+  _defaultBaseCreator: function(args) {
     var instance;
-    instance = Builder.prototype.__createBaseObject.apply(null, arguments);
+    instance = this.__super(arguments);
     ReactComponent.apply(instance, args);
     return instance;
   }
 });
 
-type.addMixins([require("./mixins/PropsMixin"), require("./mixins/LifecycleMixin"), require("./styles/StyleMixin"), require("./mixins/NativeValueMixin"), require("./mixins/ListenerMixin"), require("./mixins/ReactionMixin"), require("./mixins/GatedRenderMixin")]);
+type.addMixins([require("./mixins/PropsMixin"), require("./mixins/LifecycleMixin"), require("./mixins/StyleMixin"), require("./mixins/NativeValueMixin"), require("./mixins/ListenerMixin"), require("./mixins/ReactionMixin"), require("./mixins/GatedRenderMixin")]);
 
 module.exports = type.build();
 

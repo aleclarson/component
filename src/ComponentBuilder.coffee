@@ -4,33 +4,31 @@ assertType = require "assertType"
 Builder = require "Builder"
 Type = require "Type"
 
-Component = require "./Component"
-
-type = Type "ComponentBuilder"
+type = Type "modx_ComponentBuilder"
 
 type.inherits Builder
 
-type._initInstance.unshift ->
-  @_tracer.trace()
-  @_willBuild.push ->
-    @_kind ?= ReactComponent
+type.trace()
 
-type.definePrototype
+type.initInstance ->
+  @_defaultKind = ReactComponent
 
-  # 'Type.Builder' overrides this.
-  _delegate: get: -> this
+type.defineGetters
+
+  # 'modx_TypeBuilder' overrides this.
+  _delegate: -> this
 
 type.overrideMethods
 
-  __createBaseObject: (args) ->
-    instance = Builder::__createBaseObject.apply null, arguments
+  _defaultBaseCreator: (args) ->
+    instance = @__super arguments
     ReactComponent.apply instance, args
     return instance
 
 type.addMixins [
   require "./mixins/PropsMixin"
   require "./mixins/LifecycleMixin"
-  require "./styles/StyleMixin"
+  require "./mixins/StyleMixin"
   require "./mixins/NativeValueMixin"
   require "./mixins/ListenerMixin"
   require "./mixins/ReactionMixin"

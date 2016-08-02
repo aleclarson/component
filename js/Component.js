@@ -1,4 +1,4 @@
-var Component, ComponentBuilder, ElementType, NamedFunction, ReactComponent, assertType, build, define, hook, setKind;
+var ElementType, NamedFunction, ReactComponent, assertType, build, define, hook, modx_Component, modx_ComponentBuilder, setKind;
 
 require("isDev");
 
@@ -14,18 +14,18 @@ define = require("define");
 
 hook = require("hook");
 
-ComponentBuilder = require("./ComponentBuilder");
+modx_ComponentBuilder = require("./ComponentBuilder");
 
-ElementType = require("./type/ElementType");
+ElementType = require("./utils/ElementType");
 
-module.exports = Component = NamedFunction("Component", function(name) {
+modx_Component = NamedFunction("modx_Component", function(name) {
   var self;
-  self = ComponentBuilder(name);
+  self = modx_ComponentBuilder(name);
   hook(self, "build", build);
   return self;
 });
 
-setKind(Component, ReactComponent);
+module.exports = setKind(modx_Component, ReactComponent);
 
 build = function(build) {
   var componentType, elementType;
@@ -34,18 +34,5 @@ build = function(build) {
   elementType.componentType = componentType;
   return elementType;
 };
-
-define(Component, {
-  Type: {
-    lazy: function() {
-      return require("./type/ComponentType");
-    }
-  },
-  StyleMap: {
-    lazy: function() {
-      return require("./styles/StyleMap");
-    }
-  }
-});
 
 //# sourceMappingURL=map/Component.map

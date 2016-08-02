@@ -32,6 +32,7 @@
     "getKind": "aleclarson/getKind#1.0.0",
     "has": "aleclarson/has#1.0.0",
     "hook": "aleclarson/hook#1.0.0",
+    "immediate": "aleclarson/immediate#4.1.0",
     "in-array": "aleclarson/in-array#1.0.0",
     "isConstructor": "aleclarson/isConstructor#1.0.0",
     "isDev": "aleclarson/isDev#1.0.0",

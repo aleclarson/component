@@ -6,7 +6,7 @@ Property = require("Property");
 
 isType = require("isType");
 
-StyleMap = require("./StyleMap");
+StyleMap = require("../utils/StyleMap");
 
 frozen = Property.frozen;
 

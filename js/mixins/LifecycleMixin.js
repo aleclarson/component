@@ -81,7 +81,7 @@ instImpl.willBuild = function() {
   var kind, ownMethods;
   kind = this._kind;
   ownMethods = {};
-  if (kind === ReactComponent) {
+  if ((kind === false) || (kind === ReactComponent)) {
     this.defineMethods(viewImpl.methods);
     ownMethods.__render = this._render || emptyFunction.thatReturnsFalse;
     ownMethods.__shouldUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
