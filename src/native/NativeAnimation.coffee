@@ -2,6 +2,7 @@
 { AnimatedValue } = require "Animated"
 
 assertType = require "assertType"
+immediate = require "immediate"
 fromArgs = require "fromArgs"
 Progress = require "progress"
 isType = require "isType"
@@ -17,31 +18,6 @@ type.defineOptions
   onUpdate: Function.Maybe
   onEnd: Function.Maybe
 
-type.defineProperties
-
-  isActive: get: ->
-    @_animation.__active
-
-  value: get: ->
-    @_animated.__getValue()
-
-  fromValue: get: ->
-    @_fromValue
-
-  toValue: get: ->
-    @_toValue
-
-  progress: get: ->
-    Progress.fromValue @value,
-      fromValue: @_fromValue
-      toValue: @_toValue
-      clamp: yes
-
-  velocity: get: ->
-    velocity = @_animation.velocity
-    return 0 if not isType velocity, Number
-    return velocity
-
 type.defineFrozenValues
 
   _animated: fromArgs "animated"
@@ -55,8 +31,29 @@ type.defineValues
   _onUpdate: fromArgs "onUpdate"
 
   _onEnd: fromArgs "onEnd"
-  
+
   _animation: null
+
+type.defineGetters
+
+  isActive: -> @_animation.__active
+
+  value: -> @_animated.__getValue()
+
+  fromValue: -> @_fromValue
+
+  toValue: -> @_toValue
+
+  progress: ->
+    Progress.fromValue @value,
+      fromValue: @_fromValue
+      toValue: @_toValue
+      clamp: yes
+
+  velocity: ->
+    velocity = @_animation.velocity
+    return 0 if not isType velocity, Number
+    return velocity
 
 type.defineMethods
 
@@ -73,9 +70,9 @@ type.defineMethods
     @_animated.animate @_animation
 
     # Detect instant animations.
-    unless @isActive
+    if not @isActive
       onUpdate and onUpdate.detach()
-      @_onEnd (@_toValue is undefined) or (@_toValue is @value)
+      immediate => @_onEnd yes
       return
 
     hook.before @_animation, "__onEnd", (result) =>

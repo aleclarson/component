@@ -40,27 +40,22 @@ typeImpl.methods =
     #
 
     createListeners = (args) ->
-
       listeners = []
-      onAttach = Event.didAttach (listener) ->
-        listeners.push listener
-
+      onAttach = (listener) -> listeners.push listener
+      onAttach = Event.didAttach onAttach
       onAttach.start()
       func.apply this, args
       onAttach.stop()
-
-      @__listeners[phaseId] = listeners
-      return
-
-    delegate._initInstance.push createListeners
+      return listeners
 
     #
-    # Start each Listener when the instance is mounted.
+    # Create new Listeners every time the instance is mounted.
     #
 
     startListeners = ->
-      for listener in @__listeners[phaseId]
-        listener.start()
+      listeners = createListeners()
+      listener.start() for listener in listeners
+      @__listeners[phaseId] = listeners
       return
 
     @_willMount.push startListeners

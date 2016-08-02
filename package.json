@@ -1,6 +1,6 @@
 {
-  "name": "component",
-  "version": "2.0.0",
+  "name": "modx",
+  "version": "1.0.0",
   "dependencies": {
     "Animated": "aleclarson/Animated#2.0.0",
     "Any": "aleclarson/Any#1.0.0",

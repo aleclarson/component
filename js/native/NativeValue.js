@@ -79,7 +79,6 @@ type.defineValues({
   _reaction: null,
   _reactionListener: null,
   _animated: null,
-  _animation: null,
   _animatedListener: null,
   _retainCount: 1
 });
@@ -87,7 +86,8 @@ type.defineValues({
 type.defineReactiveValues({
   _value: null,
   _fromValue: null,
-  _toValue: null
+  _toValue: null,
+  _animation: null
 });
 
 type.initInstance(function(value, keyPath) {

@@ -1,8 +1,10 @@
-var AnimatedValue, Progress, Type, assertType, fromArgs, hook, isType, type;
+var AnimatedValue, Progress, Type, assertType, fromArgs, hook, immediate, isType, type;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
 assertType = require("assertType");
+
+immediate = require("immediate");
 
 fromArgs = require("fromArgs");
 
@@ -23,48 +25,6 @@ type.defineOptions({
   onEnd: Function.Maybe
 });
 
-type.defineProperties({
-  isActive: {
-    get: function() {
-      return this._animation.__active;
-    }
-  },
-  value: {
-    get: function() {
-      return this._animated.__getValue();
-    }
-  },
-  fromValue: {
-    get: function() {
-      return this._fromValue;
-    }
-  },
-  toValue: {
-    get: function() {
-      return this._toValue;
-    }
-  },
-  progress: {
-    get: function() {
-      return Progress.fromValue(this.value, {
-        fromValue: this._fromValue,
-        toValue: this._toValue,
-        clamp: true
-      });
-    }
-  },
-  velocity: {
-    get: function() {
-      var velocity;
-      velocity = this._animation.velocity;
-      if (!isType(velocity, Number)) {
-        return 0;
-      }
-      return velocity;
-    }
-  }
-});
-
 type.defineFrozenValues({
   _animated: fromArgs("animated")
 });
@@ -77,6 +37,36 @@ type.defineValues({
   _onUpdate: fromArgs("onUpdate"),
   _onEnd: fromArgs("onEnd"),
   _animation: null
+});
+
+type.defineGetters({
+  isActive: function() {
+    return this._animation.__active;
+  },
+  value: function() {
+    return this._animated.__getValue();
+  },
+  fromValue: function() {
+    return this._fromValue;
+  },
+  toValue: function() {
+    return this._toValue;
+  },
+  progress: function() {
+    return Progress.fromValue(this.value, {
+      fromValue: this._fromValue,
+      toValue: this._toValue,
+      clamp: true
+    });
+  },
+  velocity: function() {
+    var velocity;
+    velocity = this._animation.velocity;
+    if (!isType(velocity, Number)) {
+      return 0;
+    }
+    return velocity;
+  }
 });
 
 type.defineMethods({
@@ -92,7 +82,11 @@ type.defineMethods({
     this._animated.animate(this._animation);
     if (!this.isActive) {
       onUpdate && onUpdate.detach();
-      this._onEnd((this._toValue === void 0) || (this._toValue === this.value));
+      immediate((function(_this) {
+        return function() {
+          return _this._onEnd(true);
+        };
+      })(this));
       return;
     }
     hook.before(this._animation, "__onEnd", (function(_this) {

@@ -86,6 +86,7 @@ instImpl.willBuild = function() {
     ownMethods.__render = this._render || emptyFunction.thatReturnsFalse;
     ownMethods.__shouldUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
     ownMethods.__willReceiveProps = this._willReceiveProps || emptyFunction;
+    this._delegate.defineMethods(ownMethods);
   } else {
     inheritArray(this, "_willMount", kind.prototype.__willMount);
     inheritArray(this, "_didMount", kind.prototype.__didMount);
@@ -99,8 +100,8 @@ instImpl.willBuild = function() {
     if (this._willReceiveProps) {
       ownMethods.__willReceiveProps = this._willReceiveProps;
     }
+    this._delegate.overrideMethods(ownMethods);
   }
-  this._delegate.defineMethods(ownMethods);
   return this.definePrototype({
     __willMount: this._willMount,
     __didMount: this._didMount,

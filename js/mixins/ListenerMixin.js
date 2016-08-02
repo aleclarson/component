@@ -37,22 +37,23 @@ typeImpl.methods = {
     createListeners = function(args) {
       var listeners, onAttach;
       listeners = [];
-      onAttach = Event.didAttach(function(listener) {
+      onAttach = function(listener) {
         return listeners.push(listener);
-      });
+      };
+      onAttach = Event.didAttach(onAttach);
       onAttach.start();
       func.apply(this, args);
       onAttach.stop();
-      this.__listeners[phaseId] = listeners;
+      return listeners;
     };
-    delegate._initInstance.push(createListeners);
     startListeners = function() {
-      var i, len, listener, ref;
-      ref = this.__listeners[phaseId];
-      for (i = 0, len = ref.length; i < len; i++) {
-        listener = ref[i];
+      var i, len, listener, listeners;
+      listeners = createListeners();
+      for (i = 0, len = listeners.length; i < len; i++) {
+        listener = listeners[i];
         listener.start();
       }
+      this.__listeners[phaseId] = listeners;
     };
     this._willMount.push(startListeners);
     stopListeners = function() {

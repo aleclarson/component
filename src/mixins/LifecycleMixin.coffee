@@ -81,6 +81,7 @@ instImpl.willBuild = ->
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
     ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
+    @_delegate.defineMethods ownMethods
 
   else
     inheritArray this, "_willMount", kind::__willMount
@@ -89,9 +90,7 @@ instImpl.willBuild = ->
     ownMethods.__render = @_render if @_render
     ownMethods.__shouldUpdate = @_shouldUpdate if @_shouldUpdate
     ownMethods.__willReceiveProps = @_willReceiveProps if @_willReceiveProps
-
-  # Define these methods on the delegate so they can be overridden.
-  @_delegate.defineMethods ownMethods
+    @_delegate.overrideMethods ownMethods
 
   # Define the arrays on the view to avoid crowding the delegate namespace.
   @definePrototype

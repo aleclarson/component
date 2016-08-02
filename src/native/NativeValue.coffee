@@ -58,8 +58,6 @@ type.defineValues
 
   _animated: null
 
-  _animation: null
-
   _animatedListener: null
 
   _retainCount: 1
@@ -71,6 +69,8 @@ type.defineReactiveValues
   _fromValue: null
 
   _toValue: null
+
+  _animation: null
 
 type.initInstance (value, keyPath) ->
 

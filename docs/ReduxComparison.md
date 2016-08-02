@@ -1,4 +1,8 @@
 
+**NOTE:** This is a *very* rough sketch.
+
+---
+
 `Component` is different from [reactjs/redux](https://github.com/reactjs/redux) in many ways.
 
 #### Style
