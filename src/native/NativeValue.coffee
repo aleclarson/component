@@ -14,7 +14,6 @@ Reaction = require "reaction"
 Tracker = require "tracker"
 Tracer = require "tracer"
 isType = require "isType"
-assert = require "assert"
 Event = require "Event"
 steal = require "steal"
 Void = require "Void"
@@ -62,7 +61,7 @@ type.defineValues
 
   _animatedListener: null
 
-  _retainCount: 1
+  _retainCount: 0
 
 type.defineReactiveValues
 
@@ -107,7 +106,8 @@ type.definePrototype
       Tracker.isActive and @_dep.depend()
       return @_value
     set: (newValue) ->
-      assert not @isReactive, "Cannot manually set 'value' when 'isReactive' is true!"
+      if @isReactive
+        throw Error "Cannot manually set 'value' when 'isReactive' is true!"
       if @isAnimated
         @_animated.setValue newValue
       else @_setValue newValue
@@ -145,11 +145,16 @@ type.defineMethods
     unless config.round?
       config.round = @_round
 
-    assertTypes config, configTypes.setValue if isDev
+    isDev and assertTypes config, configTypes.setValue
 
     if config.clamp is yes
-      assert @_fromValue?, "Must have a 'fromValue' defined!"
-      assert @_toValue?, "Must have a 'toValue' defined!"
+
+      if not @_fromValue?
+        throw Error "Must define 'config.fromValue' or 'this.fromValue'!"
+
+      if not @_toValue?
+        throw Error "Must define 'config.toValue' or 'this.toValue'!"
+
       newValue = clampValue newValue, @_fromValue, @_toValue
 
     newValue = roundValue newValue, config.round if config.round?
@@ -157,7 +162,8 @@ type.defineMethods
 
   animate: (config) ->
 
-    assert not @isReactive, "Cannot call 'animate' when 'isReactive' is true!"
+    if @isReactive
+      throw Error "Cannot call 'animate' when 'isReactive' is true!"
 
     isDev and @_tracers.animate = Tracer "NativeValue::animate()"
 
@@ -187,10 +193,13 @@ type.defineMethods
     animation and animation.stop()
     return
 
+  # TODO: Should this be deprecated?
   track: (nativeValue, config) ->
 
-    assert not @_tracking, "Already tracking another value!"
     assertType nativeValue, NativeValue.Kind
+
+    if @_tracking
+      throw Error "Already tracking another value!"
 
     fromRange = config.fromRange ?= {}
     fromRange.fromValue ?= nativeValue._fromValue
@@ -236,7 +245,8 @@ type.defineMethods
 
   setProgress: (progress, config) ->
 
-    assert not @isReactive, "Cannot call 'setProgress' when 'isReactive' is true!"
+    if @isReactive
+      throw Error "Cannot call 'setProgress' when 'isReactive' is true!"
 
     if config
       mergeDefaults config, @_getRange()
@@ -260,12 +270,20 @@ type.defineMethods
 
   __attach: ->
     @_retainCount += 1
+    return
 
   __detach: ->
-    @_retainCount -= 1
-    return if @_retainCount > 0
+
+    if @_retainCount > 1
+      @_retainCount -= 1
+      return
+
+    if @_retainCount > 0
+      @_retainCount -= 1
+
     @_detachReaction()
     @_detachAnimated()
+    return
 
   _getRange: ->
     fromValue: @_fromValue
@@ -275,10 +293,8 @@ type.defineMethods
 
     return if @_value is newValue
 
-    if isDev and isType newValue, Number
-      assert not Nan.test(newValue), "Unexpected NaN value!"
-
-    @DEBUG and log.format newValue, compact: yes, maxObjectDepth: 1, label: @__name + "._setValue: "
+    if isDev and Nan.test newValue
+      throw Error "Unexpected NaN value!"
 
     @_value = newValue
     @_dep.changed()

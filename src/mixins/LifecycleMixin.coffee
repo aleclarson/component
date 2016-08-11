@@ -1,15 +1,11 @@
 
-require "isDev"
-
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
 ReactComponent = require "ReactComponent"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 applyChain = require "applyChain"
 Builder = require "Builder"
-assert = require "assert"
-sync = require "sync"
 
 module.exports = (type) ->
   type.defineValues typeImpl.values

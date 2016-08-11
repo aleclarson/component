@@ -1,4 +1,4 @@
-var PureObject, StyleMap, Type, assert, assertType, assign, callPreset, cloneObject, emptyObject, fillValue, frozen, has, inArray, isTransformKey, isType, parseTransform, presets, sync, type;
+var PureObject, StyleMap, Type, assertType, assign, callPreset, cloneObject, emptyObject, fillValue, frozen, has, inArray, isTransformKey, isType, parseTransform, presets, sync, type;
 
 require("isDev");
 
@@ -17,8 +17,6 @@ fillValue = require("fillValue");
 inArray = require("in-array");
 
 isType = require("isType");
-
-assert = require("assert");
 
 Type = require("Type");
 
@@ -98,7 +96,9 @@ type.defineMethods({
     assertType(styles, Object);
     for (styleName in styles) {
       style = styles[styleName];
-      assert(!this._styleNames[styleName], "Cannot define an existing style: '" + styleName + "'");
+      if (this._styleNames[styleName]) {
+        throw Error("Cannot define an existing style: '" + styleName + "'");
+      }
       this._styleNames[styleName] = true;
       this._parseStyle(styleName, style || emptyObject);
     }
@@ -108,7 +108,9 @@ type.defineMethods({
     assertType(styles, Object);
     for (styleName in styles) {
       style = styles[styleName];
-      assert(this._styleNames[styleName], "Cannot append to undefined style: '" + styleName + "'");
+      if (!this._styleNames[styleName]) {
+        throw Error("Cannot append to undefined style: '" + styleName + "'");
+      }
       this._parseStyle(styleName, style || emptyObject);
     }
   },
@@ -119,9 +121,9 @@ type.defineMethods({
     computedStyles = this._computedStyles;
     for (styleName in styles) {
       style = styles[styleName];
-      assert(constantStyles[styleName] || computedStyles[styleName], {
-        reason: "Cannot override an undefined style: '" + styleName + "'"
-      });
+      if (!(constantStyles[styleName] || computedStyles[styleName])) {
+        throw Error("Cannot override an undefined style: '" + styleName + "'");
+      }
       delete constantStyles[styleName];
       delete computedStyles[styleName];
       if (!style) {
@@ -160,14 +162,17 @@ type.defineMethods({
         }
       } else if (StyleMap._presets[key]) {
         sync.each(callPreset(key, value), function(value, key) {
-          assert(value != null, "Invalid style value for key: '" + styleName + "." + key + "'");
+          if (value == null) {
+            throw TypeError("Invalid style value for key: '" + styleName + "." + key + "'");
+          }
           constantStyle[key] = value;
           if (has(computedStyle, key)) {
             return delete computedStyle[key];
           }
         });
+      } else if (value == null) {
+        throw TypeError("Invalid style value for key: '" + styleName + "." + key + "'");
       } else {
-        assert(value != null, "Invalid style value for key: '" + styleName + "." + key + "'");
         constantStyle[key] = parseTransform(value, key);
         if (has(computedStyle, key)) {
           delete computedStyle[key];
@@ -219,7 +224,9 @@ type.defineMethods({
         sync.each(callPreset(key, value), function(arg, key) {
           var isTransform, value;
           value = arg.value, isTransform = arg.isTransform;
-          assert(value != null, "Invalid style value for key: '" + key + "'");
+          if (value == null) {
+            throw TypeError("Invalid style value for key: '" + key + "'");
+          }
           if (isTransform) {
             return values.transform.push(assign({}, key, value));
           } else {

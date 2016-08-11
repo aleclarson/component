@@ -1,4 +1,4 @@
-var Random, Reaction, assert, assertType, baseImpl, frozen, hasReactions, isType, sync, typeImpl;
+var Random, Reaction, assertType, baseImpl, frozen, hasReactions, isType, sync, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -9,8 +9,6 @@ Reaction = require("reaction");
 Random = require("random");
 
 isType = require("isType");
-
-assert = require("assert");
 
 sync = require("sync");
 

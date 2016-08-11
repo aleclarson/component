@@ -3,7 +3,6 @@ require "isDev"
 
 assertType = require "assertType"
 Reaction = require "reaction"
-assert = require "assert"
 hook = require "hook"
 
 shift = Array::shift
@@ -26,8 +25,10 @@ typeImpl.methods =
 
   isRenderPrevented: (func) ->
 
-    assert not @_isRenderPrevented, "'isRenderPrevented' is already defined!"
     assertType func, Function
+
+    if @_isRenderPrevented
+      throw Error "'isRenderPrevented' is already defined!"
 
     @_isRenderPrevented = func
     @_didBuild.push typeImpl.didBuild

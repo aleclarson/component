@@ -1,6 +1,4 @@
-var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, frozen, inheritArray, instImpl, sync, typeImpl;
-
-require("isDev");
+var Builder, ReactComponent, applyChain, assertType, emptyFunction, frozen, inheritArray, instImpl, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -13,10 +11,6 @@ assertType = require("assertType");
 applyChain = require("applyChain");
 
 Builder = require("Builder");
-
-assert = require("assert");
-
-sync = require("sync");
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);

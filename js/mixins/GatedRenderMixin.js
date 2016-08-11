@@ -1,12 +1,10 @@
-var Reaction, assert, assertType, hook, instImpl, shift, typeImpl;
+var Reaction, assertType, hook, instImpl, shift, typeImpl;
 
 require("isDev");
 
 assertType = require("assertType");
 
 Reaction = require("reaction");
-
-assert = require("assert");
 
 hook = require("hook");
 
@@ -26,8 +24,10 @@ typeImpl.values = {
 typeImpl.methods = {
   isRenderPrevented: function(func) {
     var delegate;
-    assert(!this._isRenderPrevented, "'isRenderPrevented' is already defined!");
     assertType(func, Function);
+    if (this._isRenderPrevented) {
+      throw Error("'isRenderPrevented' is already defined!");
+    }
     this._isRenderPrevented = func;
     this._didBuild.push(typeImpl.didBuild);
     delegate = this._delegate;

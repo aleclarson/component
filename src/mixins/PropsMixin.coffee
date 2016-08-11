@@ -10,7 +10,6 @@ assertType = require "assertType"
 Property = require "Property"
 getKind = require "getKind"
 define = require "define"
-assert = require "assert"
 has = require "has"
 
 module.exports = (type) ->
@@ -39,7 +38,9 @@ typeImpl.prototype =
     set: (propTypes) ->
 
       assertType propTypes, Object
-      assert not @_propTypes, "'propTypes' is already defined!"
+
+      if @_propTypes
+        throw Error "'propTypes' is already defined!"
 
       @_propTypes = propTypes
 
@@ -55,7 +56,9 @@ typeImpl.prototype =
     set: (propDefaults) ->
 
       assertType propDefaults, Object
-      assert not @_propDefaults, "'propDefaults' is already defined!"
+
+      if @_propDefaults
+        throw Error "'propDefaults' is already defined!"
 
       @_propDefaults = propDefaults
 

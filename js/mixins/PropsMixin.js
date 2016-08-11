@@ -1,4 +1,4 @@
-var Property, ReactComponent, assert, assertType, assertTypes, define, getKind, has, instImpl, mergeDefaults, superWrap, typeImpl;
+var Property, ReactComponent, assertType, assertTypes, define, getKind, has, instImpl, mergeDefaults, superWrap, typeImpl;
 
 require("isDev");
 
@@ -15,8 +15,6 @@ Property = require("Property");
 getKind = require("getKind");
 
 define = require("define");
-
-assert = require("assert");
 
 has = require("has");
 
@@ -43,7 +41,9 @@ typeImpl.prototype = {
     },
     set: function(propTypes) {
       assertType(propTypes, Object);
-      assert(!this._propTypes, "'propTypes' is already defined!");
+      if (this._propTypes) {
+        throw Error("'propTypes' is already defined!");
+      }
       this._propTypes = propTypes;
       this._didBuild.push(function(type) {
         return type.propTypes = propTypes;
@@ -61,7 +61,9 @@ typeImpl.prototype = {
     },
     set: function(propDefaults) {
       assertType(propDefaults, Object);
-      assert(!this._propDefaults, "'propDefaults' is already defined!");
+      if (this._propDefaults) {
+        throw Error("'propDefaults' is already defined!");
+      }
       this._propDefaults = propDefaults;
       this._didBuild.push(function(type) {
         return type.propDefaults = propDefaults;

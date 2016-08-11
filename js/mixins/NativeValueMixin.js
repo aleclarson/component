@@ -1,18 +1,14 @@
-var NativeValue, Random, assertType, baseImpl, define, frozen, hasNativeValues, isType, typeImpl;
+var NativeValue, ValueMapper, assertType, baseImpl, frozen, isType, typeImpl;
 
 frozen = require("Property").frozen;
 
-assertType = require("assertType");
+ValueMapper = require("ValueMapper");
 
-Random = require("random");
+assertType = require("assertType");
 
 isType = require("isType");
 
-define = require("define");
-
 NativeValue = require("../native/NativeValue");
-
-hasNativeValues = Symbol("Component.hasNativeValues");
 
 module.exports = function(type) {
   return type.defineMethods(typeImpl.methods);
@@ -22,64 +18,36 @@ typeImpl = {};
 
 typeImpl.methods = {
   defineNativeValues: function(nativeValues) {
-    var attachNativeValues, computed, createNativeValues, delegate, detachNativeValues, key, kind, phaseId, value;
+    var delegate, kind;
     assertType(nativeValues, Object);
     delegate = this._delegate;
-    if (!delegate[hasNativeValues]) {
-      frozen.define(delegate, hasNativeValues, {
+    if (!delegate.__hasNativeValues) {
+      frozen.define(delegate, "__hasNativeValues", {
         value: true
       });
       kind = delegate._kind;
-      if (!(kind && kind.prototype[hasNativeValues])) {
+      if (!(kind && kind.prototype.__hasNativeValues)) {
         delegate._didBuild.push(baseImpl.didBuild);
         delegate._initInstance.push(baseImpl.initInstance);
+        this._willMount.push(baseImpl.attachNativeValues);
+        this._willUnmount.push(baseImpl.detachNativeValues);
       }
     }
-    computed = Object.create(null);
-    for (key in nativeValues) {
-      value = nativeValues[key];
-      if (isType(value, Function)) {
-        computed[key] = true;
-      }
-    }
-    phaseId = Random.id();
-    createNativeValues = function(args) {
-      var nativeKeys;
-      nativeKeys = [];
-      for (key in nativeValues) {
-        value = nativeValues[key];
-        if (computed[key]) {
-          value = value.apply(this, args);
-        }
+    nativeValues = ValueMapper({
+      values: nativeValues,
+      define: function(obj, key, value) {
         if (value === void 0) {
-          continue;
+          return;
         }
-        nativeKeys.push(key);
-        frozen.define(this, key, {
+        obj.__nativeKeys.push(key);
+        return frozen.define(this, key, {
           value: value instanceof NativeValue ? value : NativeValue(value, this.constructor.name + "." + key)
         });
       }
-      this.__nativeKeys[phaseId] = nativeKeys;
-    };
-    delegate._initInstance.push(createNativeValues);
-    attachNativeValues = function() {
-      var i, len, ref;
-      ref = this.__nativeKeys[phaseId];
-      for (i = 0, len = ref.length; i < len; i++) {
-        key = ref[i];
-        this[key].__attach();
-      }
-    };
-    this._willMount.push(attachNativeValues);
-    detachNativeValues = function() {
-      var i, len, ref;
-      ref = this.__nativeKeys[phaseId];
-      for (i = 0, len = ref.length; i < len; i++) {
-        key = ref[i];
-        this[key].__detach();
-      }
-    };
-    this._willUnmount.push(detachNativeValues);
+    });
+    delegate._initInstance.push(function(args) {
+      return nativeValues.define(this, args);
+    });
   }
 };
 
@@ -95,6 +63,24 @@ baseImpl.initInstance = function() {
   return frozen.define(this, "__nativeKeys", {
     value: Object.create(null)
   });
+};
+
+baseImpl.attachNativeValues = function() {
+  var i, key, len, ref;
+  ref = this.__nativeKeys;
+  for (i = 0, len = ref.length; i < len; i++) {
+    key = ref[i];
+    this[key].__attach();
+  }
+};
+
+baseImpl.detachNativeValues = function() {
+  var i, key, len, ref;
+  ref = this.__nativeKeys;
+  for (i = 0, len = ref.length; i < len; i++) {
+    key = ref[i];
+    this[key].__detach();
+  }
 };
 
 //# sourceMappingURL=map/NativeValueMixin.map

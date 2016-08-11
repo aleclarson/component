@@ -5,7 +5,6 @@ assertType = require "assertType"
 Reaction = require "reaction"
 Random = require "random"
 isType = require "isType"
-assert = require "assert"
 sync = require "sync"
 
 hasReactions = Symbol "Component.hasReactions"

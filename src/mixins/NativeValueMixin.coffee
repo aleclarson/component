@@ -1,16 +1,11 @@
 
-# TODO: Implement support for `defineNativeValues(func)`
+{frozen} = require "Property"
 
-{ frozen } = require "Property"
-
+ValueMapper = require "ValueMapper"
 assertType = require "assertType"
-Random = require "random"
 isType = require "isType"
-define = require "define"
 
 NativeValue = require "../native/NativeValue"
-
-hasNativeValues = Symbol "Component.hasNativeValues"
 
 module.exports = (type) ->
   type.defineMethods typeImpl.methods
@@ -29,69 +24,26 @@ typeImpl.methods =
 
     delegate = @_delegate
 
-    # Some phases must only be defined once per inheritance chain.
-    if not delegate[hasNativeValues]
-      frozen.define delegate, hasNativeValues, { value: yes }
+    if not delegate.__hasNativeValues
+      frozen.define delegate, "__hasNativeValues", { value: yes }
       kind = delegate._kind
-      unless kind and kind::[hasNativeValues]
+      unless kind and kind::__hasNativeValues
         delegate._didBuild.push baseImpl.didBuild
         delegate._initInstance.push baseImpl.initInstance
+        @_willMount.push baseImpl.attachNativeValues
+        @_willUnmount.push baseImpl.detachNativeValues
 
-    # Function values are used as initializers.
-    computed = Object.create null
-    for key, value of nativeValues
-      if isType value, Function
-        computed[key] = yes
-
-    phaseId = Random.id()
-
-    #
-    # Create the NativeValue objects for each instance.
-    #
-
-    createNativeValues = (args) ->
-
-      nativeKeys = []
-
-      for key, value of nativeValues
-
-        # Some properties compute a value for each instance.
-        value = value.apply this, args if computed[key]
-
-        # If 'undefined' is returned, the property should not be defined.
-        continue if value is undefined
-
-        nativeKeys.push key
+    nativeValues = ValueMapper
+      values: nativeValues
+      define: (obj, key, value) ->
+        return if value is undefined
+        obj.__nativeKeys.push key
         frozen.define this, key, value:
           if value instanceof NativeValue then value
           else NativeValue value, @constructor.name + "." + key
 
-      @__nativeKeys[phaseId] = nativeKeys
-      return
-
-    delegate._initInstance.push createNativeValues
-
-    #
-    # Attach each NativeValue when the instance is mounted.
-    #
-
-    attachNativeValues = ->
-      for key in @__nativeKeys[phaseId]
-        this[key].__attach()
-      return
-
-    @_willMount.push attachNativeValues
-
-    #
-    # Detach each NativeValue when the instance is unmounted.
-    #
-
-    detachNativeValues = ->
-      for key in @__nativeKeys[phaseId]
-        this[key].__detach()
-      return
-
-    @_willUnmount.push detachNativeValues
+    delegate._initInstance.push (args) ->
+      nativeValues.define this, args
     return
 
 #
@@ -106,3 +58,13 @@ baseImpl.didBuild = (type) ->
 baseImpl.initInstance = ->
   frozen.define this, "__nativeKeys",
     value: Object.create null
+
+baseImpl.attachNativeValues = ->
+  for key in @__nativeKeys
+    this[key].__attach()
+  return
+
+baseImpl.detachNativeValues = ->
+  for key in @__nativeKeys
+    this[key].__detach()
+  return

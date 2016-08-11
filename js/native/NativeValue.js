@@ -1,4 +1,4 @@
-var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Null, Progress, Reaction, Tracer, Tracker, Type, Void, assert, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
+var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Null, Progress, Reaction, Tracer, Tracker, Type, Void, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
 
 require("isDev");
 
@@ -25,8 +25,6 @@ Tracker = require("tracker");
 Tracer = require("tracer");
 
 isType = require("isType");
-
-assert = require("assert");
 
 Event = require("Event");
 
@@ -80,7 +78,7 @@ type.defineValues({
   _reactionListener: null,
   _animated: null,
   _animatedListener: null,
-  _retainCount: 1
+  _retainCount: 0
 });
 
 type.defineReactiveValues({
@@ -139,7 +137,9 @@ type.definePrototype({
       return this._value;
     },
     set: function(newValue) {
-      assert(!this.isReactive, "Cannot manually set 'value' when 'isReactive' is true!");
+      if (this.isReactive) {
+        throw Error("Cannot manually set 'value' when 'isReactive' is true!");
+      }
       if (this.isAnimated) {
         return this._animated.setValue(newValue);
       } else {
@@ -193,12 +193,14 @@ type.defineMethods({
     if (config.round == null) {
       config.round = this._round;
     }
-    if (isDev) {
-      assertTypes(config, configTypes.setValue);
-    }
+    isDev && assertTypes(config, configTypes.setValue);
     if (config.clamp === true) {
-      assert(this._fromValue != null, "Must have a 'fromValue' defined!");
-      assert(this._toValue != null, "Must have a 'toValue' defined!");
+      if (this._fromValue == null) {
+        throw Error("Must define 'config.fromValue' or 'this.fromValue'!");
+      }
+      if (this._toValue == null) {
+        throw Error("Must define 'config.toValue' or 'this.toValue'!");
+      }
       newValue = clampValue(newValue, this._fromValue, this._toValue);
     }
     if (config.round != null) {
@@ -208,7 +210,9 @@ type.defineMethods({
   },
   animate: function(config) {
     var onEnd, onFinish;
-    assert(!this.isReactive, "Cannot call 'animate' when 'isReactive' is true!");
+    if (this.isReactive) {
+      throw Error("Cannot call 'animate' when 'isReactive' is true!");
+    }
     isDev && (this._tracers.animate = Tracer("NativeValue::animate()"));
     this.stopAnimation();
     this._attachAnimated();
@@ -237,8 +241,10 @@ type.defineMethods({
   },
   track: function(nativeValue, config) {
     var fromRange, listener, onChange, toRange;
-    assert(!this._tracking, "Already tracking another value!");
     assertType(nativeValue, NativeValue.Kind);
+    if (this._tracking) {
+      throw Error("Already tracking another value!");
+    }
     fromRange = config.fromRange != null ? config.fromRange : config.fromRange = {};
     if (fromRange.fromValue == null) {
       fromRange.fromValue = nativeValue._fromValue;
@@ -300,7 +306,9 @@ type.defineMethods({
   },
   setProgress: function(progress, config) {
     var value;
-    assert(!this.isReactive, "Cannot call 'setProgress' when 'isReactive' is true!");
+    if (this.isReactive) {
+      throw Error("Cannot call 'setProgress' when 'isReactive' is true!");
+    }
     if (config) {
       mergeDefaults(config, this._getRange());
     } else {
@@ -324,15 +332,18 @@ type.defineMethods({
     this._toValue = config.toValue;
   },
   __attach: function() {
-    return this._retainCount += 1;
+    this._retainCount += 1;
   },
   __detach: function() {
-    this._retainCount -= 1;
-    if (this._retainCount > 0) {
+    if (this._retainCount > 1) {
+      this._retainCount -= 1;
       return;
     }
+    if (this._retainCount > 0) {
+      this._retainCount -= 1;
+    }
     this._detachReaction();
-    return this._detachAnimated();
+    this._detachAnimated();
   },
   _getRange: function() {
     return {
@@ -344,14 +355,9 @@ type.defineMethods({
     if (this._value === newValue) {
       return;
     }
-    if (isDev && isType(newValue, Number)) {
-      assert(!Nan.test(newValue), "Unexpected NaN value!");
+    if (isDev && Nan.test(newValue)) {
+      throw Error("Unexpected NaN value!");
     }
-    this.DEBUG && log.format(newValue, {
-      compact: true,
-      maxObjectDepth: 1,
-      label: this.__name + "._setValue: "
-    });
     this._value = newValue;
     this._dep.changed();
     return this.didSet.emit(newValue);

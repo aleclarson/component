@@ -10,7 +10,6 @@ assertType = require "assertType"
 fillValue = require "fillValue"
 inArray = require "in-array"
 isType = require "isType"
-assert = require "assert"
 Type = require "Type"
 sync = require "sync"
 has = require "has"
@@ -64,18 +63,30 @@ type.defineMethods
     return styles
 
   define: (styles) ->
+
     assertType styles, Object
+
     for styleName, style of styles
-      assert not @_styleNames[styleName], "Cannot define an existing style: '#{styleName}'"
+
+      if @_styleNames[styleName]
+        throw Error "Cannot define an existing style: '#{styleName}'"
+
       @_styleNames[styleName] = yes
       @_parseStyle styleName, style or emptyObject
+
     return
 
   append: (styles) ->
+
     assertType styles, Object
+
     for styleName, style of styles
-      assert @_styleNames[styleName], "Cannot append to undefined style: '#{styleName}'"
+
+      if not @_styleNames[styleName]
+        throw Error "Cannot append to undefined style: '#{styleName}'"
+
       @_parseStyle styleName, style or emptyObject
+
     return
 
   override: (styles) ->
@@ -87,8 +98,8 @@ type.defineMethods
 
     for styleName, style of styles
 
-      assert constantStyles[styleName] or computedStyles[styleName],
-        reason: "Cannot override an undefined style: '#{styleName}'"
+      unless constantStyles[styleName] or computedStyles[styleName]
+        throw Error "Cannot override an undefined style: '#{styleName}'"
 
       delete constantStyles[styleName]
       delete computedStyles[styleName]
@@ -124,13 +135,16 @@ type.defineMethods
       # Parse constant styles that use presets.
       else if StyleMap._presets[key]
         sync.each callPreset(key, value), (value, key) ->
-          assert value?, "Invalid style value for key: '#{styleName}.#{key}'"
+          if not value?
+            throw TypeError "Invalid style value for key: '#{styleName}.#{key}'"
           constantStyle[key] = value
           delete computedStyle[key] if has computedStyle, key
 
+      else if not value?
+        throw TypeError "Invalid style value for key: '#{styleName}.#{key}'"
+
       # Parse constant styles.
       else
-        assert value?, "Invalid style value for key: '#{styleName}.#{key}'"
         constantStyle[key] = parseTransform value, key
         delete computedStyle[key] if has computedStyle, key
 
@@ -163,7 +177,8 @@ type.defineMethods
       continue if value is undefined
       if StyleMap._presets[key]
         sync.each callPreset(key, value), ({ value, isTransform }, key) ->
-          assert value?, "Invalid style value for key: '#{key}'"
+          if not value?
+            throw TypeError "Invalid style value for key: '#{key}'"
           if isTransform
             values.transform.push assign {}, key, value
           else values[key] = value
