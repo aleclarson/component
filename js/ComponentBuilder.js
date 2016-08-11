@@ -27,7 +27,7 @@ type.defineGetters({
 type.overrideMethods({
   _defaultBaseCreator: function(args) {
     var instance;
-    instance = this.__super(arguments);
+    instance = Builder.prototype._defaultBaseCreator.call(null, args);
     ReactComponent.apply(instance, args);
     return instance;
   }

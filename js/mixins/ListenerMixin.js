@@ -19,9 +19,9 @@ module.exports = function(type) {
 typeImpl = {};
 
 typeImpl.methods = {
-  defineListeners: function(func) {
-    var createListeners, delegate, kind, phaseId, startListeners, stopListeners;
-    assertType(func, Function);
+  defineListeners: function(createListeners) {
+    var delegate, kind, phaseId, startListeners, stopListeners;
+    assertType(createListeners, Function);
     delegate = this._delegate;
     if (!this[hasListeners]) {
       frozen.define(this, hasListeners, {
@@ -34,21 +34,15 @@ typeImpl.methods = {
       }
     }
     phaseId = Random.id();
-    createListeners = function(args) {
-      var listeners, onAttach;
+    startListeners = function() {
+      var i, len, listener, listeners, onAttach;
       listeners = [];
       onAttach = function(listener) {
         return listeners.push(listener);
       };
-      onAttach = Event.didAttach(onAttach);
-      onAttach.start();
-      func.apply(this, args);
+      onAttach = Event.didAttach(onAttach).start();
+      createListeners.call(this);
       onAttach.stop();
-      return listeners;
-    };
-    startListeners = function() {
-      var i, len, listener, listeners;
-      listeners = createListeners();
       for (i = 0, len = listeners.length; i < len; i++) {
         listener = listeners[i];
         listener.start();

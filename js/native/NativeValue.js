@@ -1,14 +1,12 @@
-var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Null, Progress, Reaction, Tracer, Type, Void, assert, assertType, assertTypes, clampValue, combine, configTypes, emptyFunction, hook, isConstructor, isType, mutable, roundValue, steal, type;
+var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Null, Progress, Reaction, Tracer, Tracker, Type, Void, assert, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
 
 require("isDev");
 
 AnimatedValue = require("Animated").AnimatedValue;
 
-mutable = require("Property").mutable;
-
 emptyFunction = require("emptyFunction");
 
-isConstructor = require("isConstructor");
+mergeDefaults = require("mergeDefaults");
 
 assertTypes = require("assertTypes");
 
@@ -22,13 +20,13 @@ Progress = require("progress");
 
 Reaction = require("reaction");
 
-combine = require("combine");
-
-assert = require("assert");
+Tracker = require("tracker");
 
 Tracer = require("tracer");
 
 isType = require("isType");
+
+assert = require("assert");
 
 Event = require("Event");
 
@@ -39,8 +37,6 @@ Void = require("Void");
 Null = require("Null");
 
 Type = require("Type");
-
-hook = require("hook");
 
 Any = require("Any");
 
@@ -73,9 +69,13 @@ type.defineFrozenValues({
 });
 
 type.defineValues({
+  _dep: function() {
+    return Tracker.Dependency();
+  },
+  _value: null,
+  _keyPath: null,
   _clamp: false,
   _round: null,
-  _keyPath: null,
   _reaction: null,
   _reactionListener: null,
   _animated: null,
@@ -84,14 +84,13 @@ type.defineValues({
 });
 
 type.defineReactiveValues({
-  _value: null,
   _fromValue: null,
   _toValue: null,
   _animation: null
 });
 
 type.initInstance(function(value, keyPath) {
-  if (isConstructor(value, Reaction)) {
+  if (isType(value, Reaction)) {
     throw Error("NativeValue must create its own Reaction!");
   }
   this._keyPath = keyPath;
@@ -103,15 +102,6 @@ type.initInstance(function(value, keyPath) {
 });
 
 type.defineGetters({
-  fromValue: function() {
-    return this._fromValue;
-  },
-  toValue: function() {
-    return this._toValue;
-  },
-  distance: function() {
-    return this._toValue - this._fromValue;
-  },
   isReactive: function() {
     return this._reaction !== null;
   },
@@ -120,10 +110,43 @@ type.defineGetters({
   },
   isAnimating: function() {
     return this._animation !== null;
+  },
+  animation: function() {
+    return this._animation;
+  },
+  velocity: function() {
+    if (this._animation) {
+      return this._animation.velocity;
+    } else {
+      return 0;
+    }
+  },
+  fromValue: function() {
+    return this._fromValue;
+  },
+  toValue: function() {
+    return this._toValue;
+  },
+  distance: function() {
+    return this._toValue - this._fromValue;
   }
 });
 
 type.definePrototype({
+  value: {
+    get: function() {
+      Tracker.isActive && this._dep.depend();
+      return this._value;
+    },
+    set: function(newValue) {
+      assert(!this.isReactive, "Cannot manually set 'value' when 'isReactive' is true!");
+      if (this.isAnimated) {
+        return this._animated.setValue(newValue);
+      } else {
+        return this._setValue(newValue);
+      }
+    }
+  },
   keyPath: {
     get: function() {
       return this._keyPath;
@@ -131,33 +154,6 @@ type.definePrototype({
     set: function(keyPath) {
       this._keyPath = keyPath;
       return this._reaction && (this._reaction.keyPath = keyPath);
-    }
-  },
-  value: {
-    get: function() {
-      return this._value;
-    },
-    set: function(newValue) {
-      assert(!this.isReactive, {
-        reason: "Cannot set 'value' when 'isReactive' is true!",
-        nativeValue: this
-      });
-      if (this.isAnimated) {
-        this._animated.setValue(newValue);
-        return;
-      }
-      return this._setValue(newValue);
-    }
-  },
-  getValue: {
-    get: function() {
-      return mutable.define(this, "getValue", {
-        value: (function(_this) {
-          return function() {
-            return _this._value;
-          };
-        })(this)
-      });
     }
   },
   reaction: {
@@ -212,7 +208,7 @@ type.defineMethods({
   },
   animate: function(config) {
     var onEnd, onFinish;
-    this._assertNonReactive();
+    assert(!this.isReactive, "Cannot call 'animate' when 'isReactive' is true!");
     isDev && (this._tracers.animate = Tracer("NativeValue::animate()"));
     this.stopAnimation();
     this._attachAnimated();
@@ -279,8 +275,7 @@ type.defineMethods({
     }
   },
   getProgress: function(value, config) {
-    this._assertNonReactive();
-    if (isConstructor(value, Object)) {
+    if (isType(value, Object)) {
       config = value;
       value = this._value;
     } else {
@@ -305,12 +300,11 @@ type.defineMethods({
   },
   setProgress: function(progress, config) {
     var value;
-    this._assertNonReactive();
-    if (config.fromValue == null) {
-      config.fromValue = this._fromValue;
-    }
-    if (config.toValue == null) {
-      config.toValue = this._toValue;
+    assert(!this.isReactive, "Cannot call 'setProgress' when 'isReactive' is true!");
+    if (config) {
+      mergeDefaults(config, this._getRange());
+    } else {
+      config = this._getRange();
     }
     assertType(progress, Number);
     if (isDev) {
@@ -323,7 +317,6 @@ type.defineMethods({
     this.value = value;
   },
   willProgress: function(config) {
-    this._assertNonReactive();
     if (isDev) {
       assertTypes(config, configTypes.setProgress);
     }
@@ -341,22 +334,31 @@ type.defineMethods({
     this._detachReaction();
     return this._detachAnimated();
   },
-  _assertNonReactive: function(reason) {
-    return assert(!this.isReactive, reason);
+  _getRange: function() {
+    return {
+      fromValue: this._fromValue,
+      toValue: this._toValue
+    };
   },
   _setValue: function(newValue) {
     if (this._value === newValue) {
       return;
     }
-    if (isType(newValue, Number)) {
+    if (isDev && isType(newValue, Number)) {
       assert(!Nan.test(newValue), "Unexpected NaN value!");
     }
+    this.DEBUG && log.format(newValue, {
+      compact: true,
+      maxObjectDepth: 1,
+      label: this.__name + "._setValue: "
+    });
     this._value = newValue;
+    this._dep.changed();
     return this.didSet.emit(newValue);
   },
   _attachReaction: function(options) {
     var listener, reaction;
-    if (isConstructor(options, Object)) {
+    if (isType(options, Object)) {
       if (options.keyPath == null) {
         options.keyPath = this.keyPath;
       }
@@ -376,12 +378,14 @@ type.defineMethods({
     }
     isDev && (this._tracers.reaction = reaction._traceInit);
     this._reaction = reaction;
+    this.DEBUG && (this._reaction.DEBUG = true);
     listener = reaction.didSet((function(_this) {
       return function(value) {
         return _this._setValue(value);
       };
     })(this));
     this._reactionListener = listener.start();
+    this.DEBUG && (this._reactionListener.DEBUG = true);
     return this._setValue(reaction.value);
   },
   _attachAnimated: function() {

@@ -21,7 +21,7 @@ type.defineGetters
 type.overrideMethods
 
   _defaultBaseCreator: (args) ->
-    instance = @__super arguments
+    instance = Builder::_defaultBaseCreator.call null, args
     ReactComponent.apply instance, args
     return instance
 

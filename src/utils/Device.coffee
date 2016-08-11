@@ -4,7 +4,7 @@ inArray = require "in-array"
 define = require "define"
 sync = require "sync"
 
-define exports,
+define Device = exports,
 
   name: null
 
@@ -27,7 +27,7 @@ define exports,
     Dimensions.get("window").scale
 
   round: (value) ->
-    Math.round(value * screenScale) / screenScale
+    Math.round(value * Device.scale) / Device.scale
 
 devices =
   iPad:     [768, 1024]
@@ -40,6 +40,4 @@ isDevice = (a, b) ->
   inArray(a, b.width) and inArray(a, b.height)
 
 sync.each devices, (screenSize, deviceName) ->
-  isCurrentDevice = isDevice screenSize, exports.screenSize.get()
-  exports[deviceName] = isCurrentDevice
-  exports.name = deviceName if isCurrentDevice
+  Device.name = deviceName if Device[deviceName] = isDevice screenSize, Device.size

@@ -1,7 +1,6 @@
 
 cloneObject = require "cloneObject"
 assertType = require "assertType"
-fromArgs = require "fromArgs"
 isType = require "isType"
 Event = require "Event"
 Type = require "Type"
@@ -10,24 +9,23 @@ NativeValue = require "./NativeValue"
 
 type = Type "NativeMap"
 
-type.defineProperties
+type.defineGetters
 
-  values: get: ->
-    @__getValues()
+  values: -> @__getValues()
 
 type.defineFrozenValues
 
   didSet: -> Event()
 
-type.defineValues
+type.defineValues (values) ->
 
-  __values: fromArgs 0
+  __values: values
 
-  __nativeMaps: -> {}
+  __nativeMaps: {}
 
-  __nativeValues: -> {}
+  __nativeValues: {}
 
-  __nativeListeners: -> {}
+  __nativeListeners: {}
 
 type.defineMethods
 

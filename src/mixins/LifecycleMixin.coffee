@@ -65,10 +65,8 @@ typeImpl.methods =
 typeImpl.initInstance = ->
   @_willBuild.push instImpl.willBuild
 
-#
-# The 'instance' is a Component.Builder
-#
-
+# In this context, 'inst' is a component factory.
+# Thus 'instImpl' defines the behavior of each component instance.
 instImpl = {}
 
 instImpl.willBuild = ->
@@ -76,8 +74,8 @@ instImpl.willBuild = ->
   kind = @_kind
   ownMethods = {}
 
-  if (kind is no) or (kind is ReactComponent)
-    @defineMethods viewImpl.methods
+  if kind is no
+    @defineMethods instImpl.methods
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
     ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
@@ -87,9 +85,9 @@ instImpl.willBuild = ->
     inheritArray this, "_willMount", kind::__willMount
     inheritArray this, "_didMount", kind::__didMount
     inheritArray this, "_willUnmount", kind::__willUnmount
-    ownMethods.__render = @_render if @_render
-    ownMethods.__shouldUpdate = @_shouldUpdate if @_shouldUpdate
-    ownMethods.__willReceiveProps = @_willReceiveProps if @_willReceiveProps
+    @_render and ownMethods.__render = @_render
+    @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
+    @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
     @_delegate.overrideMethods ownMethods
 
   # Define the arrays on the view to avoid crowding the delegate namespace.
@@ -98,16 +96,10 @@ instImpl.willBuild = ->
     __didMount: @_didMount
     __willUnmount: @_willUnmount
 
-#
-# The 'view' is a subclass of 'ReactComponent'
-#   that was created by 'Component.Builder'
-#
-
-viewImpl = {}
-
-viewImpl.methods =
+instImpl.methods =
 
   render: ->
+    debugger if not @_delegate.__render
     @_delegate.__render()
 
   shouldComponentUpdate: (nextProps) ->

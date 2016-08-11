@@ -19,9 +19,9 @@ typeImpl = {}
 
 typeImpl.methods =
 
-  defineListeners: (func) ->
+  defineListeners: (createListeners) ->
 
-    assertType func, Function
+    assertType createListeners, Function
 
     delegate = @_delegate
 
@@ -36,24 +36,15 @@ typeImpl.methods =
     phaseId = Random.id()
 
     #
-    # Create the Listener objects for each instance.
-    #
-
-    createListeners = (args) ->
-      listeners = []
-      onAttach = (listener) -> listeners.push listener
-      onAttach = Event.didAttach onAttach
-      onAttach.start()
-      func.apply this, args
-      onAttach.stop()
-      return listeners
-
-    #
     # Create new Listeners every time the instance is mounted.
     #
 
     startListeners = ->
-      listeners = createListeners()
+      listeners = []
+      onAttach = (listener) -> listeners.push listener
+      onAttach = Event.didAttach(onAttach).start()
+      createListeners.call this
+      onAttach.stop()
       listener.start() for listener in listeners
       @__listeners[phaseId] = listeners
       return

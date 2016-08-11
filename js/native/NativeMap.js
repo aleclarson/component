@@ -1,10 +1,8 @@
-var Event, NativeMap, NativeValue, Type, assertType, cloneObject, fromArgs, isType, type;
+var Event, NativeMap, NativeValue, Type, assertType, cloneObject, isType, type;
 
 cloneObject = require("cloneObject");
 
 assertType = require("assertType");
-
-fromArgs = require("fromArgs");
 
 isType = require("isType");
 
@@ -16,11 +14,9 @@ NativeValue = require("./NativeValue");
 
 type = Type("NativeMap");
 
-type.defineProperties({
-  values: {
-    get: function() {
-      return this.__getValues();
-    }
+type.defineGetters({
+  values: function() {
+    return this.__getValues();
   }
 });
 
@@ -30,17 +26,13 @@ type.defineFrozenValues({
   }
 });
 
-type.defineValues({
-  __values: fromArgs(0),
-  __nativeMaps: function() {
-    return {};
-  },
-  __nativeValues: function() {
-    return {};
-  },
-  __nativeListeners: function() {
-    return {};
-  }
+type.defineValues(function(values) {
+  return {
+    __values: values,
+    __nativeMaps: {},
+    __nativeValues: {},
+    __nativeListeners: {}
+  };
 });
 
 type.defineMethods({

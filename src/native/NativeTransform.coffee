@@ -1,7 +1,7 @@
 
 require "isDev"
 
-isConstructor = require "isConstructor"
+isType = require "isType"
 Type = require "Type"
 
 NativeValue = require "./NativeValue"
@@ -44,7 +44,7 @@ type.overrideMethods
 
   __attachValue: (transform, index) ->
 
-    return if not isConstructor transform, Object
+    return if not isType transform, Object
 
     for key, value of transform
 

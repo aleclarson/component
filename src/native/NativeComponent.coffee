@@ -1,11 +1,9 @@
 
-{ throwFailure } = require "failure"
-
 ReactElement = require "ReactElement"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 
-ElementType = require "../type/ElementType"
+ElementType = require "../utils/ElementType"
 NativeProps = require "./NativeProps"
 Component = require "../Component"
 

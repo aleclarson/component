@@ -1,4 +1,4 @@
-var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, frozen, inheritArray, instImpl, sync, typeImpl, viewImpl;
+var Builder, ReactComponent, applyChain, assert, assertType, emptyFunction, frozen, inheritArray, instImpl, sync, typeImpl;
 
 require("isDev");
 
@@ -81,8 +81,8 @@ instImpl.willBuild = function() {
   var kind, ownMethods;
   kind = this._kind;
   ownMethods = {};
-  if ((kind === false) || (kind === ReactComponent)) {
-    this.defineMethods(viewImpl.methods);
+  if (kind === false) {
+    this.defineMethods(instImpl.methods);
     ownMethods.__render = this._render || emptyFunction.thatReturnsFalse;
     ownMethods.__shouldUpdate = this._shouldUpdate || emptyFunction.thatReturnsTrue;
     ownMethods.__willReceiveProps = this._willReceiveProps || emptyFunction;
@@ -91,15 +91,9 @@ instImpl.willBuild = function() {
     inheritArray(this, "_willMount", kind.prototype.__willMount);
     inheritArray(this, "_didMount", kind.prototype.__didMount);
     inheritArray(this, "_willUnmount", kind.prototype.__willUnmount);
-    if (this._render) {
-      ownMethods.__render = this._render;
-    }
-    if (this._shouldUpdate) {
-      ownMethods.__shouldUpdate = this._shouldUpdate;
-    }
-    if (this._willReceiveProps) {
-      ownMethods.__willReceiveProps = this._willReceiveProps;
-    }
+    this._render && (ownMethods.__render = this._render);
+    this._shouldUpdate && (ownMethods.__shouldUpdate = this._shouldUpdate);
+    this._willReceiveProps && (ownMethods.__willReceiveProps = this._willReceiveProps);
     this._delegate.overrideMethods(ownMethods);
   }
   return this.definePrototype({
@@ -109,10 +103,11 @@ instImpl.willBuild = function() {
   });
 };
 
-viewImpl = {};
-
-viewImpl.methods = {
+instImpl.methods = {
   render: function() {
+    if (!this._delegate.__render) {
+      debugger;
+    }
     return this._delegate.__render();
   },
   shouldComponentUpdate: function(nextProps) {

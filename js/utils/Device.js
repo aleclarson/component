@@ -1,4 +1,4 @@
-var Dimensions, define, devices, inArray, isDevice, sync;
+var Device, Dimensions, define, devices, inArray, isDevice, sync;
 
 Dimensions = require("Dimensions");
 
@@ -8,7 +8,7 @@ define = require("define");
 
 sync = require("sync");
 
-define(exports, {
+define(Device = exports, {
   name: null,
   specific: function(devices) {
     var value;
@@ -44,7 +44,7 @@ define(exports, {
     }
   },
   round: function(value) {
-    return Math.round(value * screenScale) / screenScale;
+    return Math.round(value * Device.scale) / Device.scale;
   }
 });
 
@@ -61,11 +61,8 @@ isDevice = function(a, b) {
 };
 
 sync.each(devices, function(screenSize, deviceName) {
-  var isCurrentDevice;
-  isCurrentDevice = isDevice(screenSize, exports.screenSize.get());
-  exports[deviceName] = isCurrentDevice;
-  if (isCurrentDevice) {
-    return exports.name = deviceName;
+  if (Device[deviceName] = isDevice(screenSize, Device.size)) {
+    return Device.name = deviceName;
   }
 });
 

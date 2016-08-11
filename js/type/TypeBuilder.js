@@ -169,18 +169,25 @@ viewImpl.willBuild = function() {
   if (!(this._kind instanceof modx_Type)) {
     return this._willBuild.push(function() {
       this._initInstance.unshift(viewImpl.initInstance);
-      return this._willUnmount.push(viewImpl.willUnmount);
+      this._willUnmount.push(viewImpl.willUnmount);
+      return this.defineGetters(viewImpl.getters);
     });
   }
 };
 
+viewImpl.getters = {
+  _delegate: function() {
+    return this.props.delegate;
+  }
+};
+
 viewImpl.initInstance = function() {
-  return this.props.delegate._view = this;
+  return this._delegate._view = this;
 };
 
 viewImpl.willUnmount = function() {
   var delegate;
-  delegate = this.props.delegate;
+  delegate = this._delegate;
   delegate._props = null;
   return delegate._view = null;
 };

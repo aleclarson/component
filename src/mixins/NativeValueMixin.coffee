@@ -1,4 +1,6 @@
 
+# TODO: Implement support for `defineNativeValues(func)`
+
 { frozen } = require "Property"
 
 assertType = require "assertType"

@@ -1,21 +1,19 @@
 
 require "isDev"
 
-isConstructor = require "isConstructor"
+{frozen} = require "Property"
+
 cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
 fillValue = require "fillValue"
-Property = require "Property"
 inArray = require "in-array"
+isType = require "isType"
 assert = require "assert"
 Type = require "Type"
 sync = require "sync"
 has = require "has"
-run = require "run"
-
-{ frozen } = Property
 
 type = Type "StyleMap"
 
@@ -56,12 +54,12 @@ type.defineMethods
         style = sync.map style, parseTransform
         if not @_styleNames[styleName]
           frozen.define styles, styleName, value: =>
-            @_buildStyle styleName, contextStyles, context, arguments
+            @_getValues styleName, contextStyles, context, arguments
         return style
 
     sync.keys @_styleNames, (styleName) =>
       frozen.define styles, styleName, value: =>
-        @_buildStyle styleName, contextStyles, context, arguments
+        @_getValues styleName, contextStyles, context, arguments
 
     return styles
 
@@ -105,7 +103,7 @@ type.defineMethods
     assertType args, Array.Maybe
     styles = {}
     sync.keys @_styleNames, (styleName) =>
-      styles[styleName] = @_buildStyle styleName, contextStyles[styleName], context, args
+      styles[styleName] = @_getValues styleName, contextStyles[styleName], context, args
     return styles
 
   _parseStyle: (styleName, style) ->
@@ -113,60 +111,72 @@ type.defineMethods
     assertType styleName, String
     assertType style, Object
 
-    constantValues = fillValue @_constantStyles, styleName, PureObject.create
-    computedValues = fillValue @_computedStyles, styleName, PureObject.create
+    constantStyle = fillValue @_constantStyles, styleName, PureObject.create
+    computedStyle = fillValue @_computedStyles, styleName, PureObject.create
 
     for key, value of style
 
-      if StyleMap._presets[key]
-        applyPreset key, value, constantValues
-        continue
-
+      # Parse computed styles.
       if value instanceof Function
-        computedValues[key] = parseTransform value, key
-        delete constantValues[key] if has constantValues, key
+        computedStyle[key] = parseTransform value, key
+        delete constantStyle[key] if has constantStyle, key
+
+      # Parse constant styles that use presets.
+      else if StyleMap._presets[key]
+        sync.each callPreset(key, value), (value, key) ->
+          assert value?, "Invalid style value for key: '#{styleName}.#{key}'"
+          constantStyle[key] = value
+          delete computedStyle[key] if has computedStyle, key
+
+      # Parse constant styles.
       else
-        assert value isnt undefined, "Invalid style value: '#{styleName}.#{key}'"
-        constantValues[key] = parseTransform value, key
-        delete computedValues[key] if has computedValues, key
+        assert value?, "Invalid style value for key: '#{styleName}.#{key}'"
+        constantStyle[key] = parseTransform value, key
+        delete computedStyle[key] if has computedStyle, key
 
     return
 
-  _buildStyle: (styleName, contextStyles, context, args) ->
+  _getValues: (styleName, contextStyles, context, args) ->
 
-    style =
-      transform: []
+    values = transform: []
 
-    @_buildConstantStyle style, @_constantStyles[styleName]
-    @_buildComputedStyle style, @_computedStyles[styleName], context, args
-    @_buildContextStyle style, contextStyles[styleName] if contextStyles
+    @_applyConstantStyle values, @_constantStyles[styleName]
+    @_applyComputedStyle values, @_computedStyles[styleName], context, args
+    @_applyContextStyle values, contextStyles[styleName] if contextStyles
 
     # TODO: It might not hurt to keep an empty 'transform'.
-    if not style.transform.length
-      delete style.transform
+    delete values.transform if not values.transform.length
+    return values
 
-    return style
-
-  _buildConstantStyle: (style, values) ->
-    return if not values
-    for key, { value, isTransform } of values
-      if not isTransform then style[key] = value
-      else style.transform.push assign {}, key, value
+  _applyConstantStyle: (values, style) ->
+    return if not style
+    for key, { value, isTransform } of style
+      if isTransform
+        values.transform.push assign {}, key, value
+      else values[key] = value
     return
 
-  _buildComputedStyle: (style, values, context, args) ->
-    return if not values
-    for key, { value, isTransform } of values
+  _applyComputedStyle: (values, style, context, args) ->
+    return if not style
+    for key, { value, isTransform } of style
       value = value.apply context, args
       continue if value is undefined
-      if not isTransform then style[key] = value
-      else style.transform.push assign {}, key, value
+      if StyleMap._presets[key]
+        sync.each callPreset(key, value), ({ value, isTransform }, key) ->
+          assert value?, "Invalid style value for key: '#{key}'"
+          if isTransform
+            values.transform.push assign {}, key, value
+          else values[key] = value
+      else if isTransform
+        values.transform.push assign {}, key, value
+      else values[key] = value
     return
 
-  _buildContextStyle: (style, values) ->
-    for key, { value, isTransform } of values
-      if not isTransform then style[key] = value
-      else style.transform.push assign {}, key, value
+  _applyContextStyle: (values, style) ->
+    for key, { value, isTransform } of style
+      if isTransform
+        values.transform.push assign {}, key, value
+      else values[key] = value
     return
 
 type.defineStatics
@@ -178,10 +188,9 @@ type.defineStatics
     assertType presetName, String
     assertType style, [ Object, Function ]
 
-    if isConstructor style, Object
+    if isType style, Object
       style = sync.map style, parseTransform
-      preset = ->
-        return style
+      preset = -> style
 
     else
       preset = ->
@@ -202,25 +211,21 @@ module.exports = StyleMap = type.build()
 # Helpers
 #
 
-parseTransform = run ->
-  keys = [ "scale", "translateX", "translateY", "rotate" ]
-  return (value, key) ->
-    result = { value }
-    result.isTransform = yes if inArray keys, key
-    return result
-
 assign = (obj, key, value) ->
   obj[key] = value
   return obj
 
-applyPreset = (presetName, presetArg, constantValues) ->
-  createStyle = StyleMap._presets[presetName]
-  style = createStyle presetArg
-  assertType style, Object, "style"
-  for key, value of style
-    assert value isnt undefined, "Invalid style value: '#{presetName}.#{key}'"
-    constantValues[key] = value
-  return
+isTransformKey = do ->
+  keys = [ "scale", "translateX", "translateY", "rotate" ]
+  return (key) -> inArray keys, key
+
+parseTransform = (value, key) ->
+  { value, isTransform: isTransformKey key }
+
+callPreset = (presetName, presetArg) ->
+  style = StyleMap._presets[presetName] presetArg
+  assertType style, Object
+  return style
 
 #
 # Initialize default presets

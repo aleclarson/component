@@ -1,6 +1,4 @@
-var Component, ElementType, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, setChild, throwFailure, typeImpl;
-
-throwFailure = require("failure").throwFailure;
+var Component, ElementType, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, setChild, typeImpl;
 
 ReactElement = require("ReactElement");
 
@@ -8,7 +6,7 @@ assertTypes = require("assertTypes");
 
 assertType = require("assertType");
 
-ElementType = require("../type/ElementType");
+ElementType = require("../utils/ElementType");
 
 NativeProps = require("./NativeProps");
 

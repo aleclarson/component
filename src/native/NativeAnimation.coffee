@@ -3,7 +3,6 @@
 
 assertType = require "assertType"
 immediate = require "immediate"
-fromArgs = require "fromArgs"
 Progress = require "progress"
 isType = require "isType"
 Type = require "Type"
@@ -14,46 +13,53 @@ type = Type "NativeAnimation"
 
 type.defineOptions
   animated: AnimatedValue.isRequired
-  config: Object
   onUpdate: Function.Maybe
   onEnd: Function.Maybe
 
-type.defineFrozenValues
+type.defineFrozenValues (options) ->
 
-  _animated: fromArgs "animated"
+  _animated: options.animated
 
-type.defineValues
+type.defineValues (options) ->
 
-  _fromValue: -> @value
+  _onUpdate: options.onUpdate
 
-  _toValue: fromArgs "config.toValue"
-
-  _onUpdate: fromArgs "onUpdate"
-
-  _onEnd: fromArgs "onEnd"
+  _onEnd: options.onEnd
 
   _animation: null
 
 type.defineGetters
 
-  isActive: -> @_animation.__active
+  isActive: ->
+    if anim = @_animation
+      anim.isActive
+    else no
 
-  value: -> @_animated.__getValue()
+  value: ->
+    if anim = @_animation
+      anim.value
+    else null
 
-  fromValue: -> @_fromValue
+  startValue: ->
+    if anim = @_animation
+      anim.startValue
+    else null
 
-  toValue: -> @_toValue
+  endValue: ->
+    if anim = @_animation
+      anim.endValue
+    else null
 
   progress: ->
-    Progress.fromValue @value,
-      fromValue: @_fromValue
-      toValue: @_toValue
-      clamp: yes
+    if anim = @_animation
+      anim.progress
+    else 0
 
   velocity: ->
-    velocity = @_animation.velocity
-    return 0 if not isType velocity, Number
-    return velocity
+    if anim = @_animation
+      return null unless isType anim.velocity, Number
+      return anim.velocity
+    return 0
 
 type.defineMethods
 
@@ -75,10 +81,9 @@ type.defineMethods
       immediate => @_onEnd yes
       return
 
-    hook.before @_animation, "__onEnd", (result) =>
+    hook.before @_animation, "_onEnd", (finished) =>
       onUpdate and onUpdate.detach()
-      @_onEnd result.finished
-
+      @_onEnd finished
     return
 
   stop: ->

@@ -4,6 +4,7 @@ OneOf = require "OneOf"
 Void = require "Void"
 
 NativeComponent = require "../native/NativeComponent"
+Style = require "../validators/Style"
 
 RemoteImageSource = Shape "RemoteImageSource", { uri: String }
 

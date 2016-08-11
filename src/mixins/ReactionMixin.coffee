@@ -1,15 +1,14 @@
 
+{frozen} = require "Property"
+
 assertType = require "assertType"
-Property = require "Property"
 Reaction = require "reaction"
 Random = require "random"
 isType = require "isType"
 assert = require "assert"
-define = require "define"
+sync = require "sync"
 
 hasReactions = Symbol "Component.hasReactions"
-
-frozen = Property { frozen: yes }
 
 module.exports = (type) ->
   type.defineMethods typeImpl.methods
@@ -44,18 +43,19 @@ typeImpl.methods =
 
     createReactions = (args) ->
       keys = []
-      for key, value of reactions
-        assertType value, Function, key
-        options = value.apply this, args
+      for key, getOptions of reactions
+        assertType getOptions, Function, key
+        options = getOptions.apply this, args
         continue if options is undefined
         keys.push key
-        value =
+        reaction =
           if isType options, Reaction then options
           else Reaction.sync options
 
-        frozen.define this, key, { value }
+        frozen.define this, key,
+          get: -> reaction.value
 
-      @__reactionKeys[phaseId] = keys
+      @__reactions[key] = reaction
       return
 
     delegate._initInstance.push createReactions
@@ -65,8 +65,8 @@ typeImpl.methods =
     #
 
     startReactions = ->
-      for key in @__reactionKeys[phaseId]
-        this[key].start()
+      sync.each @__reactions, (reaction) ->
+        reaction.start()
       return
 
     @_willMount.push startReactions
@@ -76,8 +76,8 @@ typeImpl.methods =
     #
 
     stopReactions = ->
-      for key in @__reactionKeys[phaseId]
-        this[key].stop()
+      sync.each @__reactions, (reaction) ->
+        reaction.stop()
       return
 
     @_willUnmount.push stopReactions
@@ -93,5 +93,5 @@ baseImpl.didBuild = (type) ->
   frozen.define type.prototype, hasReactions, { value: yes }
 
 baseImpl.initInstance = ->
-  frozen.define this, "__reactionKeys",
+  frozen.define this, "__reactions",
     value: Object.create null

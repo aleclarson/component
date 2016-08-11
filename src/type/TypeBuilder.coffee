@@ -131,11 +131,16 @@ viewImpl.willBuild = ->
     @_willBuild.push -> # Try to be the very last phase.
       @_initInstance.unshift viewImpl.initInstance
       @_willUnmount.push viewImpl.willUnmount
+      @defineGetters viewImpl.getters
+
+viewImpl.getters =
+
+  _delegate: -> @props.delegate
 
 viewImpl.initInstance = ->
-  @props.delegate._view = this
+  @_delegate._view = this
 
 viewImpl.willUnmount = ->
-  {delegate} = @props
+  delegate = @_delegate
   delegate._props = null
   delegate._view = null

@@ -1,27 +1,25 @@
 
 require "isDev"
 
-{ AnimatedValue } = require "Animated"
-{ mutable } = require "Property"
+{AnimatedValue} = require "Animated"
 
 emptyFunction = require "emptyFunction"
-isConstructor = require "isConstructor"
+mergeDefaults = require "mergeDefaults"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 roundValue = require "roundValue"
 clampValue = require "clampValue"
 Progress = require "progress"
 Reaction = require "reaction"
-combine = require "combine"
-assert = require "assert"
+Tracker = require "tracker"
 Tracer = require "tracer"
 isType = require "isType"
+assert = require "assert"
 Event = require "Event"
 steal = require "steal"
 Void = require "Void"
 Null = require "Null"
 Type = require "Type"
-hook = require "hook"
 Any = require "Any"
 Nan = require "Nan"
 
@@ -46,11 +44,15 @@ type.defineFrozenValues
 
 type.defineValues
 
+  _dep: -> Tracker.Dependency()
+
+  _value: null
+
+  _keyPath: null
+
   _clamp: no
 
   _round: null
-
-  _keyPath: null
 
   _reaction: null
 
@@ -64,8 +66,6 @@ type.defineValues
 
 type.defineReactiveValues
 
-  _value: null
-
   _fromValue: null
 
   _toValue: null
@@ -74,7 +74,7 @@ type.defineReactiveValues
 
 type.initInstance (value, keyPath) ->
 
-  if isConstructor value, Reaction
+  if isType value, Reaction
     throw Error "NativeValue must create its own Reaction!"
 
   @_keyPath = keyPath
@@ -84,43 +84,39 @@ type.initInstance (value, keyPath) ->
 
 type.defineGetters
 
-  fromValue: -> @_fromValue
-
-  toValue: -> @_toValue
-
-  distance: -> @_toValue - @_fromValue
-
   isReactive: -> @_reaction isnt null
 
   isAnimated: -> @_animated isnt null
 
   isAnimating: -> @_animation isnt null
 
+  animation: -> @_animation
+
+  velocity: -> if @_animation then @_animation.velocity else 0
+
+  fromValue: -> @_fromValue
+
+  toValue: -> @_toValue
+
+  distance: -> @_toValue - @_fromValue
+
 type.definePrototype
+
+  value:
+    get: ->
+      Tracker.isActive and @_dep.depend()
+      return @_value
+    set: (newValue) ->
+      assert not @isReactive, "Cannot manually set 'value' when 'isReactive' is true!"
+      if @isAnimated
+        @_animated.setValue newValue
+      else @_setValue newValue
 
   keyPath:
     get: -> @_keyPath
     set: (keyPath) ->
       @_keyPath = keyPath
       @_reaction and @_reaction.keyPath = keyPath
-
-  value:
-    get: -> @_value
-    set: (newValue) ->
-
-      assert not @isReactive,
-        reason: "Cannot set 'value' when 'isReactive' is true!"
-        nativeValue: this
-
-      if @isAnimated
-        @_animated.setValue newValue
-        return
-
-      @_setValue newValue
-
-  getValue: get: ->
-    mutable.define this, "getValue",
-      value: => @_value
 
   reaction:
     get: -> @_reaction
@@ -161,7 +157,7 @@ type.defineMethods
 
   animate: (config) ->
 
-    @_assertNonReactive()
+    assert not @isReactive, "Cannot call 'animate' when 'isReactive' is true!"
 
     isDev and @_tracers.animate = Tracer "NativeValue::animate()"
 
@@ -223,9 +219,7 @@ type.defineMethods
 
   getProgress: (value, config) ->
 
-    @_assertNonReactive()
-
-    if isConstructor value, Object
+    if isType value, Object
       config = value
       value = @_value
     else
@@ -242,10 +236,11 @@ type.defineMethods
 
   setProgress: (progress, config) ->
 
-    @_assertNonReactive()
+    assert not @isReactive, "Cannot call 'setProgress' when 'isReactive' is true!"
 
-    config.fromValue ?= @_fromValue
-    config.toValue ?= @_toValue
+    if config
+      mergeDefaults config, @_getRange()
+    else config = @_getRange()
 
     assertType progress, Number
     assertTypes config, configTypes.setProgress if isDev
@@ -256,8 +251,6 @@ type.defineMethods
     return
 
   willProgress: (config) ->
-
-    @_assertNonReactive()
 
     assertTypes config, configTypes.setProgress if isDev
 
@@ -274,19 +267,26 @@ type.defineMethods
     @_detachReaction()
     @_detachAnimated()
 
-  _assertNonReactive: (reason) ->
-    assert not @isReactive, reason
+  _getRange: ->
+    fromValue: @_fromValue
+    toValue: @_toValue
 
   _setValue: (newValue) ->
+
     return if @_value is newValue
-    if isType newValue, Number
+
+    if isDev and isType newValue, Number
       assert not Nan.test(newValue), "Unexpected NaN value!"
+
+    @DEBUG and log.format newValue, compact: yes, maxObjectDepth: 1, label: @__name + "._setValue: "
+
     @_value = newValue
+    @_dep.changed()
     @didSet.emit newValue
 
   _attachReaction: (options) ->
 
-    if isConstructor options, Object
+    if isType options, Object
       options.keyPath ?= @keyPath
       reaction = Reaction.sync options
 
@@ -304,9 +304,11 @@ type.defineMethods
     isDev and @_tracers.reaction = reaction._traceInit
 
     @_reaction = reaction
+    @DEBUG and @_reaction.DEBUG = yes
 
     listener = reaction.didSet (value) => @_setValue value
     @_reactionListener = listener.start()
+    @DEBUG and @_reactionListener.DEBUG = yes
 
     @_setValue reaction.value
 

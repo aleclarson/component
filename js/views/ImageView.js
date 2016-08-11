@@ -1,4 +1,4 @@
-var EdgeInsetsType, ImageResizeMode, ImageSource, NativeComponent, OneOf, RemoteImageSource, Shape, Void;
+var EdgeInsetsType, ImageResizeMode, ImageSource, NativeComponent, OneOf, RemoteImageSource, Shape, Style, Void;
 
 Shape = require("Shape");
 
@@ -7,6 +7,8 @@ OneOf = require("OneOf");
 Void = require("Void");
 
 NativeComponent = require("../native/NativeComponent");
+
+Style = require("../validators/Style");
 
 RemoteImageSource = Shape("RemoteImageSource", {
   uri: String

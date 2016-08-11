@@ -1,12 +1,10 @@
-var AnimatedValue, Progress, Type, assertType, fromArgs, hook, immediate, isType, type;
+var AnimatedValue, Progress, Type, assertType, hook, immediate, isType, type;
 
 AnimatedValue = require("Animated").AnimatedValue;
 
 assertType = require("assertType");
 
 immediate = require("immediate");
-
-fromArgs = require("fromArgs");
 
 Progress = require("progress");
 
@@ -20,52 +18,74 @@ type = Type("NativeAnimation");
 
 type.defineOptions({
   animated: AnimatedValue.isRequired,
-  config: Object,
   onUpdate: Function.Maybe,
   onEnd: Function.Maybe
 });
 
-type.defineFrozenValues({
-  _animated: fromArgs("animated")
+type.defineFrozenValues(function(options) {
+  return {
+    _animated: options.animated
+  };
 });
 
-type.defineValues({
-  _fromValue: function() {
-    return this.value;
-  },
-  _toValue: fromArgs("config.toValue"),
-  _onUpdate: fromArgs("onUpdate"),
-  _onEnd: fromArgs("onEnd"),
-  _animation: null
+type.defineValues(function(options) {
+  return {
+    _onUpdate: options.onUpdate,
+    _onEnd: options.onEnd,
+    _animation: null
+  };
 });
 
 type.defineGetters({
   isActive: function() {
-    return this._animation.__active;
+    var anim;
+    if (anim = this._animation) {
+      return anim.isActive;
+    } else {
+      return false;
+    }
   },
   value: function() {
-    return this._animated.__getValue();
+    var anim;
+    if (anim = this._animation) {
+      return anim.value;
+    } else {
+      return null;
+    }
   },
-  fromValue: function() {
-    return this._fromValue;
+  startValue: function() {
+    var anim;
+    if (anim = this._animation) {
+      return anim.startValue;
+    } else {
+      return null;
+    }
   },
-  toValue: function() {
-    return this._toValue;
+  endValue: function() {
+    var anim;
+    if (anim = this._animation) {
+      return anim.endValue;
+    } else {
+      return null;
+    }
   },
   progress: function() {
-    return Progress.fromValue(this.value, {
-      fromValue: this._fromValue,
-      toValue: this._toValue,
-      clamp: true
-    });
-  },
-  velocity: function() {
-    var velocity;
-    velocity = this._animation.velocity;
-    if (!isType(velocity, Number)) {
+    var anim;
+    if (anim = this._animation) {
+      return anim.progress;
+    } else {
       return 0;
     }
-    return velocity;
+  },
+  velocity: function() {
+    var anim;
+    if (anim = this._animation) {
+      if (!isType(anim.velocity, Number)) {
+        return null;
+      }
+      return anim.velocity;
+    }
+    return 0;
   }
 });
 
@@ -89,10 +109,10 @@ type.defineMethods({
       })(this));
       return;
     }
-    hook.before(this._animation, "__onEnd", (function(_this) {
-      return function(result) {
+    hook.before(this._animation, "_onEnd", (function(_this) {
+      return function(finished) {
         onUpdate && onUpdate.detach();
-        return _this._onEnd(result.finished);
+        return _this._onEnd(finished);
       };
     })(this));
   },

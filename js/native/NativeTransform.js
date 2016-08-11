@@ -1,8 +1,8 @@
-var NativeMap, NativeValue, Type, isConstructor, type;
+var NativeMap, NativeValue, Type, isType, type;
 
 require("isDev");
 
-isConstructor = require("isConstructor");
+isType = require("isType");
 
 Type = require("Type");
 
@@ -51,7 +51,7 @@ type.overrideMethods({
   },
   __attachValue: function(transform, index) {
     var key, value;
-    if (!isConstructor(transform, Object)) {
+    if (!isType(transform, Object)) {
       return;
     }
     for (key in transform) {
