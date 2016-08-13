@@ -1,13 +1,11 @@
 
 {frozen} = require "Property"
 
+ValueMapper = require "ValueMapper"
 assertType = require "assertType"
 Reaction = require "reaction"
-Random = require "random"
 isType = require "isType"
 sync = require "sync"
-
-hasReactions = Symbol "Component.hasReactions"
 
 module.exports = (type) ->
   type.defineMethods typeImpl.methods
@@ -22,64 +20,30 @@ typeImpl.methods =
 
   defineReactions: (reactions) ->
 
-    assertType reactions, Object
+    assertType reactions, Object.or Function
 
     delegate = @_delegate
 
     # Some phases must only be defined once per inheritance chain.
-    if not this[hasReactions]
-      frozen.define this, hasReactions, { value: yes }
+    if not @__hasReactions
+      frozen.define this, "__hasReactions", { value: yes }
       kind = delegate._kind
-      unless kind and kind::[hasReactions]
+      unless kind and kind::__hasReactions
         delegate._didBuild.push baseImpl.didBuild
         delegate._initInstance.push baseImpl.initInstance
+        @_willMount.push baseImpl.startReactions
+        @_willUnmount.push baseImpl.stopReactions
 
-    phaseId = Random.id()
+    reactions = ValueMapper
+      values: reactions
+      define: (obj, key, value) ->
+        return if value is undefined
+        reaction = createReaction obj, key, value
+        obj.__reactions[key] = reaction
+        frozen.define obj, key, get: -> reaction.value
 
-    #
-    # Create the Reaction objects for each instance.
-    #
-
-    createReactions = (args) ->
-      keys = []
-      for key, getOptions of reactions
-        assertType getOptions, Function, key
-        options = getOptions.apply this, args
-        continue if options is undefined
-        keys.push key
-        reaction =
-          if isType options, Reaction then options
-          else Reaction.sync options
-
-        frozen.define this, key,
-          get: -> reaction.value
-
-      @__reactions[key] = reaction
-      return
-
-    delegate._initInstance.push createReactions
-
-    #
-    # Start each Reaction right before the instance is mounted.
-    #
-
-    startReactions = ->
-      sync.each @__reactions, (reaction) ->
-        reaction.start()
-      return
-
-    @_willMount.push startReactions
-
-    #
-    # Stop each Reaction right after the instance unmounts.
-    #
-
-    stopReactions = ->
-      sync.each @__reactions, (reaction) ->
-        reaction.stop()
-      return
-
-    @_willUnmount.push stopReactions
+    delegate._initInstance.push (args) ->
+      reactions.define this, args
     return
 
 #
@@ -89,8 +53,35 @@ typeImpl.methods =
 baseImpl = {}
 
 baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, hasReactions, { value: yes }
+  frozen.define type.prototype, "__hasReactions", { value: yes }
 
 baseImpl.initInstance = ->
   frozen.define this, "__reactions",
     value: Object.create null
+
+baseImpl.stopReactions = ->
+  for key, reaction of @__reactions
+    reaction.stop()
+  return
+
+baseImpl.startReactions = ->
+  for key, reaction of @__reactions
+    reaction.start()
+  return
+
+createReaction = (obj, key, value) ->
+
+  keyPath = obj.constructor.name + "." + key
+
+  if isType value, Reaction
+    value.keyPath ?= keyPath
+    return value
+
+  if isType value, Function
+    options = { get: value, keyPath }
+
+  else if isType value, Object
+    options = value
+    options.keyPath ?= keyPath
+
+  return Reaction.sync options

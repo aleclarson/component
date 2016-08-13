@@ -1,18 +1,16 @@
-var Random, Reaction, assertType, baseImpl, frozen, hasReactions, isType, sync, typeImpl;
+var Reaction, ValueMapper, assertType, baseImpl, createReaction, frozen, isType, sync, typeImpl;
 
 frozen = require("Property").frozen;
+
+ValueMapper = require("ValueMapper");
 
 assertType = require("assertType");
 
 Reaction = require("reaction");
 
-Random = require("random");
-
 isType = require("isType");
 
 sync = require("sync");
-
-hasReactions = Symbol("Component.hasReactions");
 
 module.exports = function(type) {
   return type.defineMethods(typeImpl.methods);
@@ -22,60 +20,47 @@ typeImpl = {};
 
 typeImpl.methods = {
   defineReactions: function(reactions) {
-    var createReactions, delegate, kind, phaseId, startReactions, stopReactions;
-    assertType(reactions, Object);
+    var delegate, kind;
+    assertType(reactions, Object.or(Function));
     delegate = this._delegate;
-    if (!this[hasReactions]) {
-      frozen.define(this, hasReactions, {
+    if (!this.__hasReactions) {
+      frozen.define(this, "__hasReactions", {
         value: true
       });
       kind = delegate._kind;
-      if (!(kind && kind.prototype[hasReactions])) {
+      if (!(kind && kind.prototype.__hasReactions)) {
         delegate._didBuild.push(baseImpl.didBuild);
         delegate._initInstance.push(baseImpl.initInstance);
+        this._willMount.push(baseImpl.startReactions);
+        this._willUnmount.push(baseImpl.stopReactions);
       }
     }
-    phaseId = Random.id();
-    createReactions = function(args) {
-      var getOptions, key, keys, options, reaction;
-      keys = [];
-      for (key in reactions) {
-        getOptions = reactions[key];
-        assertType(getOptions, Function, key);
-        options = getOptions.apply(this, args);
-        if (options === void 0) {
-          continue;
+    reactions = ValueMapper({
+      values: reactions,
+      define: function(obj, key, value) {
+        var reaction;
+        if (value === void 0) {
+          return;
         }
-        keys.push(key);
-        reaction = isType(options, Reaction) ? options : Reaction.sync(options);
-        frozen.define(this, key, {
+        reaction = createReaction(obj, key, value);
+        obj.__reactions[key] = reaction;
+        return frozen.define(obj, key, {
           get: function() {
             return reaction.value;
           }
         });
       }
-      this.__reactions[key] = reaction;
-    };
-    delegate._initInstance.push(createReactions);
-    startReactions = function() {
-      sync.each(this.__reactions, function(reaction) {
-        return reaction.start();
-      });
-    };
-    this._willMount.push(startReactions);
-    stopReactions = function() {
-      sync.each(this.__reactions, function(reaction) {
-        return reaction.stop();
-      });
-    };
-    this._willUnmount.push(stopReactions);
+    });
+    delegate._initInstance.push(function(args) {
+      return reactions.define(this, args);
+    });
   }
 };
 
 baseImpl = {};
 
 baseImpl.didBuild = function(type) {
-  return frozen.define(type.prototype, hasReactions, {
+  return frozen.define(type.prototype, "__hasReactions", {
     value: true
   });
 };
@@ -84,6 +69,47 @@ baseImpl.initInstance = function() {
   return frozen.define(this, "__reactions", {
     value: Object.create(null)
   });
+};
+
+baseImpl.stopReactions = function() {
+  var key, reaction, ref;
+  ref = this.__reactions;
+  for (key in ref) {
+    reaction = ref[key];
+    reaction.stop();
+  }
+};
+
+baseImpl.startReactions = function() {
+  var key, reaction, ref;
+  ref = this.__reactions;
+  for (key in ref) {
+    reaction = ref[key];
+    reaction.start();
+  }
+};
+
+createReaction = function(obj, key, value) {
+  var keyPath, options;
+  keyPath = obj.constructor.name + "." + key;
+  if (isType(value, Reaction)) {
+    if (value.keyPath == null) {
+      value.keyPath = keyPath;
+    }
+    return value;
+  }
+  if (isType(value, Function)) {
+    options = {
+      get: value,
+      keyPath: keyPath
+    };
+  } else if (isType(value, Object)) {
+    options = value;
+    if (options.keyPath == null) {
+      options.keyPath = keyPath;
+    }
+  }
+  return Reaction.sync(options);
 };
 
 //# sourceMappingURL=map/ReactionMixin.map
