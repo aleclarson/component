@@ -19,7 +19,7 @@ typeImpl = {};
 typeImpl.methods = {
   defineNativeValues: function(nativeValues) {
     var delegate, kind;
-    assertType(nativeValues, Object);
+    assertType(nativeValues, Object.or(Function));
     delegate = this._delegate;
     if (!delegate.__hasNativeValues) {
       frozen.define(delegate, "__hasNativeValues", {
@@ -40,8 +40,8 @@ typeImpl.methods = {
           return;
         }
         obj.__nativeKeys.push(key);
-        return frozen.define(this, key, {
-          value: value instanceof NativeValue ? value : NativeValue(value, this.constructor.name + "." + key)
+        return frozen.define(obj, key, {
+          value: value instanceof NativeValue ? value : NativeValue(value, obj.constructor.name + "." + key)
         });
       }
     });
@@ -54,14 +54,14 @@ typeImpl.methods = {
 baseImpl = {};
 
 baseImpl.didBuild = function(type) {
-  return frozen.define(type.prototype, hasNativeValues, {
+  return frozen.define(type.prototype, "__hasNativeValues", {
     value: true
   });
 };
 
 baseImpl.initInstance = function() {
   return frozen.define(this, "__nativeKeys", {
-    value: Object.create(null)
+    value: []
   });
 };
 

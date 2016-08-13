@@ -20,7 +20,7 @@ typeImpl.methods =
 
   defineNativeValues: (nativeValues) ->
 
-    assertType nativeValues, Object
+    assertType nativeValues, Object.or Function
 
     delegate = @_delegate
 
@@ -38,9 +38,9 @@ typeImpl.methods =
       define: (obj, key, value) ->
         return if value is undefined
         obj.__nativeKeys.push key
-        frozen.define this, key, value:
+        frozen.define obj, key, value:
           if value instanceof NativeValue then value
-          else NativeValue value, @constructor.name + "." + key
+          else NativeValue value, obj.constructor.name + "." + key
 
     delegate._initInstance.push (args) ->
       nativeValues.define this, args
@@ -53,11 +53,10 @@ typeImpl.methods =
 baseImpl = {}
 
 baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, hasNativeValues, { value: yes }
+  frozen.define type.prototype, "__hasNativeValues", { value: yes }
 
 baseImpl.initInstance = ->
-  frozen.define this, "__nativeKeys",
-    value: Object.create null
+  frozen.define this, "__nativeKeys", value: []
 
 baseImpl.attachNativeValues = ->
   for key in @__nativeKeys
