@@ -14,9 +14,9 @@ type = Type("NativeTransform");
 
 type.inherits(NativeMap);
 
-type.argumentTypes = {
-  values: Array
-};
+type.defineArgs({
+  values: Array.isRequired
+});
 
 type.createInstance(function() {
   return NativeMap({});

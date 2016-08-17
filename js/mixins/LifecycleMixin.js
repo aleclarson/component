@@ -66,7 +66,7 @@ typeImpl.methods = {
 };
 
 typeImpl.initInstance = function() {
-  return this._willBuild.push(instImpl.willBuild);
+  return this.willBuild(instImpl.willBuild);
 };
 
 instImpl = {};

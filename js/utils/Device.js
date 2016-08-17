@@ -12,7 +12,7 @@ define(Device = exports, {
   name: null,
   specific: function(devices) {
     var value;
-    value = devices[currentDevice];
+    value = devices[Device.name];
     if (value == null) {
       value = devices["else"];
     }

@@ -2,16 +2,14 @@
 Validator = require "Validator"
 wrongType = require "wrongType"
 isType = require "isType"
-Void = require "Void"
 
-validTypes = [ Object, Array, Void ]
+validTypes = Object.or Array
 
-module.exports =
-Style = Validator "Style",
+module.exports = Validator "ReactStyle",
 
   test: (value) ->
-    isType value, validTypes
+    return isType value, validTypes
 
   assert: (value, key) ->
     return if @test value
-    wrongType validTypes, key
+    return wrongType validTypes, key

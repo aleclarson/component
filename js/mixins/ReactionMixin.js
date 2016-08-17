@@ -29,8 +29,8 @@ typeImpl.methods = {
       });
       kind = delegate._kind;
       if (!(kind && kind.prototype.__hasReactions)) {
-        delegate._didBuild.push(baseImpl.didBuild);
-        delegate._initInstance.push(baseImpl.initInstance);
+        delegate.didBuild(baseImpl.didBuild);
+        delegate.initInstance(baseImpl.initInstance);
         this._willMount.push(baseImpl.startReactions);
         this._willUnmount.push(baseImpl.stopReactions);
       }
@@ -51,7 +51,7 @@ typeImpl.methods = {
         });
       }
     });
-    delegate._initInstance.push(function(args) {
+    delegate._initPhases.push(function(args) {
       return reactions.define(this, args);
     });
   }

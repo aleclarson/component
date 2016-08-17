@@ -31,7 +31,7 @@ typeImpl.methods =
       throw Error "'isRenderPrevented' is already defined!"
 
     @_isRenderPrevented = func
-    @_didBuild.push typeImpl.didBuild
+    @didBuild typeImpl.didBuild
 
     delegate = @_delegate
     delegate.defineValues instImpl.values

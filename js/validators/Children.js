@@ -1,4 +1,4 @@
-var Element, Validator, Void, isType, validTypes, wrongType;
+var Element, Validator, isType, validTypes, wrongType;
 
 Validator = require("Validator");
 
@@ -6,14 +6,15 @@ wrongType = require("wrongType");
 
 isType = require("isType");
 
-Void = require("Void");
-
 Element = require("./Element");
 
-validTypes = [Element, Array, Void];
+validTypes = Element.or(Array);
 
 module.exports = Validator("ReactChildren", {
   test: function(value) {
+    if (value === false) {
+      return true;
+    }
     return isType(value, validTypes);
   },
   assert: function(value, key) {

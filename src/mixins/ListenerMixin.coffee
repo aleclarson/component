@@ -30,8 +30,8 @@ typeImpl.methods =
       frozen.define this, hasListeners, { value: yes }
       kind = delegate._kind
       unless kind and kind::[hasListeners]
-        delegate._didBuild.push baseImpl.didBuild
-        delegate._initInstance.push baseImpl.initInstance
+        delegate.didBuild baseImpl.didBuild
+        delegate.initInstance baseImpl.initInstance
 
     phaseId = Random.id()
 

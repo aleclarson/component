@@ -1,6 +1,5 @@
 
 OneOf = require "OneOf"
-Void = require "Void"
 
 NativeComponent = require "../native/NativeComponent"
 Children = require "../validators/Children"
@@ -15,21 +14,21 @@ module.exports = NativeComponent "View",
   propTypes:
     style: Style
     children: Children
-    pointerEvents: [ PointerEventType, Void ]
-    testID: String.Maybe
-    onLayout: Function.Maybe
-    onResponderReject: Function.Maybe
-    onResponderGrant: Function.Maybe
-    onResponderMove: Function.Maybe
-    onResponderRelease: Function.Maybe
-    onResponderTerminate: Function.Maybe
-    onResponderTerminationRequest: Function.Maybe
-    onStartShouldSetResponder: Function.Maybe
-    onStartShouldSetResponderCapture: Function.Maybe
-    onMoveShouldSetResponder: Function.Maybe
-    onMoveShouldSetResponderCapture: Function.Maybe
-    needsOffscreenAlphaCompositing: Boolean.Maybe
-    renderToHardwareTextureAndroid: Boolean.Maybe
-    removeClippedSubviews: Boolean.Maybe
-    shouldRasterizeIOS: Boolean.Maybe
-    collapsable: Boolean.Maybe
+    pointerEvents: PointerEventType
+    testID: String
+    onLayout: Function
+    onResponderReject: Function
+    onResponderGrant: Function
+    onResponderMove: Function
+    onResponderRelease: Function
+    onResponderTerminate: Function
+    onResponderTerminationRequest: Function
+    onStartShouldSetResponder: Function
+    onStartShouldSetResponderCapture: Function
+    onMoveShouldSetResponder: Function
+    onMoveShouldSetResponderCapture: Function
+    needsOffscreenAlphaCompositing: Boolean
+    renderToHardwareTextureAndroid: Boolean
+    removeClippedSubviews: Boolean
+    shouldRasterizeIOS: Boolean
+    collapsable: Boolean

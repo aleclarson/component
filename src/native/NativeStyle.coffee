@@ -10,8 +10,8 @@ type = Type "NativeStyle"
 
 type.inherits NativeMap
 
-type.argumentTypes =
-  values: Style
+type.defineArgs
+  values: Style.isRequired
 
 type.createInstance ->
   return NativeMap {}

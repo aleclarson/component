@@ -59,7 +59,7 @@ typeImpl.methods =
     return
 
 typeImpl.initInstance = ->
-  @_willBuild.push instImpl.willBuild
+  @willBuild instImpl.willBuild
 
 # In this context, 'inst' is a component factory.
 # Thus 'instImpl' defines the behavior of each component instance.

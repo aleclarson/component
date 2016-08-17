@@ -16,11 +16,11 @@ Type = require("Type");
 
 modx_Type = require("./Type");
 
-Component = require("../Component");
+Component = require("./Component");
 
-ElementType = require("../utils/ElementType");
+ElementType = require("./utils/ElementType");
 
-ComponentBuilder = require("../ComponentBuilder");
+ComponentBuilder = require("./ComponentBuilder");
 
 type = Type("modx_TypeBuilder");
 
@@ -66,6 +66,7 @@ type.willBuild(function() {
     };
   }));
   keys = {
+    "defineProps": "defineProps",
     "render": "render",
     "isRenderPrevented": "isRenderPrevented",
     "shouldUpdate": "shouldUpdate",
@@ -102,7 +103,7 @@ type.willBuild(function() {
 });
 
 type.initInstance(function() {
-  this._willBuild.push(instImpl.willBuild);
+  this.willBuild(instImpl.willBuild);
   return this._componentType.willBuild(viewImpl.willBuild);
 });
 
@@ -167,8 +168,8 @@ viewImpl = {};
 
 viewImpl.willBuild = function() {
   if (!(this._kind instanceof modx_Type)) {
-    return this._willBuild.push(function() {
-      this._initInstance.unshift(viewImpl.initInstance);
+    return this.willBuild(function() {
+      this._initPhases.unshift(viewImpl.initInstance);
       this._willUnmount.push(viewImpl.willUnmount);
       return this.defineGetters(viewImpl.getters);
     });
@@ -186,10 +187,8 @@ viewImpl.initInstance = function() {
 };
 
 viewImpl.willUnmount = function() {
-  var delegate;
-  delegate = this._delegate;
-  delegate._props = null;
-  return delegate._view = null;
+  this._props = null;
+  return this._view = null;
 };
 
 //# sourceMappingURL=map/TypeBuilder.map

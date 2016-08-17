@@ -26,9 +26,9 @@ NativeAnimation = require "./NativeAnimation"
 
 type = Type "NativeValue"
 
-type.argumentTypes =
+type.defineArgs
   value: Any
-  keyPath: String.Maybe
+  keyPath: String
 
 type.returnExisting (value) ->
   return value if value instanceof NativeValue

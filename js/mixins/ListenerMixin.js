@@ -29,8 +29,8 @@ typeImpl.methods = {
       });
       kind = delegate._kind;
       if (!(kind && kind.prototype[hasListeners])) {
-        delegate._didBuild.push(baseImpl.didBuild);
-        delegate._initInstance.push(baseImpl.initInstance);
+        delegate.didBuild(baseImpl.didBuild);
+        delegate.initInstance(baseImpl.initInstance);
       }
     }
     phaseId = Random.id();

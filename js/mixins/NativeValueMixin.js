@@ -27,8 +27,8 @@ typeImpl.methods = {
       });
       kind = delegate._kind;
       if (!(kind && kind.prototype.__hasNativeValues)) {
-        delegate._didBuild.push(baseImpl.didBuild);
-        delegate._initInstance.push(baseImpl.initInstance);
+        delegate.didBuild(baseImpl.didBuild);
+        delegate.initInstance(baseImpl.initInstance);
         this._willMount.push(baseImpl.attachNativeValues);
         this._willUnmount.push(baseImpl.detachNativeValues);
       }
@@ -45,7 +45,7 @@ typeImpl.methods = {
         });
       }
     });
-    delegate._initInstance.push(function(args) {
+    delegate._initPhases.push(function(args) {
       return nativeValues.define(this, args);
     });
   }

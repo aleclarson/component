@@ -18,7 +18,6 @@ modx_Type = NamedFunction("modx_Type", function(name) {
   var self;
   self = modx_TypeBuilder.call(name);
   self.didBuild(function(type) {
-    Type.augment(type, true);
     return setType(type, modx_Type);
   });
   return self;

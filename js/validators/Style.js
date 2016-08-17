@@ -1,4 +1,4 @@
-var Style, Validator, Void, isType, validTypes, wrongType;
+var Validator, isType, validTypes, wrongType;
 
 Validator = require("Validator");
 
@@ -6,11 +6,9 @@ wrongType = require("wrongType");
 
 isType = require("isType");
 
-Void = require("Void");
+validTypes = Object.or(Array);
 
-validTypes = [Object, Array, Void];
-
-module.exports = Style = Validator("Style", {
+module.exports = Validator("ReactStyle", {
   test: function(value) {
     return isType(value, validTypes);
   },

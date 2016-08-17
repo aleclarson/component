@@ -2,17 +2,17 @@
 Validator = require "Validator"
 wrongType = require "wrongType"
 isType = require "isType"
-Void = require "Void"
 
 Element = require "./Element"
 
-validTypes = [ Element, Array, Void ]
+validTypes = Element.or Array
 
 module.exports = Validator "ReactChildren",
 
   test: (value) ->
-    isType value, validTypes
+    return yes if value is no
+    return isType value, validTypes
 
   assert: (value, key) ->
     return if @test value
-    wrongType validTypes, key
+    return wrongType validTypes, key

@@ -1,10 +1,8 @@
-var EdgeInsetsType, ImageResizeMode, ImageSource, NativeComponent, OneOf, RemoteImageSource, Shape, Style, Void;
+var EdgeInsetsType, ImageResizeMode, ImageSource, NativeComponent, OneOf, RemoteImageSource, Shape, Style;
 
 Shape = require("Shape");
 
 OneOf = require("OneOf");
-
-Void = require("Void");
 
 NativeComponent = require("../native/NativeComponent");
 
@@ -29,17 +27,17 @@ module.exports = NativeComponent("ImageView", {
   render: require("ImageView"),
   propTypes: {
     style: Style,
-    source: ImageSource,
-    defaultSource: [ImageSource, Void],
-    resizeMode: [ImageResizeMode, Void],
-    capInsets: [EdgeInsetsType, Void],
-    onLayout: Function.Maybe,
-    onLoadStart: Function.Maybe,
-    onProgress: Function.Maybe,
-    onError: Function.Maybe,
-    onLoad: Function.Maybe,
-    onLoadEnd: Function.Maybe,
-    testID: String.Maybe
+    source: ImageSource.isRequired,
+    defaultSource: ImageSource,
+    resizeMode: ImageResizeMode,
+    capInsets: EdgeInsetsType,
+    onLayout: Function,
+    onLoadStart: Function,
+    onProgress: Function,
+    onError: Function,
+    onLoad: Function,
+    onLoadEnd: Function,
+    testID: String
   }
 });
 

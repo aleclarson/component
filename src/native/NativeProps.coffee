@@ -12,9 +12,9 @@ type = Type "NativeProps"
 
 type.inherits NativeMap
 
-type.argumentTypes =
-  props: Object
-  propTypes: Object.Maybe
+type.defineArgs
+  props: Object.isRequired
+  propTypes: Object
 
 type.createInstance ->
   return NativeMap {}

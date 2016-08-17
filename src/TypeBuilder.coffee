@@ -9,9 +9,9 @@ sync = require "sync"
 Type = require "Type"
 
 modx_Type = require "./Type"
-Component = require "../Component"
-ElementType = require "../utils/ElementType"
-ComponentBuilder = require "../ComponentBuilder"
+Component = require "./Component"
+ElementType = require "./utils/ElementType"
+ComponentBuilder = require "./ComponentBuilder"
 
 type = Type "modx_TypeBuilder"
 
@@ -47,7 +47,7 @@ type.willBuild ->
     set: (newValue) ->
       @_componentType[key] = newValue
 
-  keys = { "render", "isRenderPrevented", "shouldUpdate"
+  keys = { "defineProps", "render", "isRenderPrevented", "shouldUpdate"
     "willReceiveProps", "willMount", "didMount", "willUnmount"
     "defineNativeValues", "defineListeners", "defineReactions"
     "defineStyles", "appendStyles", "overrideStyles" }
@@ -63,7 +63,7 @@ type.willBuild ->
     get: -> @_componentType[key]
 
 type.initInstance ->
-  @_willBuild.push instImpl.willBuild
+  @willBuild instImpl.willBuild
   @_componentType.willBuild viewImpl.willBuild
 
 module.exports = type.build()
@@ -128,8 +128,8 @@ viewImpl.willBuild = ->
 
   # Define once per inheritance chain.
   unless @_kind instanceof modx_Type
-    @_willBuild.push -> # Try to be the very last phase.
-      @_initInstance.unshift viewImpl.initInstance
+    @willBuild -> # Try to be the very last phase.
+      @_initPhases.unshift viewImpl.initInstance
       @_willUnmount.push viewImpl.willUnmount
       @defineGetters viewImpl.getters
 
@@ -141,6 +141,5 @@ viewImpl.initInstance = ->
   @_delegate._view = this
 
 viewImpl.willUnmount = ->
-  delegate = @_delegate
-  delegate._props = null
-  delegate._view = null
+  @_props = null
+  @_view = null

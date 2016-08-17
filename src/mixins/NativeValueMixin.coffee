@@ -28,8 +28,8 @@ typeImpl.methods =
       frozen.define delegate, "__hasNativeValues", { value: yes }
       kind = delegate._kind
       unless kind and kind::__hasNativeValues
-        delegate._didBuild.push baseImpl.didBuild
-        delegate._initInstance.push baseImpl.initInstance
+        delegate.didBuild baseImpl.didBuild
+        delegate.initInstance baseImpl.initInstance
         @_willMount.push baseImpl.attachNativeValues
         @_willUnmount.push baseImpl.detachNativeValues
 
@@ -42,7 +42,7 @@ typeImpl.methods =
           if value instanceof NativeValue then value
           else NativeValue value, obj.constructor.name + "." + key
 
-    delegate._initInstance.push (args) ->
+    delegate._initPhases.push (args) ->
       nativeValues.define this, args
     return
 

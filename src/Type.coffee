@@ -12,7 +12,6 @@ modx_Type = NamedFunction "modx_Type", (name) ->
   self = modx_TypeBuilder.call name
 
   self.didBuild (type) ->
-    Type.augment type, yes
     setType type, modx_Type
 
   return self

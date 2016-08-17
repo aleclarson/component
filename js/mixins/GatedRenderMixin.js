@@ -29,7 +29,7 @@ typeImpl.methods = {
       throw Error("'isRenderPrevented' is already defined!");
     }
     this._isRenderPrevented = func;
-    this._didBuild.push(typeImpl.didBuild);
+    this.didBuild(typeImpl.didBuild);
     delegate = this._delegate;
     delegate.defineValues(instImpl.values);
     delegate.defineReactions(instImpl.reactions);

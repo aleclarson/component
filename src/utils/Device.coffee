@@ -9,7 +9,7 @@ define Device = exports,
   name: null
 
   specific: (devices) ->
-    value = devices[currentDevice]
+    value = devices[Device.name]
     value = devices.else unless value?
     value
 

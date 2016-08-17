@@ -8,9 +8,9 @@ module.exports = NativeComponent "TextView",
 
   propTypes:
     style: Style
-    onPress: Function.Maybe
-    onLayout: Function.Maybe
-    numberOfLines: Number.Maybe
-    allowFontScaling: Boolean.Maybe
-    suppressHighlighting: Boolean.Maybe
-    testID: String.Maybe
+    onPress: Function
+    onLayout: Function
+    numberOfLines: Number
+    allowFontScaling: Boolean
+    suppressHighlighting: Boolean
+    testID: String

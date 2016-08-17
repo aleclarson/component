@@ -29,8 +29,8 @@ typeImpl.methods =
       frozen.define this, "__hasReactions", { value: yes }
       kind = delegate._kind
       unless kind and kind::__hasReactions
-        delegate._didBuild.push baseImpl.didBuild
-        delegate._initInstance.push baseImpl.initInstance
+        delegate.didBuild baseImpl.didBuild
+        delegate.initInstance baseImpl.initInstance
         @_willMount.push baseImpl.startReactions
         @_willUnmount.push baseImpl.stopReactions
 
@@ -42,7 +42,7 @@ typeImpl.methods =
         obj.__reactions[key] = reaction
         frozen.define obj, key, get: -> reaction.value
 
-    delegate._initInstance.push (args) ->
+    delegate._initPhases.push (args) ->
       reactions.define this, args
     return
 

@@ -47,7 +47,7 @@ typeImpl.methods =
     @_styles = StyleMap kind and kind.styles
 
 typeImpl.initInstance = ->
-  @_willBuild.push instImpl.willBuild
+  @willBuild instImpl.willBuild
 
 #
 # The 'instance' is a Component.Builder

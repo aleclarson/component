@@ -20,10 +20,10 @@ NativeComponent = (name, config) ->
   type = Component "Native" + name
 
   if config.propTypes
-    type.propTypes = config.propTypes
+    type.defineProps config.propTypes
 
   type.definePrototype
-    renderChild: ElementType config.render
+    _renderChild: ElementType config.render
 
   type.defineValues typeImpl.values
   type.defineListeners typeImpl.listeners
@@ -47,7 +47,7 @@ typeImpl.values =
 typeImpl.render = ->
   props = @_nativeProps.values
   props.ref = setChild.bind this
-  @renderChild props
+  @_renderChild props
 
 typeImpl.willReceiveProps = (nextProps) ->
   @_nativeProps.attach nextProps

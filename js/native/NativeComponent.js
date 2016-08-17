@@ -23,10 +23,10 @@ module.exports = NativeComponent = function(name, config) {
   assertTypes(config, configTypes);
   type = Component("Native" + name);
   if (config.propTypes) {
-    type.propTypes = config.propTypes;
+    type.defineProps(config.propTypes);
   }
   type.definePrototype({
-    renderChild: ElementType(config.render)
+    _renderChild: ElementType(config.render)
   });
   type.defineValues(typeImpl.values);
   type.defineListeners(typeImpl.listeners);
@@ -50,7 +50,7 @@ typeImpl.render = function() {
   var props;
   props = this._nativeProps.values;
   props.ref = setChild.bind(this);
-  return this.renderChild(props);
+  return this._renderChild(props);
 };
 
 typeImpl.willReceiveProps = function(nextProps) {
