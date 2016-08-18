@@ -42,6 +42,8 @@ type.defineMethods
     @__nativeListeners = {}
     return
 
+type.defineHooks
+
   __didSet: (newValues) ->
     @didSet.emit newValues
 

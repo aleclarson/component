@@ -1,16 +1,16 @@
-var Property, ReactComponent, assertType, assertTypes, define, getKind, has, hasKeys, instImpl, isType, mergeDefaults, superWrap, sync, typeImpl;
+var ReactComponent, ReactCompositeComponent, assertType, assertTypes, define, emptyFunction, getKind, has, hasKeys, instImpl, isType, mergeDefaults, superWrap, sync, typeImpl;
 
 require("isDev");
 
 ReactComponent = require("ReactComponent");
+
+emptyFunction = require("emptyFunction");
 
 mergeDefaults = require("mergeDefaults");
 
 assertTypes = require("assertTypes");
 
 assertType = require("assertType");
-
-Property = require("Property");
 
 getKind = require("getKind");
 
@@ -26,60 +26,31 @@ has = require("has");
 
 module.exports = function(type) {
   type.defineValues(typeImpl.values);
-  type.definePrototype(typeImpl.prototype);
+  type.defineMethods(typeImpl.methods);
   return type.initInstance(typeImpl.initInstance);
+};
+
+ReactCompositeComponent = require("ReactCompositeComponent");
+
+ReactCompositeComponent.Mixin._processProps = function(props) {
+  var processProps;
+  processProps = this._currentElement.type.prototype.processProps;
+  if (processProps) {
+    return processProps(props);
+  } else {
+    return props;
+  }
 };
 
 typeImpl = {};
 
 typeImpl.values = {
-  _propTypes: null,
-  _propDefaults: null,
-  _initProps: function() {
+  _propPhases: function() {
     return [];
   }
 };
 
-typeImpl.prototype = {
-  propTypes: {
-    get: function() {
-      return this._propTypes;
-    },
-    set: function(propTypes) {
-      console.warn("Use 'defineProps' instead of setting 'propTypes'!");
-      assertType(propTypes, Object);
-      if (this._propTypes) {
-        throw Error("'propTypes' is already defined!");
-      }
-      this._propTypes = propTypes;
-      this.didBuild(function(type) {
-        return type.propTypes = propTypes;
-      });
-      if (isDev) {
-        return this.initProps(function(props) {
-          return assertTypes(props, propTypes);
-        });
-      }
-    }
-  },
-  propDefaults: {
-    get: function() {
-      return this._propDefaults;
-    },
-    set: function(propDefaults) {
-      assertType(propDefaults, Object);
-      if (this._propDefaults) {
-        throw Error("'propDefaults' is already defined!");
-      }
-      this._propDefaults = propDefaults;
-      this.didBuild(function(type) {
-        return type.propDefaults = propDefaults;
-      });
-      return this.initProps(function(props) {
-        return mergeDefaults(props, propDefaults);
-      });
-    }
-  },
+typeImpl.methods = {
   defineProps: function(props) {
     var propDefaults, propNames, propTypes, requiredTypes;
     assertType(props, Object);
@@ -119,7 +90,7 @@ typeImpl.prototype = {
         return type.propDefaults = propDefaults;
       }
     });
-    this._initProps.push(function(props) {
+    this._propPhases.push(function(props) {
       var i, len, name, prop, propType;
       for (i = 0, len = propNames.length; i < len; i++) {
         name = propNames[i];
@@ -139,13 +110,13 @@ typeImpl.prototype = {
       return props;
     });
   },
-  createProps: function(func) {
+  replaceProps: function(func) {
     assertType(func, Function);
-    this._initProps.unshift(func);
+    this._propPhases.unshift(func);
   },
   initProps: function(func) {
     assertType(func, Function);
-    this._initProps.push(function(props) {
+    this._propPhases.push(function(props) {
       func.call(this, props);
       return props;
     });
@@ -160,7 +131,7 @@ instImpl = {};
 
 instImpl.willBuild = function() {
   var phases, processProps, superImpl;
-  phases = this._initProps;
+  phases = this._propPhases;
   if (phases.length) {
     processProps = function(props) {
       var i, len, phase;
@@ -207,7 +178,7 @@ superWrap = function(processProps, superImpl) {
     return superImpl;
   }
   return function(props) {
-    return superImpl(processProps(props));
+    return superImpl.call(this, processProps.call(this, props));
   };
 };
 

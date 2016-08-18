@@ -201,7 +201,7 @@ type.defineStatics
   addPreset: (presetName, style) ->
 
     assertType presetName, String
-    assertType style, [ Object, Function ]
+    assertType style, Object.or Function
 
     if isType style, Object
       style = sync.map style, parseTransform

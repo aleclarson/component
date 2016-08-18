@@ -258,7 +258,7 @@ type.defineStatics({
   addPreset: function(presetName, style) {
     var preset;
     assertType(presetName, String);
-    assertType(style, [Object, Function]);
+    assertType(style, Object.or(Function));
     if (isType(style, Object)) {
       style = sync.map(style, parseTransform);
       preset = function() {

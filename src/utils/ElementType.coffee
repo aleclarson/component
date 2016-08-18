@@ -1,30 +1,26 @@
 
 require "isDev"
 
-{ hidden } = require "Property"
+{hidden} = require "Property"
 
 ReactCurrentOwner = require "ReactCurrentOwner"
 NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 assertType = require "assertType"
-wrapValue = require "wrapValue"
 setType = require "setType"
 setKind = require "setKind"
 Tracer = require "tracer"
 isType = require "isType"
 define = require "define"
 steal = require "steal"
-Kind = require "Kind"
-Void = require "Void"
 
 # Created for every instance of 'Component.Type'
 # Created for every non-delegated subclass of 'Component'
-module.exports =
 ElementType = NamedFunction "ElementType", (componentType, initProps) ->
 
-  assertType componentType, Kind(Function)
-  assertType initProps, [ Function, Void ]
+  assertType componentType, Function.Kind
+  assertType initProps, Function.Maybe
 
   if not initProps
     initProps = emptyFunction.thatReturnsArgument
@@ -55,9 +51,9 @@ ElementType = NamedFunction "ElementType", (componentType, initProps) ->
 
   self.componentType = componentType
 
-  setType self, ElementType
+  return setType self, ElementType
 
-setKind ElementType, Function
+module.exports = setKind ElementType, Function
 
 #
 # Helpers

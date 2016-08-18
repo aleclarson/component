@@ -1,13 +1,13 @@
 
-# TODO: Write a codemod that removes 'propTypes'.
+# TODO: Write a codemod that removes 'defineProps'?
 
 require "isDev"
 
 ReactComponent = require "ReactComponent"
+emptyFunction = require "emptyFunction"
 mergeDefaults = require "mergeDefaults"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
-Property = require "Property"
 getKind = require "getKind"
 hasKeys = require "hasKeys"
 isType = require "isType"
@@ -17,8 +17,14 @@ has = require "has"
 
 module.exports = (type) ->
   type.defineValues typeImpl.values
-  type.definePrototype typeImpl.prototype
+  type.defineMethods typeImpl.methods
   type.initInstance typeImpl.initInstance
+
+ReactCompositeComponent = require "ReactCompositeComponent"
+ReactCompositeComponent.Mixin._processProps = (props) ->
+  {processProps} = @_currentElement.type::
+  if processProps then processProps props
+  else props
 
 #
 # The 'type' is the Component.Builder constructor
@@ -28,50 +34,9 @@ typeImpl = {}
 
 typeImpl.values =
 
-  _propTypes: null
+  _propPhases: -> []
 
-  _propDefaults: null
-
-  _initProps: -> []
-
-typeImpl.prototype =
-
-  propTypes:
-    get: -> @_propTypes
-    set: (propTypes) ->
-
-      console.warn "Use 'defineProps' instead of setting 'propTypes'!"
-
-      assertType propTypes, Object
-
-      if @_propTypes
-        throw Error "'propTypes' is already defined!"
-
-      @_propTypes = propTypes
-
-      @didBuild (type) ->
-        type.propTypes = propTypes
-
-      if isDev
-        @initProps (props) ->
-          assertTypes props, propTypes
-
-  propDefaults:
-    get: -> @_propDefaults
-    set: (propDefaults) ->
-
-      assertType propDefaults, Object
-
-      if @_propDefaults
-        throw Error "'propDefaults' is already defined!"
-
-      @_propDefaults = propDefaults
-
-      @didBuild (type) ->
-        type.propDefaults = propDefaults
-
-      @initProps (props) ->
-        mergeDefaults props, propDefaults
+typeImpl.methods =
 
   defineProps: (props) ->
     assertType props, Object
@@ -114,7 +79,7 @@ typeImpl.prototype =
       if hasKeys propDefaults
         type.propDefaults = propDefaults
 
-    @_initProps.push (props) ->
+    @_propPhases.push (props) ->
       for name in propNames
         prop = props[name]
 
@@ -133,14 +98,14 @@ typeImpl.prototype =
       return props
     return
 
-  createProps: (func) ->
+  replaceProps: (func) ->
     assertType func, Function
-    @_initProps.unshift func
+    @_propPhases.unshift func
     return
 
   initProps: (func) ->
     assertType func, Function
-    @_initProps.push (props) ->
+    @_propPhases.push (props) ->
       func.call this, props
       return props
     return
@@ -159,7 +124,7 @@ instImpl = {}
 #       supertype gets to inspect them.
 instImpl.willBuild = ->
 
-  phases = @_initProps
+  phases = @_propPhases
   if phases.length
     processProps = (props) ->
       for phase in phases
@@ -171,7 +136,7 @@ instImpl.willBuild = ->
 
   if processProps
     @didBuild (type) ->
-      define type.prototype, "_processProps",
+      define type::, "_processProps",
         value: processProps
 
   # Try to be the last 'didBuild' phase.
@@ -179,11 +144,14 @@ instImpl.willBuild = ->
 
 instImpl.didBuild = (type) ->
   return if ReactComponent isnt getKind type
-  return if has type.prototype, "_delegate"
-  define type.prototype, "_delegate", get: -> this
+  return if has type::, "_delegate"
+  define type::, "_delegate",
+    get: -> this
 
 # Wraps a 'processProps' static method
 # with the implementation of its supertype.
 superWrap = (processProps, superImpl) ->
   return superImpl if not processProps
-  return (props) -> superImpl processProps props
+  return (props) ->
+    superImpl.call this,
+      processProps.call this, props

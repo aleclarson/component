@@ -2,6 +2,7 @@
 ReactElement = require "ReactElement"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
+hook = require "hook"
 
 ElementType = require "../utils/ElementType"
 NativeProps = require "./NativeProps"
@@ -26,12 +27,18 @@ NativeComponent = (name, config) ->
     _renderChild: ElementType config.render
 
   type.defineValues typeImpl.values
+  type.defineBoundMethods typeImpl.boundMethods
   type.defineListeners typeImpl.listeners
+  type.render typeImpl.render
   type.willReceiveProps typeImpl.willReceiveProps
   type.willUnmount typeImpl.willUnmount
-  type.render typeImpl.render
 
   return type.build()
+
+#
+# The `typeImpl` interface is used
+# by every NativeComponent factory!
+#
 
 typeImpl = {}
 
@@ -44,31 +51,42 @@ typeImpl.values =
   _nativeProps: ->
     NativeProps @props, @constructor.propTypes
 
-typeImpl.render = ->
-  props = @_nativeProps.values
-  props.ref = setChild.bind this
-  @_renderChild props
+typeImpl.boundMethods =
 
-typeImpl.willReceiveProps = (nextProps) ->
-  @_nativeProps.attach nextProps
+  _hookRef: (orig, view) ->
+
+    if view and @_queuedProps
+      view.setNativeProps @_queuedProps
+      @_queuedProps = null
+
+    @child = view
+    orig this
+    return
 
 typeImpl.listeners = ->
 
   @_nativeProps.didSet (newProps) =>
-    if @child isnt null
-      @child.setNativeProps newProps
-    else @_queuedProps = newProps
+
+    if @child is null
+      @_queuedProps = newProps
+      return
+
+    @child.setNativeProps newProps
+    return
+
+#
+# Rendering
+#
+
+typeImpl.render = ->
+  props = @_nativeProps.values
+  hook props, "ref", @_hookRef
+  return @_renderChild props
 
 typeImpl.willUnmount = ->
   @_nativeProps.detach()
+  return
 
-#
-# Helpers
-#
-
-setChild = (view) ->
-  @child = view
-  if view and @_queuedProps
-    @child.setNativeProps @_queuedProps
-    @_queuedProps = null
+typeImpl.willReceiveProps = (nextProps) ->
+  @_nativeProps.attach nextProps
   return

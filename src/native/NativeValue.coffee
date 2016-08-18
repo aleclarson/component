@@ -16,13 +16,13 @@ Tracer = require "tracer"
 isType = require "isType"
 Event = require "Event"
 steal = require "steal"
-Void = require "Void"
-Null = require "Null"
 Type = require "Type"
 Any = require "Any"
 Nan = require "Nan"
 
 NativeAnimation = require "./NativeAnimation"
+
+ReactionOptions = Object.or Function.Kind
 
 type = Type "NativeValue"
 
@@ -77,7 +77,7 @@ type.initInstance (value, keyPath) ->
     throw Error "NativeValue must create its own Reaction!"
 
   @_keyPath = keyPath
-  if isType value, [ Object, Function.Kind ]
+  if ReactionOptions.test value
     @_attachReaction value
   else @value = value
 
@@ -145,7 +145,8 @@ type.defineMethods
     unless config.round?
       config.round = @_round
 
-    isDev and assertTypes config, configTypes.setValue
+    isDev and
+    assertTypes config, configTypes.setValue
 
     if config.clamp is yes
 
@@ -165,13 +166,15 @@ type.defineMethods
     if @isReactive
       throw Error "Cannot call 'animate' when 'isReactive' is true!"
 
-    isDev and @_tracers.animate = Tracer "NativeValue::animate()"
+    isDev and
+    @_tracers.animate = Tracer "NativeValue::animate()"
 
     @stopAnimation()
 
     @_attachAnimated()
 
-    isDev and assertTypes config, configTypes.animate
+    isDev and
+    assertTypes config, configTypes.animate
 
     onFinish = steal config, "onFinish", emptyFunction
     onEnd = steal config, "onEnd", emptyFunction
@@ -209,7 +212,8 @@ type.defineMethods
     toRange.fromValue ?= @_fromValue
     toRange.toValue ?= @_toValue
 
-    assertTypes config, configTypes.track if isDev
+    isDev and
+    assertTypes config, configTypes.track
 
     onChange = (value) =>
       progress = Progress.fromValue value, fromRange
@@ -238,8 +242,9 @@ type.defineMethods
     config.fromValue ?= if @_fromValue? then @_fromValue else @_value
     config.toValue ?= @_toValue
 
-    assertType value, Number
-    assertTypes config, configTypes.setProgress if isDev
+    if isDev
+      assertType value, Number
+      assertTypes config, configTypes.setProgress
 
     return Progress.fromValue value, config
 
@@ -252,8 +257,9 @@ type.defineMethods
       mergeDefaults config, @_getRange()
     else config = @_getRange()
 
-    assertType progress, Number
-    assertTypes config, configTypes.setProgress if isDev
+    if isDev
+      assertType progress, Number
+      assertTypes config, configTypes.setProgress
 
     value = Progress.toValue progress, config
     value = roundValue value, config.round if config.round?
@@ -262,7 +268,8 @@ type.defineMethods
 
   willProgress: (config) ->
 
-    assertTypes config, configTypes.setProgress if isDev
+    isDev and
+    assertTypes config, configTypes.setProgress
 
     @_fromValue = config.fromValue ?= @_value
     @_toValue = config.toValue
@@ -352,25 +359,26 @@ type.defineMethods
 
 module.exports = NativeValue = type.build()
 
-if isDev
+isDev and
+configTypes = do ->
 
-  configTypes = {}
+  Null = require "Null"
 
-  configTypes.animate =
+  animate:
     type: Function.Kind
-    onUpdate: [ Function.Kind, Void ]
-    onEnd: [ Function.Kind, Void ]
-    onFinish: [ Function.Kind, Void ]
+    onUpdate: Function.Kind.Maybe
+    onFinish: Function.Kind.Maybe
+    onEnd: Function.Kind.Maybe
 
-  configTypes.track =
+  track:
     fromRange: Progress.Range
     toRange: Progress.Range
 
-  configTypes.setValue =
+  setValue:
     clamp: Boolean.Maybe
-    round: [ Number, Null, Void ]
+    round: Number.or(Null).Maybe
 
-  configTypes.setProgress =
+  setProgress:
     fromValue: Number
     toValue: Number
     clamp: Boolean.Maybe

@@ -46,7 +46,10 @@ type.defineMethods({
     this.__nativeMaps = {};
     this.__nativeValues = {};
     this.__nativeListeners = {};
-  },
+  }
+});
+
+type.defineHooks({
   __didSet: function(newValues) {
     return this.didSet.emit(newValues);
   },

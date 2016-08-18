@@ -1,4 +1,4 @@
-var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Null, Progress, Reaction, Tracer, Tracker, Type, Void, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
+var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Progress, Reaction, ReactionOptions, Tracer, Tracker, Type, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
 
 require("isDev");
 
@@ -30,10 +30,6 @@ Event = require("Event");
 
 steal = require("steal");
 
-Void = require("Void");
-
-Null = require("Null");
-
 Type = require("Type");
 
 Any = require("Any");
@@ -41,6 +37,8 @@ Any = require("Any");
 Nan = require("Nan");
 
 NativeAnimation = require("./NativeAnimation");
+
+ReactionOptions = Object.or(Function.Kind);
 
 type = Type("NativeValue");
 
@@ -92,7 +90,7 @@ type.initInstance(function(value, keyPath) {
     throw Error("NativeValue must create its own Reaction!");
   }
   this._keyPath = keyPath;
-  if (isType(value, [Object, Function.Kind])) {
+  if (ReactionOptions.test(value)) {
     return this._attachReaction(value);
   } else {
     return this.value = value;
@@ -259,9 +257,7 @@ type.defineMethods({
     if (toRange.toValue == null) {
       toRange.toValue = this._toValue;
     }
-    if (isDev) {
-      assertTypes(config, configTypes.track);
-    }
+    isDev && assertTypes(config, configTypes.track);
     onChange = (function(_this) {
       return function(value) {
         var progress;
@@ -298,8 +294,8 @@ type.defineMethods({
     if (config.toValue == null) {
       config.toValue = this._toValue;
     }
-    assertType(value, Number);
     if (isDev) {
+      assertType(value, Number);
       assertTypes(config, configTypes.setProgress);
     }
     return Progress.fromValue(value, config);
@@ -314,8 +310,8 @@ type.defineMethods({
     } else {
       config = this._getRange();
     }
-    assertType(progress, Number);
     if (isDev) {
+      assertType(progress, Number);
       assertTypes(config, configTypes.setProgress);
     }
     value = Progress.toValue(progress, config);
@@ -325,9 +321,7 @@ type.defineMethods({
     this.value = value;
   },
   willProgress: function(config) {
-    if (isDev) {
-      assertTypes(config, configTypes.setProgress);
-    }
+    isDev && assertTypes(config, configTypes.setProgress);
     this._fromValue = config.fromValue != null ? config.fromValue : config.fromValue = this._value;
     this._toValue = config.toValue;
   },
@@ -429,28 +423,31 @@ type.defineMethods({
 
 module.exports = NativeValue = type.build();
 
-if (isDev) {
-  configTypes = {};
-  configTypes.animate = {
-    type: Function.Kind,
-    onUpdate: [Function.Kind, Void],
-    onEnd: [Function.Kind, Void],
-    onFinish: [Function.Kind, Void]
+isDev && (configTypes = (function() {
+  var Null;
+  Null = require("Null");
+  return {
+    animate: {
+      type: Function.Kind,
+      onUpdate: Function.Kind.Maybe,
+      onFinish: Function.Kind.Maybe,
+      onEnd: Function.Kind.Maybe
+    },
+    track: {
+      fromRange: Progress.Range,
+      toRange: Progress.Range
+    },
+    setValue: {
+      clamp: Boolean.Maybe,
+      round: Number.or(Null).Maybe
+    },
+    setProgress: {
+      fromValue: Number,
+      toValue: Number,
+      clamp: Boolean.Maybe,
+      round: Boolean.Maybe
+    }
   };
-  configTypes.track = {
-    fromRange: Progress.Range,
-    toRange: Progress.Range
-  };
-  configTypes.setValue = {
-    clamp: Boolean.Maybe,
-    round: [Number, Null, Void]
-  };
-  configTypes.setProgress = {
-    fromValue: Number,
-    toValue: Number,
-    clamp: Boolean.Maybe,
-    round: Boolean.Maybe
-  };
-}
+})());
 
 //# sourceMappingURL=map/NativeValue.map

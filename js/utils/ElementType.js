@@ -1,4 +1,4 @@
-var ElementType, Kind, NamedFunction, ReactCurrentOwner, ReactElement, Tracer, Void, applyMixinsToProps, assertType, define, emptyFunction, hidden, isType, setInternals, setKind, setType, steal, stealKeyFromProps, wrapValue;
+var ElementType, NamedFunction, ReactCurrentOwner, ReactElement, Tracer, applyMixinsToProps, assertType, define, emptyFunction, hidden, isType, setInternals, setKind, setType, steal, stealKeyFromProps;
 
 require("isDev");
 
@@ -14,8 +14,6 @@ ReactElement = require("ReactElement");
 
 assertType = require("assertType");
 
-wrapValue = require("wrapValue");
-
 setType = require("setType");
 
 setKind = require("setKind");
@@ -28,14 +26,10 @@ define = require("define");
 
 steal = require("steal");
 
-Kind = require("Kind");
-
-Void = require("Void");
-
-module.exports = ElementType = NamedFunction("ElementType", function(componentType, initProps) {
+ElementType = NamedFunction("ElementType", function(componentType, initProps) {
   var self;
-  assertType(componentType, Kind(Function));
-  assertType(initProps, [Function, Void]);
+  assertType(componentType, Function.Kind);
+  assertType(initProps, Function.Maybe);
   if (!initProps) {
     initProps = emptyFunction.thatReturnsArgument;
   }
@@ -69,7 +63,7 @@ module.exports = ElementType = NamedFunction("ElementType", function(componentTy
   return setType(self, ElementType);
 });
 
-setKind(ElementType, Function);
+module.exports = setKind(ElementType, Function);
 
 define(ElementType.prototype, "propTypes", {
   get: function() {

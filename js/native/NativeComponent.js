@@ -1,10 +1,12 @@
-var Component, ElementType, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, setChild, typeImpl;
+var Component, ElementType, NativeComponent, NativeProps, ReactElement, assertType, assertTypes, configTypes, hook, typeImpl;
 
 ReactElement = require("ReactElement");
 
 assertTypes = require("assertTypes");
 
 assertType = require("assertType");
+
+hook = require("hook");
 
 ElementType = require("../utils/ElementType");
 
@@ -29,10 +31,11 @@ module.exports = NativeComponent = function(name, config) {
     _renderChild: ElementType(config.render)
   });
   type.defineValues(typeImpl.values);
+  type.defineBoundMethods(typeImpl.boundMethods);
   type.defineListeners(typeImpl.listeners);
+  type.render(typeImpl.render);
   type.willReceiveProps(typeImpl.willReceiveProps);
   type.willUnmount(typeImpl.willUnmount);
-  type.render(typeImpl.render);
   return type.build();
 };
 
@@ -46,39 +49,42 @@ typeImpl.values = {
   }
 };
 
-typeImpl.render = function() {
-  var props;
-  props = this._nativeProps.values;
-  props.ref = setChild.bind(this);
-  return this._renderChild(props);
-};
-
-typeImpl.willReceiveProps = function(nextProps) {
-  return this._nativeProps.attach(nextProps);
+typeImpl.boundMethods = {
+  _hookRef: function(orig, view) {
+    if (view && this._queuedProps) {
+      view.setNativeProps(this._queuedProps);
+      this._queuedProps = null;
+    }
+    this.child = view;
+    orig(this);
+  }
 };
 
 typeImpl.listeners = function() {
   return this._nativeProps.didSet((function(_this) {
     return function(newProps) {
-      if (_this.child !== null) {
-        return _this.child.setNativeProps(newProps);
-      } else {
-        return _this._queuedProps = newProps;
+      if (_this.child === null) {
+        _this._queuedProps = newProps;
+        return;
       }
+      _this.child.setNativeProps(newProps);
     };
   })(this));
 };
 
-typeImpl.willUnmount = function() {
-  return this._nativeProps.detach();
+typeImpl.render = function() {
+  var props;
+  props = this._nativeProps.values;
+  hook(props, "ref", this._hookRef);
+  return this._renderChild(props);
 };
 
-setChild = function(view) {
-  this.child = view;
-  if (view && this._queuedProps) {
-    this.child.setNativeProps(this._queuedProps);
-    this._queuedProps = null;
-  }
+typeImpl.willUnmount = function() {
+  this._nativeProps.detach();
+};
+
+typeImpl.willReceiveProps = function(nextProps) {
+  this._nativeProps.attach(nextProps);
 };
 
 //# sourceMappingURL=map/NativeComponent.map
