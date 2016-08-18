@@ -95,7 +95,6 @@ instImpl.willBuild = ->
 instImpl.methods =
 
   render: ->
-    debugger if not @_delegate.__render
     @_delegate.__render()
 
   shouldComponentUpdate: (nextProps) ->

@@ -1,18 +1,10 @@
-var Component, ComponentBuilder, ElementType, Type, fromArgs, frozen, instImpl, isType, mergeDefaults, modx_Type, steal, sync, type, viewImpl;
+var Component, ComponentBuilder, ElementType, Type, frozen, instImpl, modx_Type, sync, type, viewImpl;
 
 frozen = require("Property").frozen;
 
-mergeDefaults = require("mergeDefaults");
-
-fromArgs = require("fromArgs");
-
-isType = require("isType");
-
-steal = require("steal");
+Type = require("Type");
 
 sync = require("sync");
-
-Type = require("Type");
 
 modx_Type = require("./Type");
 
@@ -109,86 +101,66 @@ type.initInstance(function() {
 
 module.exports = type.build();
 
-instImpl = {};
+instImpl = (function() {
+  return {
+    willBuild: function() {
+      var View;
+      View = this._componentType.build();
+      this.defineStatics({
+        View: View
+      });
+      if (!(this._kind instanceof modx_Type)) {
+        this.defineValues(instImpl.defineValues);
+        return this.defineGetters(instImpl.defineGetters);
+      }
+    },
+    defineValues: {
+      render: function() {
+        return ElementType(this.constructor.View, (function(_this) {
+          return function(props) {
+            props.delegate = _this;
+            return props;
+          };
+        })(this));
+      },
+      _props: null,
+      _view: null
+    },
+    defineGetters: {
+      props: function() {
+        return this._props;
+      },
+      view: function() {
+        return this._view;
+      }
+    }
+  };
+})();
 
-instImpl.willBuild = function() {
-  var View;
-  View = this._componentType.build();
-  this.defineStatics({
-    View: View
-  });
-  if (!(this._kind instanceof modx_Type)) {
-    this.defineValues(instImpl.values);
-    return this.defineGetters(instImpl.getters);
-  }
-};
-
-instImpl.values = {
-  render: function() {
-    var styles, transform;
-    styles = this._styles;
-    transform = styles && steal(styles, "transform");
-    return ElementType(this.constructor.View, (function(_this) {
-      return function(props) {
-        if (styles) {
-          if (isType(props.styles, Object)) {
-            mergeDefaults(props.styles, styles);
-            if (Array.isArray(transform)) {
-              if (Array.isArray(props.styles.transform)) {
-                props.styles.transform.concat(transform);
-              } else {
-                props.style.transform = transform;
-              }
-            }
-          } else {
-            mergeDefaults(props.styles = {}, styles);
-            props.styles.transform = transform;
-          }
-        }
-        props.delegate = _this;
-        return _this._props = props;
-      };
-    })(this));
-  },
-  _props: null,
-  _view: null,
-  _styles: fromArgs("styles")
-};
-
-instImpl.getters = {
-  props: function() {
-    return this._props;
-  },
-  view: function() {
-    return this._view;
-  }
-};
-
-viewImpl = {};
-
-viewImpl.willBuild = function() {
-  if (!(this._kind instanceof modx_Type)) {
-    return this.willBuild(function() {
-      this._initPhases.unshift(viewImpl.initInstance);
-      this._willUnmount.push(viewImpl.willUnmount);
-      return this.defineGetters(viewImpl.getters);
-    });
-  }
-};
-
-viewImpl.getters = {
-  _delegate: function() {
-    return this.props.delegate;
-  }
-};
-
-viewImpl.initInstance = function() {
-  return this._delegate._view = this;
-};
-
-viewImpl.willUnmount = function() {
-  this._props = null;
-  return this._view = null;
-};
+viewImpl = (function() {
+  return {
+    willBuild: function() {
+      if (!(this._kind instanceof modx_Type)) {
+        return this.willBuild(function() {
+          this._initPhases.unshift(viewImpl.initInstance);
+          this._willUnmount.push(viewImpl.willUnmount);
+          return this.defineGetters(viewImpl.defineGetters);
+        });
+      }
+    },
+    defineGetters: {
+      _delegate: function() {
+        return this.props.delegate;
+      }
+    },
+    initInstance: function() {
+      return this._delegate._view = this;
+    },
+    willUnmount: function() {
+      this._props = null;
+      return this._view = null;
+    }
+  };
+})();
 
 //# sourceMappingURL=map/TypeBuilder.map

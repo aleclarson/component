@@ -1,12 +1,8 @@
 
 {frozen} = require "Property"
 
-mergeDefaults = require "mergeDefaults"
-fromArgs = require "fromArgs"
-isType = require "isType"
-steal = require "steal"
-sync = require "sync"
 Type = require "Type"
+sync = require "sync"
 
 modx_Type = require "./Type"
 Component = require "./Component"
@@ -24,7 +20,7 @@ type.defineValues
   _componentType: ->
     name = if @_name then @_name + "_View" else null
     type = ComponentBuilder name
-    frozen.define type, "_delegate", { value: this }
+    frozen.define type, "_delegate", {value: this}
     return type
 
 type.overrideMethods
@@ -74,72 +70,56 @@ module.exports = type.build()
 
 # In this context, 'inst' is the model instance.
 # Thus 'instImpl' is the model factory.
-instImpl = {}
+instImpl = do ->
 
-instImpl.willBuild = ->
+  willBuild: ->
 
-  # Build the underlying component type.
-  View = @_componentType.build()
-  @defineStatics { View }
+    # Build the underlying component type.
+    View = @_componentType.build()
+    @defineStatics { View }
 
-  # Define once per inheritance chain.
-  unless @_kind instanceof modx_Type
-    @defineValues instImpl.values
-    @defineGetters instImpl.getters
+    # Define once per inheritance chain.
+    unless @_kind instanceof modx_Type
+      @defineValues instImpl.defineValues
+      @defineGetters instImpl.defineGetters
 
-instImpl.values =
+  defineValues:
 
-  render: ->
-    styles = @_styles
-    transform = styles and steal styles, "transform"
-    ElementType @constructor.View, (props) =>
+    render: ->
+      ElementType @constructor.View, (props) =>
+        props.delegate = this
+        return props
 
-      if styles
-        if isType props.styles, Object
-          mergeDefaults props.styles, styles
-          if Array.isArray transform
-            if Array.isArray props.styles.transform
-              props.styles.transform.concat transform
-            else props.style.transform = transform
-        else
-          mergeDefaults props.styles = {}, styles
-          props.styles.transform = transform
+    _props: null
 
-      props.delegate = this
-      return @_props = props
+    _view: null
 
-  _props: null
+  defineGetters:
 
-  _view: null
+    props: -> @_props
 
-  _styles: fromArgs "styles"
-
-instImpl.getters =
-
-  props: -> @_props
-
-  view: -> @_view
+    view: -> @_view
 
 # In this context, 'view' is the component instance.
 # Thus 'viewImpl' is the component factory.
-viewImpl = {}
+viewImpl = do ->
 
-viewImpl.willBuild = ->
+  willBuild: ->
 
-  # Define once per inheritance chain.
-  unless @_kind instanceof modx_Type
-    @willBuild -> # Try to be the very last phase.
-      @_initPhases.unshift viewImpl.initInstance
-      @_willUnmount.push viewImpl.willUnmount
-      @defineGetters viewImpl.getters
+    # Define once per inheritance chain.
+    unless @_kind instanceof modx_Type
+      @willBuild -> # Try to be the very last phase.
+        @_initPhases.unshift viewImpl.initInstance
+        @_willUnmount.push viewImpl.willUnmount
+        @defineGetters viewImpl.defineGetters
 
-viewImpl.getters =
+  defineGetters:
 
-  _delegate: -> @props.delegate
+    _delegate: -> @props.delegate
 
-viewImpl.initInstance = ->
-  @_delegate._view = this
+  initInstance: ->
+    @_delegate._view = this
 
-viewImpl.willUnmount = ->
-  @_props = null
-  @_view = null
+  willUnmount: ->
+    @_props = null
+    @_view = null

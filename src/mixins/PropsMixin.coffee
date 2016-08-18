@@ -16,8 +16,8 @@ sync = require "sync"
 has = require "has"
 
 module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
+  type.defineValues typeImpl.defineValues
+  type.defineMethods typeImpl.defineMethods
   type.initInstance typeImpl.initInstance
 
 ReactCompositeComponent = require "ReactCompositeComponent"
@@ -30,123 +30,130 @@ ReactCompositeComponent.Mixin._processProps = (props) ->
 # The 'type' is the Component.Builder constructor
 #
 
-typeImpl = {}
+typeImpl = do ->
 
-typeImpl.values =
+  defineValues: ->
 
-  _propPhases: -> []
+    _propPhases: []
 
-typeImpl.methods =
+  defineMethods:
 
-  defineProps: (props) ->
-    assertType props, Object
+    defineProps: (props) ->
+      assertType props, Object
 
-    if @_argTypes
-      throw Error "'argTypes' is already defined!"
+      if @_argTypes
+        throw Error "'argTypes' is already defined!"
 
-    propNames = []
-    propTypes = {}
-    propDefaults = {}
-    requiredTypes = {}
+      propNames = []
+      propTypes = {}
+      propDefaults = {}
+      requiredTypes = {}
 
-    sync.each props, (prop, name) ->
-      propNames.push name
+      sync.each props, (prop, name) ->
+        propNames.push name
 
-      if not isType prop, Object
-        propTypes[name] = prop
-        return
+        if not isType prop, Object
+          propTypes[name] = prop
+          return
 
-      if has prop, "default"
-        propDefaults[name] = prop.default
+        if has prop, "default"
+          propDefaults[name] = prop.default
 
-      if propType = prop.type
+        if propType = prop.type
 
-        if isType propType, Object
-          propType = Shape propType
+          if isType propType, Object
+            propType = Shape propType
 
-        if prop.required
-          requiredTypes[name] = yes
+          if prop.required
+            requiredTypes[name] = yes
 
-        propTypes[name] = propType
+          propTypes[name] = propType
 
-    @_propTypes = propTypes
+      @_propTypes = propTypes
 
-    @didBuild (type) ->
+      @didBuild (type) ->
 
-      if hasKeys propTypes
-        type.propTypes = propTypes
+        if hasKeys propTypes
+          type.propTypes = propTypes
 
-      if hasKeys propDefaults
-        type.propDefaults = propDefaults
+        if hasKeys propDefaults
+          type.propDefaults = propDefaults
 
-    @_propPhases.push (props) ->
-      for name in propNames
-        prop = props[name]
+      @_propPhases.push (props) ->
+        for name in propNames
+          prop = props[name]
 
-        if prop is undefined
+          if prop is undefined
 
-          if propDefaults[name] isnt undefined
-            props[name] = prop = propDefaults[name]
+            if propDefaults[name] isnt undefined
+              props[name] = prop = propDefaults[name]
 
-          else if not requiredTypes[name]
-            continue
+            else if not requiredTypes[name]
+              continue
 
-        if isDev
-          propType = propTypes[name]
-          propType and assertType prop, propType, "props." + name
+          if isDev
+            propType = propTypes[name]
+            propType and assertType prop, propType, "props." + name
 
-      return props
-    return
+        return props
+      return
 
-  replaceProps: (func) ->
-    assertType func, Function
-    @_propPhases.unshift func
-    return
+    replaceProps: (func) ->
+      assertType func, Function
+      @_propPhases.unshift func
+      return
 
-  initProps: (func) ->
-    assertType func, Function
-    @_propPhases.push (props) ->
-      func.call this, props
-      return props
-    return
+    initProps: (func) ->
+      assertType func, Function
+      @_propPhases.push (props) ->
+        func.call this, props
+        return props
+      return
 
-typeImpl.initInstance = ->
-  @willBuild instImpl.willBuild
+  initInstance: ->
+    @initInstance instImpl.initInstance
+    @willBuild instImpl.willBuild
 
 #
 # The 'instance' is a Component.Builder
 #
 
-instImpl = {}
+instImpl = do ->
 
-# NOTE: Inherited 'propPhases' come after the phases of the subtype.
-#       This allows for the subtype to edit the 'props' before the
-#       supertype gets to inspect them.
-instImpl.willBuild = ->
+  initInstance: ->
+    delegate = @_delegate
+    if delegate isnt this
+      delegate._props = @props
+    return
 
-  phases = @_propPhases
-  if phases.length
-    processProps = (props) ->
-      for phase in phases
-        props = phase.call null, props
-      return props
+  # NOTE: Inherited 'propPhases' come after the phases of the subtype.
+  #       This allows for the subtype to edit the 'props' before the
+  #       supertype gets to inspect them.
+  willBuild: ->
 
-  if superImpl = @_kind and @_kind::_processProps
-    processProps = superWrap processProps, superImpl
+    phases = @_propPhases
+    if phases.length
+      processProps = (props) ->
+        for phase in phases
+          props = phase.call null, props
+        return props
 
-  if processProps
-    @didBuild (type) ->
-      define type::, "_processProps",
-        value: processProps
+    if superImpl = @_kind and @_kind::_processProps
+      processProps = superWrap processProps, superImpl
 
-  # Try to be the last 'didBuild' phase.
-  @didBuild => @didBuild instImpl.didBuild
+    if processProps
+      @didBuild (type) ->
+        define type::, "_processProps",
+          value: processProps
 
-instImpl.didBuild = (type) ->
-  return if ReactComponent isnt getKind type
-  return if has type::, "_delegate"
-  define type::, "_delegate",
-    get: -> this
+    # Try to be the last 'didBuild' phase.
+    @didBuild => @didBuild instImpl.didBuild
+
+  didBuild: (type) ->
+    return if ReactComponent isnt getKind type
+    return if has type::, "_delegate"
+    define type::, "_delegate",
+      get: -> this
 
 # Wraps a 'processProps' static method
 # with the implementation of its supertype.

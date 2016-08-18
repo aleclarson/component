@@ -99,9 +99,6 @@ instImpl.willBuild = function() {
 
 instImpl.methods = {
   render: function() {
-    if (!this._delegate.__render) {
-      debugger;
-    }
     return this._delegate.__render();
   },
   shouldComponentUpdate: function(nextProps) {
