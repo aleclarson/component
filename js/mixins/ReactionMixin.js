@@ -1,4 +1,4 @@
-var Reaction, ValueMapper, assertType, baseImpl, createReaction, frozen, isType, sync, typeImpl;
+var Reaction, ValueMapper, assertType, baseImpl, bind, frozen, getReaction, isType, sync, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -6,9 +6,11 @@ ValueMapper = require("ValueMapper");
 
 assertType = require("assertType");
 
-Reaction = require("reaction");
+Reaction = require("Reaction");
 
 isType = require("isType");
+
+bind = require("bind");
 
 sync = require("sync");
 
@@ -20,7 +22,7 @@ typeImpl = {};
 
 typeImpl.methods = {
   defineReactions: function(reactions) {
-    var delegate, kind;
+    var defineReactions, delegate, kind;
     assertType(reactions, Object.or(Function));
     delegate = this._delegate;
     if (!this.__hasReactions) {
@@ -35,6 +37,16 @@ typeImpl.methods = {
         this._willUnmount.push(baseImpl.stopReactions);
       }
     }
+    if (isType(reactions, Object)) {
+      reactions = sync.map(reactions, function(value) {
+        if (isType(value, Function)) {
+          return {
+            get: value
+          };
+        }
+        return value;
+      });
+    }
     reactions = ValueMapper({
       values: reactions,
       define: function(obj, key, value) {
@@ -42,7 +54,7 @@ typeImpl.methods = {
         if (value === void 0) {
           return;
         }
-        reaction = createReaction(obj, key, value);
+        reaction = getReaction(obj, key, value);
         obj.__reactions[key] = reaction;
         return frozen.define(obj, key, {
           get: function() {
@@ -51,9 +63,10 @@ typeImpl.methods = {
         });
       }
     });
-    delegate._initPhases.push(function(args) {
-      return reactions.define(this, args);
-    });
+    defineReactions = function() {
+      return reactions.define(this);
+    };
+    delegate._initPhases.push(defineReactions);
   }
 };
 
@@ -89,27 +102,42 @@ baseImpl.startReactions = function() {
   }
 };
 
-createReaction = function(obj, key, value) {
-  var keyPath, options;
-  keyPath = obj.constructor.name + "." + key;
-  if (isType(value, Reaction)) {
-    if (value.keyPath == null) {
-      value.keyPath = keyPath;
+getReaction = (function() {
+  var bindClone, createOptions;
+  bindClone = function(values, context) {
+    var clone, key, value;
+    clone = {};
+    for (key in values) {
+      value = values[key];
+      clone[key] = isType(value, Function) ? bind.func(value, context) : value;
     }
-    return value;
-  }
-  if (isType(value, Function)) {
-    options = {
-      get: value,
-      keyPath: keyPath
-    };
-  } else if (isType(value, Object)) {
-    options = value;
+    return clone;
+  };
+  createOptions = function(arg, context) {
+    if (isType(arg, Object)) {
+      return bindClone(arg, context);
+    }
+    if (isType(arg, Function)) {
+      return {
+        get: bind.func(arg, context)
+      };
+    }
+    throw TypeError("Expected an Object or Function!");
+  };
+  return getReaction = function(obj, key, value) {
+    var options;
+    if (isType(value, Reaction)) {
+      if (value.keyPath == null) {
+        value.keyPath = obj.constructor.name + "." + key;
+      }
+      return value;
+    }
+    options = createOptions(value, obj);
     if (options.keyPath == null) {
-      options.keyPath = keyPath;
+      options.keyPath = obj.constructor.name + "." + key;
     }
-  }
-  return Reaction.sync(options);
-};
+    return Reaction.sync(options);
+  };
+})();
 
 //# sourceMappingURL=map/ReactionMixin.map

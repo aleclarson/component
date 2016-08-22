@@ -13,6 +13,7 @@ hasKeys = require "hasKeys"
 isType = require "isType"
 define = require "define"
 sync = require "sync"
+hook = require "hook"
 has = require "has"
 
 module.exports = (type) ->
@@ -21,7 +22,7 @@ module.exports = (type) ->
   type.initInstance typeImpl.initInstance
 
 ReactCompositeComponent = require "ReactCompositeComponent"
-ReactCompositeComponent.Mixin._processProps = (props) ->
+ReactCompositeComponent.Mixin._processProps = (props = {}) ->
   {processProps} = @_currentElement.type::
   if processProps then processProps props
   else props
@@ -30,7 +31,7 @@ ReactCompositeComponent.Mixin._processProps = (props) ->
 # The 'type' is the Component.Builder constructor
 #
 
-typeImpl = do ->
+typeImpl =
 
   defineValues: ->
 
@@ -118,7 +119,7 @@ typeImpl = do ->
 # The 'instance' is a Component.Builder
 #
 
-instImpl = do ->
+instImpl =
 
   initInstance: ->
     delegate = @_delegate
@@ -126,10 +127,16 @@ instImpl = do ->
       delegate._props = @props
     return
 
+  willReceiveProps: (orig, props) ->
+    orig.call this, props
+    if delegate = props.delegate
+      delegate._props = props
+    return
+
   # NOTE: Inherited 'propPhases' come after the phases of the subtype.
   #       This allows for the subtype to edit the 'props' before the
   #       supertype gets to inspect them.
-  willBuild: ->
+  willBuild: (type) ->
 
     phases = @_propPhases
     if phases.length
@@ -141,19 +148,16 @@ instImpl = do ->
     if superImpl = @_kind and @_kind::_processProps
       processProps = superWrap processProps, superImpl
 
-    if processProps
-      @didBuild (type) ->
-        define type::, "_processProps",
-          value: processProps
+    processProps and @didBuild (type) ->
+      define type::, "_processProps", {value: processProps}
 
-    # Try to be the last 'didBuild' phase.
-    @didBuild => @didBuild instImpl.didBuild
+    hook this, "_willReceiveProps", instImpl.willReceiveProps
+    @didBuild instImpl.didBuild
 
   didBuild: (type) ->
     return if ReactComponent isnt getKind type
     return if has type::, "_delegate"
-    define type::, "_delegate",
-      get: -> this
+    define type::, "_delegate", get: -> this
 
 # Wraps a 'processProps' static method
 # with the implementation of its supertype.

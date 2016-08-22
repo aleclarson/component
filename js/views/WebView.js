@@ -1,9 +1,11 @@
-var NativeComponent, render;
+var NativeComponent, WebView;
 
 NativeComponent = require("../native/NativeComponent");
 
-render = require("WebView");
+WebView = NativeComponent("WebView", {
+  render: require("WebView")
+});
 
-module.exports = NativeComponent("WebView", render);
+module.exports = WebView;
 
 //# sourceMappingURL=map/WebView.map

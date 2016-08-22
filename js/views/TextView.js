@@ -1,10 +1,10 @@
-var NativeComponent, Style;
+var NativeComponent, Style, TextView;
 
 NativeComponent = require("../native/NativeComponent");
 
 Style = require("../validators/Style");
 
-module.exports = NativeComponent("TextView", {
+TextView = NativeComponent("TextView", {
   render: require("Text"),
   propTypes: {
     style: Style,
@@ -16,5 +16,7 @@ module.exports = NativeComponent("TextView", {
     testID: String
   }
 });
+
+module.exports = TextView;
 
 //# sourceMappingURL=map/TextView.map

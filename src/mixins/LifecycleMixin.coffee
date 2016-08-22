@@ -1,5 +1,5 @@
 
-{frozen} = require "Property"
+{mutable} = require "Property"
 
 ReactComponent = require "ReactComponent"
 emptyFunction = require "emptyFunction"
@@ -24,23 +24,27 @@ typeImpl.values =
 
   _didMount: -> []
 
+  _willUpdate: -> []
+
+  _didUpdate: -> []
+
   _willUnmount: -> []
 
 typeImpl.methods =
 
   render: (func) ->
     assertType func, Function
-    frozen.define this, "_render", { value: func }
+    mutable.define this, "_render", {value: func}
     return
 
   shouldUpdate: (func) ->
     assertType func, Function
-    frozen.define this, "_shouldUpdate", { value: func }
+    mutable.define this, "_shouldUpdate", {value: func}
     return
 
   willReceiveProps: (func) ->
     assertType func, Function
-    frozen.define this, "_willReceiveProps", { value: func }
+    mutable.define this, "_willReceiveProps", {value: func}
     return
 
   willMount: (func) ->
@@ -51,6 +55,16 @@ typeImpl.methods =
   didMount: (func) ->
     assertType func, Function
     @_didMount.push func
+    return
+
+  willUpdate: (func) ->
+    assertType func, Function
+    @_willUpdate.push func
+    return
+
+  didUpdate: (func) ->
+    assertType func, Function
+    @_didUpdate.push func
     return
 
   willUnmount: (func) ->
@@ -78,18 +92,24 @@ instImpl.willBuild = ->
     @_delegate.defineMethods ownMethods
 
   else
-    inheritArray this, "_willMount", kind::__willMount
-    inheritArray this, "_didMount", kind::__didMount
-    inheritArray this, "_willUnmount", kind::__willUnmount
     @_render and ownMethods.__render = @_render
     @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
     @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
     @_delegate.overrideMethods ownMethods
+    inheritArrays this, do ->
+      {prototype} = kind
+      _willMount: prototype.__willMount
+      _didMount: prototype.__didMount
+      _willUpdate: prototype.__willUpdate
+      _didUpdate: prototype.__didUpdate
+      _willUnmount: prototype.__willUnmount
 
   # Define the arrays on the view to avoid crowding the delegate namespace.
   @definePrototype
     __willMount: @_willMount
     __didMount: @_didMount
+    __willUpdate: @_willUpdate
+    __didUpdate: @_didUpdate
     __willUnmount: @_willUnmount
 
 instImpl.methods =
@@ -109,12 +129,24 @@ instImpl.methods =
   componentDidMount: ->
     applyChain @__didMount, @_delegate
 
+  componentWillUpdate: ->
+    applyChain @__willUpdate, @_delegate
+
+  componentDidUpdate: ->
+    applyChain @__didUpdate, @_delegate
+
   componentWillUnmount: ->
     applyChain @__willUnmount, @_delegate
 
 #
 # Helpers
 #
+
+inheritArrays = (obj, arrayMap) ->
+  for key, array of arrayMap
+    if Array.isArray array
+      inheritArray obj, key, array
+  return
 
 inheritArray = (obj, key, inherited) ->
   assertType inherited, Array

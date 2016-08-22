@@ -1,4 +1,4 @@
-var Children, NativeComponent, OneOf, PointerEventType, Style;
+var Children, NativeComponent, OneOf, PointerEventType, Style, View;
 
 OneOf = require("OneOf");
 
@@ -10,7 +10,7 @@ Style = require("../validators/Style");
 
 PointerEventType = OneOf("PointerEventType", ["box-none", "none", "box-only", "auto"]);
 
-module.exports = NativeComponent("View", {
+View = NativeComponent("View", {
   render: require("View"),
   propTypes: {
     style: Style,
@@ -35,5 +35,7 @@ module.exports = NativeComponent("View", {
     collapsable: Boolean
   }
 });
+
+module.exports = View;
 
 //# sourceMappingURL=map/View.map

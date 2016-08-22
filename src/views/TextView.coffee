@@ -2,7 +2,7 @@
 NativeComponent = require "../native/NativeComponent"
 Style = require "../validators/Style"
 
-module.exports = NativeComponent "TextView",
+TextView = NativeComponent "TextView",
 
   render: require "Text"
 
@@ -14,3 +14,5 @@ module.exports = NativeComponent "TextView",
     allowFontScaling: Boolean
     suppressHighlighting: Boolean
     testID: String
+
+module.exports = TextView

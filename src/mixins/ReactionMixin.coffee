@@ -3,8 +3,9 @@
 
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
-Reaction = require "reaction"
+Reaction = require "Reaction"
 isType = require "isType"
+bind = require "bind"
 sync = require "sync"
 
 module.exports = (type) ->
@@ -34,16 +35,24 @@ typeImpl.methods =
         @_willMount.push baseImpl.startReactions
         @_willUnmount.push baseImpl.stopReactions
 
+    if isType reactions, Object
+      reactions = sync.map reactions, (value) ->
+        if isType value, Function
+          return {get: value}
+        return value
+
     reactions = ValueMapper
       values: reactions
       define: (obj, key, value) ->
         return if value is undefined
-        reaction = createReaction obj, key, value
+        reaction = getReaction obj, key, value
         obj.__reactions[key] = reaction
         frozen.define obj, key, get: -> reaction.value
 
-    delegate._initPhases.push (args) ->
-      reactions.define this, args
+    # NOTE: 'args' are not used here since Reactions would
+    #         only be able to access them on the first run.
+    defineReactions = -> reactions.define this
+    delegate._initPhases.push defineReactions
     return
 
 #
@@ -69,19 +78,37 @@ baseImpl.startReactions = ->
     reaction.start()
   return
 
-createReaction = (obj, key, value) ->
+#
+# Helpers
+#
 
-  keyPath = obj.constructor.name + "." + key
+getReaction = do ->
 
-  if isType value, Reaction
-    value.keyPath ?= keyPath
-    return value
+  bindClone = (values, context) ->
+    clone = {}
+    for key, value of values
+      clone[key] =
+        if isType value, Function
+          bind.func value, context
+        else value
+    return clone
 
-  if isType value, Function
-    options = { get: value, keyPath }
+  createOptions = (arg, context) ->
 
-  else if isType value, Object
-    options = value
-    options.keyPath ?= keyPath
+    if isType arg, Object
+      return bindClone arg, context
 
-  return Reaction.sync options
+    if isType arg, Function
+      return {get: bind.func arg, context}
+
+    throw TypeError "Expected an Object or Function!"
+
+  return getReaction = (obj, key, value) ->
+
+    if isType value, Reaction
+      value.keyPath ?= obj.constructor.name + "." + key
+      return value
+
+    options = createOptions value, obj
+    options.keyPath ?= obj.constructor.name + "." + key
+    return Reaction.sync options

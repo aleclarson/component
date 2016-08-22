@@ -1,8 +1,10 @@
-var AnimatedValue, Any, Event, Nan, NativeAnimation, NativeValue, Progress, Reaction, ReactionOptions, Tracer, Tracker, Type, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
+var AnimatedValue, Any, Event, NativeAnimation, NativeValue, Number, Progress, Reaction, ReactionOptions, Tracer, Tracker, Type, assertType, assertTypes, clampValue, configTypes, emptyFunction, isType, mergeDefaults, roundValue, steal, type;
 
 require("isDev");
 
 AnimatedValue = require("Animated").AnimatedValue;
+
+Number = require("Nan").Number;
 
 emptyFunction = require("emptyFunction");
 
@@ -33,8 +35,6 @@ steal = require("steal");
 Type = require("Type");
 
 Any = require("Any");
-
-Nan = require("Nan");
 
 NativeAnimation = require("./NativeAnimation");
 
@@ -181,7 +181,6 @@ type.definePrototype({
 
 type.defineMethods({
   setValue: function(newValue, config) {
-    assertType(newValue, Number);
     if (config == null) {
       config = {};
     }
@@ -349,15 +348,12 @@ type.defineMethods({
     if (this._value === newValue) {
       return;
     }
-    if (isDev && Nan.test(newValue)) {
-      throw Error("Unexpected NaN value!");
-    }
     this._value = newValue;
     this._dep.changed();
     return this.didSet.emit(newValue);
   },
   _attachReaction: function(options) {
-    var listener, reaction;
+    var reaction;
     if (isType(options, Object)) {
       if (options.keyPath == null) {
         options.keyPath = this.keyPath;
@@ -378,28 +374,23 @@ type.defineMethods({
     }
     isDev && (this._tracers.reaction = reaction._traceInit);
     this._reaction = reaction;
-    this.DEBUG && (this._reaction.DEBUG = true);
-    listener = reaction.didSet((function(_this) {
+    this._setValue(reaction.value);
+    return this._reactionListener = reaction.didSet((function(_this) {
       return function(value) {
         return _this._setValue(value);
       };
-    })(this));
-    this._reactionListener = listener.start();
-    this.DEBUG && (this._reactionListener.DEBUG = true);
-    return this._setValue(reaction.value);
+    })(this)).start();
   },
   _attachAnimated: function() {
-    var listener;
     if (this._animated) {
       return;
     }
     this._animated = new AnimatedValue(this._value);
-    listener = this._animated.didSet((function(_this) {
+    return this._animatedListener = this._animated.didSet((function(_this) {
       return function(value) {
         return _this._setValue(value);
       };
-    })(this));
-    return this._animatedListener = listener.start();
+    })(this)).start();
   },
   _detachReaction: function() {
     if (!this.isReactive) {

@@ -1,6 +1,6 @@
-var Builder, ReactComponent, applyChain, assertType, emptyFunction, frozen, inheritArray, instImpl, typeImpl;
+var Builder, ReactComponent, applyChain, assertType, emptyFunction, inheritArray, inheritArrays, instImpl, mutable, typeImpl;
 
-frozen = require("Property").frozen;
+mutable = require("Property").mutable;
 
 ReactComponent = require("ReactComponent");
 
@@ -27,6 +27,12 @@ typeImpl.values = {
   _didMount: function() {
     return [];
   },
+  _willUpdate: function() {
+    return [];
+  },
+  _didUpdate: function() {
+    return [];
+  },
   _willUnmount: function() {
     return [];
   }
@@ -35,19 +41,19 @@ typeImpl.values = {
 typeImpl.methods = {
   render: function(func) {
     assertType(func, Function);
-    frozen.define(this, "_render", {
+    mutable.define(this, "_render", {
       value: func
     });
   },
   shouldUpdate: function(func) {
     assertType(func, Function);
-    frozen.define(this, "_shouldUpdate", {
+    mutable.define(this, "_shouldUpdate", {
       value: func
     });
   },
   willReceiveProps: function(func) {
     assertType(func, Function);
-    frozen.define(this, "_willReceiveProps", {
+    mutable.define(this, "_willReceiveProps", {
       value: func
     });
   },
@@ -58,6 +64,14 @@ typeImpl.methods = {
   didMount: function(func) {
     assertType(func, Function);
     this._didMount.push(func);
+  },
+  willUpdate: function(func) {
+    assertType(func, Function);
+    this._willUpdate.push(func);
+  },
+  didUpdate: function(func) {
+    assertType(func, Function);
+    this._didUpdate.push(func);
   },
   willUnmount: function(func) {
     assertType(func, Function);
@@ -82,17 +96,27 @@ instImpl.willBuild = function() {
     ownMethods.__willReceiveProps = this._willReceiveProps || emptyFunction;
     this._delegate.defineMethods(ownMethods);
   } else {
-    inheritArray(this, "_willMount", kind.prototype.__willMount);
-    inheritArray(this, "_didMount", kind.prototype.__didMount);
-    inheritArray(this, "_willUnmount", kind.prototype.__willUnmount);
     this._render && (ownMethods.__render = this._render);
     this._shouldUpdate && (ownMethods.__shouldUpdate = this._shouldUpdate);
     this._willReceiveProps && (ownMethods.__willReceiveProps = this._willReceiveProps);
     this._delegate.overrideMethods(ownMethods);
+    inheritArrays(this, (function() {
+      var prototype;
+      prototype = kind.prototype;
+      return {
+        _willMount: prototype.__willMount,
+        _didMount: prototype.__didMount,
+        _willUpdate: prototype.__willUpdate,
+        _didUpdate: prototype.__didUpdate,
+        _willUnmount: prototype.__willUnmount
+      };
+    })());
   }
   return this.definePrototype({
     __willMount: this._willMount,
     __didMount: this._didMount,
+    __willUpdate: this._willUpdate,
+    __didUpdate: this._didUpdate,
     __willUnmount: this._willUnmount
   });
 };
@@ -113,8 +137,24 @@ instImpl.methods = {
   componentDidMount: function() {
     return applyChain(this.__didMount, this._delegate);
   },
+  componentWillUpdate: function() {
+    return applyChain(this.__willUpdate, this._delegate);
+  },
+  componentDidUpdate: function() {
+    return applyChain(this.__didUpdate, this._delegate);
+  },
   componentWillUnmount: function() {
     return applyChain(this.__willUnmount, this._delegate);
+  }
+};
+
+inheritArrays = function(obj, arrayMap) {
+  var array, key;
+  for (key in arrayMap) {
+    array = arrayMap[key];
+    if (Array.isArray(array)) {
+      inheritArray(obj, key, array);
+    }
   }
 };
 

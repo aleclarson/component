@@ -1,4 +1,4 @@
-var EdgeInsetsType, ImageResizeMode, ImageSource, NativeComponent, OneOf, RemoteImageSource, Shape, Style;
+var EdgeInsetsType, ImageResizeMode, ImageSource, ImageView, NativeComponent, OneOf, RemoteImageSource, Shape, Style;
 
 Shape = require("Shape");
 
@@ -23,7 +23,7 @@ EdgeInsetsType = Shape("EdgeInsetsType", {
   right: Number.Maybe
 });
 
-module.exports = NativeComponent("ImageView", {
+ImageView = NativeComponent("ImageView", {
   render: require("ImageView"),
   propTypes: {
     style: Style,
@@ -40,5 +40,7 @@ module.exports = NativeComponent("ImageView", {
     testID: String
   }
 });
+
+module.exports = ImageView;
 
 //# sourceMappingURL=map/ImageView.map

@@ -18,7 +18,7 @@ EdgeInsetsType = Shape "EdgeInsetsType", {
   right: Number.Maybe
 }
 
-module.exports = NativeComponent "ImageView",
+ImageView = NativeComponent "ImageView",
 
   render: require "ImageView"
 
@@ -35,3 +35,5 @@ module.exports = NativeComponent "ImageView",
     onLoad: Function
     onLoadEnd: Function
     testID: String
+
+module.exports = ImageView

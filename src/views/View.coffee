@@ -7,7 +7,7 @@ Style = require "../validators/Style"
 
 PointerEventType = OneOf "PointerEventType", [ "box-none", "none", "box-only", "auto" ]
 
-module.exports = NativeComponent "View",
+View = NativeComponent "View",
 
   render: require "View"
 
@@ -32,3 +32,5 @@ module.exports = NativeComponent "View",
     removeClippedSubviews: Boolean
     shouldRasterizeIOS: Boolean
     collapsable: Boolean
+
+module.exports = View

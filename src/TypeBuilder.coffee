@@ -35,7 +35,10 @@ type.overrideMethods
 
 type.willBuild ->
 
-  keys = { "propTypes", "propDefaults" }
+  keys = {
+    "propTypes"
+    "propDefaults"
+  }
 
   # Proxy both the getter and setter.
   @definePrototype sync.map keys, (key) ->
@@ -43,16 +46,36 @@ type.willBuild ->
     set: (newValue) ->
       @_componentType[key] = newValue
 
-  keys = { "defineProps", "render", "isRenderPrevented", "shouldUpdate"
-    "willReceiveProps", "willMount", "didMount", "willUnmount"
-    "defineNativeValues", "defineListeners", "defineReactions"
-    "defineStyles", "appendStyles", "overrideStyles" }
+  keys = {
+    "defineProps"
+    "render"
+    "isRenderPrevented"
+    "shouldUpdate"
+    "willReceiveProps"
+    "willMount"
+    "didMount"
+    "willUnmount"
+    "willUpdate"
+    "didUpdate"
+    "defineNativeValues"
+    "defineListeners"
+    "defineReactions"
+    "defineStyles"
+    "appendStyles"
+    "overrideStyles"
+  }
 
   # Proxy a 1-argument function.
   @definePrototype sync.map keys, (key) ->
-    value: (func) -> @_componentType[key] func
+    value: (arg) -> @_componentType[key] arg
 
-  keys = { "_willMount", "_didMount", "_willUnmount" }
+  keys = {
+    "_willMount"
+    "_didMount"
+    "_willUnmount"
+    "_willUpdate"
+    "_didUpdate"
+  }
 
   # Proxy just the getter.
   @definePrototype sync.map keys, (key) ->
@@ -70,7 +93,7 @@ module.exports = type.build()
 
 # In this context, 'inst' is the model instance.
 # Thus 'instImpl' is the model factory.
-instImpl = do ->
+instImpl =
 
   willBuild: ->
 
@@ -102,7 +125,7 @@ instImpl = do ->
 
 # In this context, 'view' is the component instance.
 # Thus 'viewImpl' is the component factory.
-viewImpl = do ->
+viewImpl =
 
   willBuild: ->
 

@@ -1,4 +1,4 @@
-var NativeValue, ValueMapper, assertType, baseImpl, frozen, isType, typeImpl;
+var NativeValue, ValueMapper, assertType, baseImpl, bind, frozen, isType, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -8,78 +8,83 @@ assertType = require("assertType");
 
 isType = require("isType");
 
+bind = require("bind");
+
 NativeValue = require("../native/NativeValue");
 
 module.exports = function(type) {
-  return type.defineMethods(typeImpl.methods);
+  return type.defineMethods(typeImpl.defineMethods);
 };
 
-typeImpl = {};
-
-typeImpl.methods = {
-  defineNativeValues: function(nativeValues) {
-    var delegate, kind;
-    assertType(nativeValues, Object.or(Function));
-    delegate = this._delegate;
-    if (!delegate.__hasNativeValues) {
-      frozen.define(delegate, "__hasNativeValues", {
-        value: true
-      });
-      kind = delegate._kind;
-      if (!(kind && kind.prototype.__hasNativeValues)) {
-        delegate.didBuild(baseImpl.didBuild);
-        delegate.initInstance(baseImpl.initInstance);
-        this._willMount.push(baseImpl.attachNativeValues);
-        this._willUnmount.push(baseImpl.detachNativeValues);
-      }
-    }
-    nativeValues = ValueMapper({
-      values: nativeValues,
-      define: function(obj, key, value) {
-        if (value === void 0) {
-          return;
-        }
-        obj.__nativeKeys.push(key);
-        return frozen.define(obj, key, {
-          value: value instanceof NativeValue ? value : NativeValue(value, obj.constructor.name + "." + key)
+typeImpl = {
+  defineMethods: {
+    defineNativeValues: function(nativeValues) {
+      var delegate, kind;
+      assertType(nativeValues, Object.or(Function));
+      delegate = this._delegate;
+      if (!delegate.__hasNativeValues) {
+        frozen.define(delegate, "__hasNativeValues", {
+          value: true
         });
+        kind = delegate._kind;
+        if (!(kind && kind.prototype.__hasNativeValues)) {
+          delegate.didBuild(baseImpl.didBuild);
+          delegate.initInstance(baseImpl.initInstance);
+          this._willMount.push(baseImpl.attachNativeValues);
+          this._willUnmount.push(baseImpl.detachNativeValues);
+        }
       }
-    });
-    delegate._initPhases.push(function(args) {
-      return nativeValues.define(this, args);
-    });
+      nativeValues = ValueMapper({
+        values: nativeValues,
+        define: function(obj, key, value) {
+          if (value === void 0) {
+            return;
+          }
+          if (!(value instanceof NativeValue)) {
+            if (isType(value, Function)) {
+              value = bind.func(value, obj);
+            }
+            value = NativeValue(value, obj.constructor.name + "." + key);
+          }
+          frozen.define(obj, key, {
+            value: value
+          });
+          obj.__nativeKeys.push(key);
+        }
+      });
+      delegate._initPhases.push(function(args) {
+        return nativeValues.define(this, args);
+      });
+    }
   }
 };
 
-baseImpl = {};
-
-baseImpl.didBuild = function(type) {
-  return frozen.define(type.prototype, "__hasNativeValues", {
-    value: true
-  });
-};
-
-baseImpl.initInstance = function() {
-  return frozen.define(this, "__nativeKeys", {
-    value: []
-  });
-};
-
-baseImpl.attachNativeValues = function() {
-  var i, key, len, ref;
-  ref = this.__nativeKeys;
-  for (i = 0, len = ref.length; i < len; i++) {
-    key = ref[i];
-    this[key].__attach();
-  }
-};
-
-baseImpl.detachNativeValues = function() {
-  var i, key, len, ref;
-  ref = this.__nativeKeys;
-  for (i = 0, len = ref.length; i < len; i++) {
-    key = ref[i];
-    this[key].__detach();
+baseImpl = {
+  didBuild: function(type) {
+    return frozen.define(type.prototype, "__hasNativeValues", {
+      value: true
+    });
+  },
+  initInstance: function() {
+    return frozen.define(this, "__nativeKeys", {
+      value: []
+    });
+  },
+  attachNativeValues: function() {
+    var i, key, len, ref;
+    ref = this.__nativeKeys;
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
+      this[key].__attach();
+    }
+  },
+  detachNativeValues: function() {
+    var i, key, len, ref;
+    ref = this.__nativeKeys;
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
+      this[key].__detach();
+    }
   }
 };
 

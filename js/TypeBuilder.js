@@ -66,6 +66,8 @@ type.willBuild(function() {
     "willMount": "willMount",
     "didMount": "didMount",
     "willUnmount": "willUnmount",
+    "willUpdate": "willUpdate",
+    "didUpdate": "didUpdate",
     "defineNativeValues": "defineNativeValues",
     "defineListeners": "defineListeners",
     "defineReactions": "defineReactions",
@@ -75,15 +77,17 @@ type.willBuild(function() {
   };
   this.definePrototype(sync.map(keys, function(key) {
     return {
-      value: function(func) {
-        return this._componentType[key](func);
+      value: function(arg) {
+        return this._componentType[key](arg);
       }
     };
   }));
   keys = {
     "_willMount": "_willMount",
     "_didMount": "_didMount",
-    "_willUnmount": "_willUnmount"
+    "_willUnmount": "_willUnmount",
+    "_willUpdate": "_willUpdate",
+    "_didUpdate": "_didUpdate"
   };
   return this.definePrototype(sync.map(keys, function(key) {
     return {
@@ -101,66 +105,62 @@ type.initInstance(function() {
 
 module.exports = type.build();
 
-instImpl = (function() {
-  return {
-    willBuild: function() {
-      var View;
-      View = this._componentType.build();
-      this.defineStatics({
-        View: View
-      });
-      if (!(this._kind instanceof modx_Type)) {
-        this.defineValues(instImpl.defineValues);
-        return this.defineGetters(instImpl.defineGetters);
-      }
-    },
-    defineValues: {
-      render: function() {
-        return ElementType(this.constructor.View, (function(_this) {
-          return function(props) {
-            props.delegate = _this;
-            return props;
-          };
-        })(this));
-      },
-      _props: null,
-      _view: null
-    },
-    defineGetters: {
-      props: function() {
-        return this._props;
-      },
-      view: function() {
-        return this._view;
-      }
+instImpl = {
+  willBuild: function() {
+    var View;
+    View = this._componentType.build();
+    this.defineStatics({
+      View: View
+    });
+    if (!(this._kind instanceof modx_Type)) {
+      this.defineValues(instImpl.defineValues);
+      return this.defineGetters(instImpl.defineGetters);
     }
-  };
-})();
+  },
+  defineValues: {
+    render: function() {
+      return ElementType(this.constructor.View, (function(_this) {
+        return function(props) {
+          props.delegate = _this;
+          return props;
+        };
+      })(this));
+    },
+    _props: null,
+    _view: null
+  },
+  defineGetters: {
+    props: function() {
+      return this._props;
+    },
+    view: function() {
+      return this._view;
+    }
+  }
+};
 
-viewImpl = (function() {
-  return {
-    willBuild: function() {
-      if (!(this._kind instanceof modx_Type)) {
-        return this.willBuild(function() {
-          this._initPhases.unshift(viewImpl.initInstance);
-          this._willUnmount.push(viewImpl.willUnmount);
-          return this.defineGetters(viewImpl.defineGetters);
-        });
-      }
-    },
-    defineGetters: {
-      _delegate: function() {
-        return this.props.delegate;
-      }
-    },
-    initInstance: function() {
-      return this._delegate._view = this;
-    },
-    willUnmount: function() {
-      this._props = null;
-      return this._view = null;
+viewImpl = {
+  willBuild: function() {
+    if (!(this._kind instanceof modx_Type)) {
+      return this.willBuild(function() {
+        this._initPhases.unshift(viewImpl.initInstance);
+        this._willUnmount.push(viewImpl.willUnmount);
+        return this.defineGetters(viewImpl.defineGetters);
+      });
     }
-  };
-})();
+  },
+  defineGetters: {
+    _delegate: function() {
+      return this.props.delegate;
+    }
+  },
+  initInstance: function() {
+    return this._delegate._view = this;
+  },
+  willUnmount: function() {
+    this._props = null;
+    return this._view = null;
+  }
+};
 
 //# sourceMappingURL=map/TypeBuilder.map

@@ -2,6 +2,7 @@
 require "isDev"
 
 {AnimatedValue} = require "Animated"
+{Number} = require "Nan"
 
 emptyFunction = require "emptyFunction"
 mergeDefaults = require "mergeDefaults"
@@ -18,7 +19,6 @@ Event = require "Event"
 steal = require "steal"
 Type = require "Type"
 Any = require "Any"
-Nan = require "Nan"
 
 NativeAnimation = require "./NativeAnimation"
 
@@ -133,11 +133,7 @@ type.definePrototype
 
 type.defineMethods
 
-  setValue: (newValue, config) ->
-
-    assertType newValue, Number
-
-    config ?= {}
+  setValue: (newValue, config = {}) ->
 
     unless config.clamp?
       config.clamp = @_clamp
@@ -297,12 +293,7 @@ type.defineMethods
     toValue: @_toValue
 
   _setValue: (newValue) ->
-
     return if @_value is newValue
-
-    if isDev and Nan.test newValue
-      throw Error "Unexpected NaN value!"
-
     @_value = newValue
     @_dep.changed()
     @didSet.emit newValue
@@ -320,26 +311,24 @@ type.defineMethods
 
     if @isReactive
       @_detachReaction()
-
     else
       @_detachAnimated()
 
-    isDev and @_tracers.reaction = reaction._traceInit
+    isDev and
+    @_tracers.reaction = reaction._traceInit
 
     @_reaction = reaction
-    @DEBUG and @_reaction.DEBUG = yes
-
-    listener = reaction.didSet (value) => @_setValue value
-    @_reactionListener = listener.start()
-    @DEBUG and @_reactionListener.DEBUG = yes
-
     @_setValue reaction.value
+    @_reactionListener = reaction
+      .didSet (value) => @_setValue value
+      .start()
 
   _attachAnimated: ->
     return if @_animated
     @_animated = new AnimatedValue @_value
-    listener = @_animated.didSet (value) => @_setValue value
-    @_animatedListener = listener.start()
+    @_animatedListener = @_animated
+      .didSet (value) => @_setValue value
+      .start()
 
   _detachReaction: ->
     return unless @isReactive
