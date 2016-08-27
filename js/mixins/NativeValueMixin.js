@@ -1,4 +1,4 @@
-var NativeValue, ValueMapper, assertType, baseImpl, bind, frozen, isType, typeImpl;
+var NativeValue, ValueMapper, assertType, baseImpl, bind, frozen, isType, sync, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -9,6 +9,8 @@ assertType = require("assertType");
 isType = require("isType");
 
 bind = require("bind");
+
+sync = require("sync");
 
 NativeValue = require("../native/NativeValue");
 
@@ -34,6 +36,16 @@ typeImpl = {
           this._willUnmount.push(baseImpl.detachNativeValues);
         }
       }
+      if (isType(nativeValues, Object)) {
+        nativeValues = sync.map(nativeValues, function(value) {
+          if (isType(value, Function)) {
+            return function() {
+              return bind.func(value, this);
+            };
+          }
+          return value;
+        });
+      }
       nativeValues = ValueMapper({
         values: nativeValues,
         define: function(obj, key, value) {
@@ -41,9 +53,6 @@ typeImpl = {
             return;
           }
           if (!(value instanceof NativeValue)) {
-            if (isType(value, Function)) {
-              value = bind.func(value, obj);
-            }
             value = NativeValue(value, obj.constructor.name + "." + key);
           }
           frozen.define(obj, key, {

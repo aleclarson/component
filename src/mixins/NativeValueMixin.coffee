@@ -5,6 +5,7 @@ ValueMapper = require "ValueMapper"
 assertType = require "assertType"
 isType = require "isType"
 bind = require "bind"
+sync = require "sync"
 
 NativeValue = require "../native/NativeValue"
 
@@ -34,13 +35,17 @@ typeImpl =
           @_willMount.push baseImpl.attachNativeValues
           @_willUnmount.push baseImpl.detachNativeValues
 
+      if isType nativeValues, Object
+        nativeValues = sync.map nativeValues, (value) ->
+          if isType value, Function
+            return -> bind.func value, this
+          return value
+
       nativeValues = ValueMapper
         values: nativeValues
         define: (obj, key, value) ->
           return if value is undefined
           unless value instanceof NativeValue
-            if isType value, Function
-              value = bind.func value, obj
             value = NativeValue value, obj.constructor.name + "." + key
           frozen.define obj, key, {value}
           obj.__nativeKeys.push key

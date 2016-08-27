@@ -95,11 +95,9 @@ type.defineMethods({
     assertType(config, Object);
     assertType(config.type, Function.Kind);
     if (this._onUpdate) {
-      onUpdate = this._onUpdate && this._animated.didSet(this._onUpdate);
-      onUpdate.start();
+      onUpdate = this._animated.didSet(this._onUpdate).start();
     }
-    this._animation = config.type(config);
-    this._animated.animate(this._animation);
+    this._animation = this._animated.animate(config.type(config));
     if (!this.isActive) {
       onUpdate && onUpdate.detach();
       immediate((function(_this) {

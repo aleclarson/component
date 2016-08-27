@@ -40,8 +40,8 @@ typeImpl.methods = {
     if (isType(reactions, Object)) {
       reactions = sync.map(reactions, function(value) {
         if (isType(value, Function)) {
-          return {
-            get: value
+          return function() {
+            return value;
           };
         }
         return value;

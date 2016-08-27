@@ -69,11 +69,12 @@ type.defineMethods
     assertType config.type, Function.Kind
 
     if @_onUpdate
-      onUpdate = @_onUpdate and @_animated.didSet @_onUpdate
-      onUpdate.start()
+      onUpdate = @_animated
+        .didSet @_onUpdate
+        .start()
 
-    @_animation = config.type config
-    @_animated.animate @_animation
+    # Start the animation.
+    @_animation = @_animated.animate config.type config
 
     # Detect instant animations.
     if not @isActive

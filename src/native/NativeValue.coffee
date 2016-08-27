@@ -31,7 +31,8 @@ type.defineArgs
   keyPath: String
 
 type.returnExisting (value) ->
-  return value if value instanceof NativeValue
+  if isDev and value instanceof NativeValue
+    throw Error "'value' cannot inherit from NativeValue!"
 
 type.trace()
 

@@ -48,8 +48,8 @@ type.defineArgs({
 });
 
 type.returnExisting(function(value) {
-  if (value instanceof NativeValue) {
-    return value;
+  if (isDev && value instanceof NativeValue) {
+    throw Error("'value' cannot inherit from NativeValue!");
   }
 });
 

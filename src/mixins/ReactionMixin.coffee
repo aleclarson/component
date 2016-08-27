@@ -38,7 +38,7 @@ typeImpl.methods =
     if isType reactions, Object
       reactions = sync.map reactions, (value) ->
         if isType value, Function
-          return {get: value}
+          return -> value
         return value
 
     reactions = ValueMapper
