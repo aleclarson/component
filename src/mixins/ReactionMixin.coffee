@@ -47,7 +47,9 @@ typeImpl.methods =
         return if value is undefined
         reaction = getReaction obj, key, value
         obj.__reactions[key] = reaction
-        frozen.define obj, key, get: -> reaction.value
+        if reaction._cacheResult
+          frozen.define obj, key,
+            get: -> reaction.value
 
     # NOTE: 'args' are not used here since Reactions would
     #         only be able to access them on the first run.

@@ -56,11 +56,13 @@ typeImpl.methods = {
         }
         reaction = getReaction(obj, key, value);
         obj.__reactions[key] = reaction;
-        return frozen.define(obj, key, {
-          get: function() {
-            return reaction.value;
-          }
-        });
+        if (reaction._cacheResult) {
+          return frozen.define(obj, key, {
+            get: function() {
+              return reaction.value;
+            }
+          });
+        }
       }
     });
     defineReactions = function() {
