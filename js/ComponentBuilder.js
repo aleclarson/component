@@ -14,14 +14,14 @@ type.inherits(Builder);
 
 type.trace();
 
-type.initInstance(function() {
-  return this._defaultKind = ReactComponent;
-});
-
 type.defineGetters({
   _delegate: function() {
     return this;
   }
+});
+
+type.definePrototype({
+  _defaultKind: ReactComponent
 });
 
 type.overrideMethods({

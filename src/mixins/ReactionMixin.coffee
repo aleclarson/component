@@ -32,8 +32,6 @@ typeImpl.methods =
       unless kind and kind::__hasReactions
         delegate.didBuild baseImpl.didBuild
         delegate.initInstance baseImpl.initInstance
-        @_willMount.push baseImpl.startReactions
-        @_willUnmount.push baseImpl.stopReactions
 
     if isType reactions, Object
       reactions = sync.map reactions, (value) ->
@@ -46,39 +44,27 @@ typeImpl.methods =
       define: (obj, key, value) ->
         return if value is undefined
         reaction = getReaction obj, key, value
-        obj.__reactions[key] = reaction
-        if reaction._cacheResult
-          frozen.define obj, key,
-            get: -> reaction.value
+        frozen.define obj, key, {value: reaction}
+        reaction.start()
 
     # NOTE: 'args' are not used here since Reactions would
     #         only be able to access them on the first run.
     defineReactions = -> reactions.define this
-    delegate._initPhases.push defineReactions
+    delegate._phases.init.push defineReactions
     return
 
 #
 # The 'base' is the first type in the inheritance chain to define reactions.
 #
 
-baseImpl = {}
+baseImpl =
 
-baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, "__hasReactions", { value: yes }
+  didBuild: (type) ->
+    frozen.define type.prototype, "__hasReactions", { value: yes }
 
-baseImpl.initInstance = ->
-  frozen.define this, "__reactions",
-    value: Object.create null
-
-baseImpl.stopReactions = ->
-  for key, reaction of @__reactions
-    reaction.stop()
-  return
-
-baseImpl.startReactions = ->
-  for key, reaction of @__reactions
-    reaction.start()
-  return
+  initInstance: ->
+    frozen.define this, "__reactions",
+      value: Object.create null
 
 #
 # Helpers
@@ -86,22 +72,10 @@ baseImpl.startReactions = ->
 
 getReaction = do ->
 
-  bindClone = (values, context) ->
-    clone = {}
-    for key, value of values
-      clone[key] =
-        if isType value, Function
-          bind.func value, context
-        else value
-    return clone
-
   createOptions = (arg, context) ->
 
-    if isType arg, Object
-      return bindClone arg, context
-
     if isType arg, Function
-      return {get: bind.func arg, context}
+      return
 
     throw TypeError "Expected an Object or Function!"
 
@@ -111,6 +85,9 @@ getReaction = do ->
       value.keyPath ?= obj.constructor.name + "." + key
       return value
 
-    options = createOptions value, obj
+    if isType value, Function
+      options = {get: bind.func value, obj}
+    else options = value
+
     options.keyPath ?= obj.constructor.name + "." + key
-    return Reaction.sync options
+    return Reaction options

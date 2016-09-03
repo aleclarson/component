@@ -3,21 +3,18 @@
 
 require "isDev"
 
+{mutable, frozen} = require "Property"
+
 ReactComponent = require "ReactComponent"
-emptyFunction = require "emptyFunction"
-mergeDefaults = require "mergeDefaults"
-assertTypes = require "assertTypes"
 assertType = require "assertType"
 getKind = require "getKind"
 hasKeys = require "hasKeys"
 isType = require "isType"
-define = require "define"
 sync = require "sync"
 hook = require "hook"
 has = require "has"
 
 module.exports = (type) ->
-  type.defineValues typeImpl.defineValues
   type.defineMethods typeImpl.defineMethods
   type.initInstance typeImpl.initInstance
 
@@ -32,10 +29,6 @@ ReactCompositeComponent.Mixin._processProps = (props = {}) ->
 #
 
 typeImpl =
-
-  defineValues: ->
-
-    _propPhases: []
 
   defineMethods:
 
@@ -70,7 +63,7 @@ typeImpl =
 
           propTypes[name] = propType
 
-      @_propTypes = propTypes
+      frozen.define this, "_propTypes", {value: propTypes}
 
       @didBuild (type) ->
 
@@ -80,7 +73,7 @@ typeImpl =
         if hasKeys propDefaults
           type.propDefaults = propDefaults
 
-      @_propPhases.push (props) ->
+      @_phases.props.push (props) ->
         for name in propNames
           prop = props[name]
 
@@ -101,17 +94,18 @@ typeImpl =
 
     replaceProps: (func) ->
       assertType func, Function
-      @_propPhases.unshift func
+      @_phases.props.unshift func
       return
 
     initProps: (func) ->
       assertType func, Function
-      @_propPhases.push (props) ->
+      @_phases.props.push (props) ->
         func.call this, props
         return props
       return
 
   initInstance: ->
+    @_phases.props = []
     @initInstance instImpl.initInstance
     @willBuild instImpl.willBuild
 
@@ -138,10 +132,10 @@ instImpl =
   #       supertype gets to inspect them.
   willBuild: (type) ->
 
-    phases = @_propPhases
-    if phases.length
+    propPhases = @_phases.props
+    if propPhases.length
       processProps = (props) ->
-        for phase in phases
+        for phase in propPhases
           props = phase.call null, props
         return props
 
@@ -149,7 +143,7 @@ instImpl =
       processProps = superWrap processProps, superImpl
 
     processProps and @didBuild (type) ->
-      define type::, "_processProps", {value: processProps}
+      frozen.define type::, "_processProps", {value: processProps}
 
     hook this, "_willReceiveProps", instImpl.willReceiveProps
     @didBuild instImpl.didBuild
@@ -157,7 +151,7 @@ instImpl =
   didBuild: (type) ->
     return if ReactComponent isnt getKind type
     return if has type::, "_delegate"
-    define type::, "_delegate", get: -> this
+    mutable.define type::, "_delegate", {get: -> this}
 
 # Wraps a 'processProps' static method
 # with the implementation of its supertype.

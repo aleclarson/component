@@ -28,7 +28,7 @@ NativeComponent = (name, config) ->
 
   type.defineValues typeImpl.values
   type.defineBoundMethods typeImpl.boundMethods
-  type.defineListeners typeImpl.listeners
+  type.defineMountedListeners typeImpl.mountedListeners
   type.render typeImpl.render
   type.willReceiveProps typeImpl.willReceiveProps
   type.willUnmount typeImpl.willUnmount
@@ -44,7 +44,7 @@ typeImpl = {}
 
 typeImpl.values =
 
-  child: null
+  _child: null
 
   _queuedProps: null
 
@@ -53,26 +53,28 @@ typeImpl.values =
 
 typeImpl.boundMethods =
 
+  setNativeProps: (newProps) ->
+
+    if @_child is null
+      @_queuedProps = newProps
+      return
+
+    @_child.setNativeProps newProps
+    return
+
   _hookRef: (orig, view) ->
 
     if view and @_queuedProps
       view.setNativeProps @_queuedProps
       @_queuedProps = null
 
-    @child = view
+    @_child = view
     orig this
     return
 
-typeImpl.listeners = ->
+typeImpl.mountedListeners = ->
 
-  @_nativeProps.didSet (newProps) =>
-
-    if @child is null
-      @_queuedProps = newProps
-      return
-
-    @child.setNativeProps newProps
-    return
+  @_nativeProps.didSet @setNativeProps
 
 #
 # Rendering

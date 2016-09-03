@@ -8,7 +8,6 @@ applyChain = require "applyChain"
 Builder = require "Builder"
 
 module.exports = (type) ->
-  type.defineValues typeImpl.values
   type.defineMethods typeImpl.methods
   type.initInstance typeImpl.initInstance
 
@@ -17,18 +16,6 @@ module.exports = (type) ->
 #
 
 typeImpl = {}
-
-typeImpl.values =
-
-  _willMount: -> []
-
-  _didMount: -> []
-
-  _willUpdate: -> []
-
-  _didUpdate: -> []
-
-  _willUnmount: -> []
 
 typeImpl.methods =
 
@@ -49,30 +36,35 @@ typeImpl.methods =
 
   willMount: (func) ->
     assertType func, Function
-    @_willMount.push func
+    @_phases.willMount.push func
     return
 
   didMount: (func) ->
     assertType func, Function
-    @_didMount.push func
+    @_phases.didMount.push func
     return
 
   willUpdate: (func) ->
     assertType func, Function
-    @_willUpdate.push func
+    @_phases.willUpdate.push func
     return
 
   didUpdate: (func) ->
     assertType func, Function
-    @_didUpdate.push func
+    @_phases.didUpdate.push func
     return
 
   willUnmount: (func) ->
     assertType func, Function
-    @_willUnmount.push func
+    @_phases.willUnmount.push func
     return
 
 typeImpl.initInstance = ->
+  @_phases.willMount = []
+  @_phases.didMount = []
+  @_phases.willUpdate = []
+  @_phases.didUpdate = []
+  @_phases.willUnmount = []
   @willBuild instImpl.willBuild
 
 # In this context, 'inst' is a component factory.
@@ -96,21 +88,20 @@ instImpl.willBuild = ->
     @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
     @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
     @_delegate.overrideMethods ownMethods
-    inheritArrays this, do ->
-      {prototype} = kind
-      _willMount: prototype.__willMount
-      _didMount: prototype.__didMount
-      _willUpdate: prototype.__willUpdate
-      _didUpdate: prototype.__didUpdate
-      _willUnmount: prototype.__willUnmount
+    inheritArrays @_phases,
+      willMount: kind::__willMount
+      didMount: kind::__didMount
+      willUpdate: kind::__willUpdate
+      didUpdate: kind::__didUpdate
+      willUnmount: kind::__willUnmount
 
   # Define the arrays on the view to avoid crowding the delegate namespace.
   @definePrototype
-    __willMount: @_willMount
-    __didMount: @_didMount
-    __willUpdate: @_willUpdate
-    __didUpdate: @_didUpdate
-    __willUnmount: @_willUnmount
+    __willMount: @_phases.willMount
+    __didMount: @_phases.didMount
+    __willUpdate: @_phases.willUpdate
+    __didUpdate: @_phases.didUpdate
+    __willUnmount: @_phases.willUnmount
 
 instImpl.methods =
 

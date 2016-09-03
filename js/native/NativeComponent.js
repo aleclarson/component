@@ -32,7 +32,7 @@ module.exports = NativeComponent = function(name, config) {
   });
   type.defineValues(typeImpl.values);
   type.defineBoundMethods(typeImpl.boundMethods);
-  type.defineListeners(typeImpl.listeners);
+  type.defineMountedListeners(typeImpl.mountedListeners);
   type.render(typeImpl.render);
   type.willReceiveProps(typeImpl.willReceiveProps);
   type.willUnmount(typeImpl.willUnmount);
@@ -42,7 +42,7 @@ module.exports = NativeComponent = function(name, config) {
 typeImpl = {};
 
 typeImpl.values = {
-  child: null,
+  _child: null,
   _queuedProps: null,
   _nativeProps: function() {
     return NativeProps(this.props, this.constructor.propTypes);
@@ -50,26 +50,25 @@ typeImpl.values = {
 };
 
 typeImpl.boundMethods = {
+  setNativeProps: function(newProps) {
+    if (this._child === null) {
+      this._queuedProps = newProps;
+      return;
+    }
+    this._child.setNativeProps(newProps);
+  },
   _hookRef: function(orig, view) {
     if (view && this._queuedProps) {
       view.setNativeProps(this._queuedProps);
       this._queuedProps = null;
     }
-    this.child = view;
+    this._child = view;
     orig(this);
   }
 };
 
-typeImpl.listeners = function() {
-  return this._nativeProps.didSet((function(_this) {
-    return function(newProps) {
-      if (_this.child === null) {
-        _this._queuedProps = newProps;
-        return;
-      }
-      _this.child.setNativeProps(newProps);
-    };
-  })(this));
+typeImpl.mountedListeners = function() {
+  return this._nativeProps.didSet(this.setNativeProps);
 };
 
 typeImpl.render = function() {

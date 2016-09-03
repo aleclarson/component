@@ -33,8 +33,6 @@ typeImpl.methods = {
       if (!(kind && kind.prototype.__hasReactions)) {
         delegate.didBuild(baseImpl.didBuild);
         delegate.initInstance(baseImpl.initInstance);
-        this._willMount.push(baseImpl.startReactions);
-        this._willUnmount.push(baseImpl.stopReactions);
       }
     }
     if (isType(reactions, Object)) {
@@ -55,74 +53,37 @@ typeImpl.methods = {
           return;
         }
         reaction = getReaction(obj, key, value);
-        obj.__reactions[key] = reaction;
-        if (reaction._cacheResult) {
-          return frozen.define(obj, key, {
-            get: function() {
-              return reaction.value;
-            }
-          });
-        }
+        frozen.define(obj, key, {
+          value: reaction
+        });
+        return reaction.start();
       }
     });
     defineReactions = function() {
       return reactions.define(this);
     };
-    delegate._initPhases.push(defineReactions);
+    delegate._phases.init.push(defineReactions);
   }
 };
 
-baseImpl = {};
-
-baseImpl.didBuild = function(type) {
-  return frozen.define(type.prototype, "__hasReactions", {
-    value: true
-  });
-};
-
-baseImpl.initInstance = function() {
-  return frozen.define(this, "__reactions", {
-    value: Object.create(null)
-  });
-};
-
-baseImpl.stopReactions = function() {
-  var key, reaction, ref;
-  ref = this.__reactions;
-  for (key in ref) {
-    reaction = ref[key];
-    reaction.stop();
-  }
-};
-
-baseImpl.startReactions = function() {
-  var key, reaction, ref;
-  ref = this.__reactions;
-  for (key in ref) {
-    reaction = ref[key];
-    reaction.start();
+baseImpl = {
+  didBuild: function(type) {
+    return frozen.define(type.prototype, "__hasReactions", {
+      value: true
+    });
+  },
+  initInstance: function() {
+    return frozen.define(this, "__reactions", {
+      value: Object.create(null)
+    });
   }
 };
 
 getReaction = (function() {
-  var bindClone, createOptions;
-  bindClone = function(values, context) {
-    var clone, key, value;
-    clone = {};
-    for (key in values) {
-      value = values[key];
-      clone[key] = isType(value, Function) ? bind.func(value, context) : value;
-    }
-    return clone;
-  };
+  var createOptions;
   createOptions = function(arg, context) {
-    if (isType(arg, Object)) {
-      return bindClone(arg, context);
-    }
     if (isType(arg, Function)) {
-      return {
-        get: bind.func(arg, context)
-      };
+      return;
     }
     throw TypeError("Expected an Object or Function!");
   };
@@ -134,11 +95,17 @@ getReaction = (function() {
       }
       return value;
     }
-    options = createOptions(value, obj);
+    if (isType(value, Function)) {
+      options = {
+        get: bind.func(value, obj)
+      };
+    } else {
+      options = value;
+    }
     if (options.keyPath == null) {
       options.keyPath = obj.constructor.name + "." + key;
     }
-    return Reaction.sync(options);
+    return Reaction(options);
   };
 })();
 

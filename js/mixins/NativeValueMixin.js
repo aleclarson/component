@@ -32,8 +32,6 @@ typeImpl = {
         if (!(kind && kind.prototype.__hasNativeValues)) {
           delegate.didBuild(baseImpl.didBuild);
           delegate.initInstance(baseImpl.initInstance);
-          this._willMount.push(baseImpl.attachNativeValues);
-          this._willUnmount.push(baseImpl.detachNativeValues);
         }
       }
       if (isType(nativeValues, Object)) {
@@ -55,13 +53,18 @@ typeImpl = {
           if (!(value instanceof NativeValue)) {
             value = NativeValue(value, obj.constructor.name + "." + key);
           }
-          frozen.define(obj, key, {
-            value: value
-          });
+          if (isDev) {
+            frozen.define(obj, key, {
+              value: value
+            });
+          } else {
+            obj[key] = value;
+          }
           obj.__nativeKeys.push(key);
+          value.__attach();
         }
       });
-      delegate._initPhases.push(function(args) {
+      delegate._phases.init.push(function(args) {
         return nativeValues.define(this, args);
       });
     }
@@ -78,22 +81,6 @@ baseImpl = {
     return frozen.define(this, "__nativeKeys", {
       value: []
     });
-  },
-  attachNativeValues: function() {
-    var i, key, len, ref;
-    ref = this.__nativeKeys;
-    for (i = 0, len = ref.length; i < len; i++) {
-      key = ref[i];
-      this[key].__attach();
-    }
-  },
-  detachNativeValues: function() {
-    var i, key, len, ref;
-    ref = this.__nativeKeys;
-    for (i = 0, len = ref.length; i < len; i++) {
-      key = ref[i];
-      this[key].__detach();
-    }
   }
 };
 

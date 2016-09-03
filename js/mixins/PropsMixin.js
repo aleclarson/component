@@ -1,14 +1,10 @@
-var ReactComponent, ReactCompositeComponent, assertType, assertTypes, define, emptyFunction, getKind, has, hasKeys, hook, instImpl, isType, mergeDefaults, superWrap, sync, typeImpl;
+var ReactComponent, ReactCompositeComponent, assertType, frozen, getKind, has, hasKeys, hook, instImpl, isType, mutable, ref, superWrap, sync, typeImpl;
 
 require("isDev");
 
+ref = require("Property"), mutable = ref.mutable, frozen = ref.frozen;
+
 ReactComponent = require("ReactComponent");
-
-emptyFunction = require("emptyFunction");
-
-mergeDefaults = require("mergeDefaults");
-
-assertTypes = require("assertTypes");
 
 assertType = require("assertType");
 
@@ -18,8 +14,6 @@ hasKeys = require("hasKeys");
 
 isType = require("isType");
 
-define = require("define");
-
 sync = require("sync");
 
 hook = require("hook");
@@ -27,7 +21,6 @@ hook = require("hook");
 has = require("has");
 
 module.exports = function(type) {
-  type.defineValues(typeImpl.defineValues);
   type.defineMethods(typeImpl.defineMethods);
   return type.initInstance(typeImpl.initInstance);
 };
@@ -48,11 +41,6 @@ ReactCompositeComponent.Mixin._processProps = function(props) {
 };
 
 typeImpl = {
-  defineValues: function() {
-    return {
-      _propPhases: []
-    };
-  },
   defineMethods: {
     defineProps: function(props) {
       var propDefaults, propNames, propTypes, requiredTypes;
@@ -84,7 +72,9 @@ typeImpl = {
           return propTypes[name] = propType;
         }
       });
-      this._propTypes = propTypes;
+      frozen.define(this, "_propTypes", {
+        value: propTypes
+      });
       this.didBuild(function(type) {
         if (hasKeys(propTypes)) {
           type.propTypes = propTypes;
@@ -93,7 +83,7 @@ typeImpl = {
           return type.propDefaults = propDefaults;
         }
       });
-      this._propPhases.push(function(props) {
+      this._phases.props.push(function(props) {
         var i, len, name, prop, propType;
         for (i = 0, len = propNames.length; i < len; i++) {
           name = propNames[i];
@@ -115,17 +105,18 @@ typeImpl = {
     },
     replaceProps: function(func) {
       assertType(func, Function);
-      this._propPhases.unshift(func);
+      this._phases.props.unshift(func);
     },
     initProps: function(func) {
       assertType(func, Function);
-      this._propPhases.push(function(props) {
+      this._phases.props.push(function(props) {
         func.call(this, props);
         return props;
       });
     }
   },
   initInstance: function() {
+    this._phases.props = [];
     this.initInstance(instImpl.initInstance);
     return this.willBuild(instImpl.willBuild);
   }
@@ -147,13 +138,13 @@ instImpl = {
     }
   },
   willBuild: function(type) {
-    var phases, processProps, superImpl;
-    phases = this._propPhases;
-    if (phases.length) {
+    var processProps, propPhases, superImpl;
+    propPhases = this._phases.props;
+    if (propPhases.length) {
       processProps = function(props) {
         var i, len, phase;
-        for (i = 0, len = phases.length; i < len; i++) {
-          phase = phases[i];
+        for (i = 0, len = propPhases.length; i < len; i++) {
+          phase = propPhases[i];
           props = phase.call(null, props);
         }
         return props;
@@ -163,7 +154,7 @@ instImpl = {
       processProps = superWrap(processProps, superImpl);
     }
     processProps && this.didBuild(function(type) {
-      return define(type.prototype, "_processProps", {
+      return frozen.define(type.prototype, "_processProps", {
         value: processProps
       });
     });
@@ -177,7 +168,7 @@ instImpl = {
     if (has(type.prototype, "_delegate")) {
       return;
     }
-    return define(type.prototype, "_delegate", {
+    return mutable.define(type.prototype, "_delegate", {
       get: function() {
         return this;
       }

@@ -58,7 +58,7 @@ type.willBuild ->
     "willUpdate"
     "didUpdate"
     "defineNativeValues"
-    "defineListeners"
+    "defineMountedListeners"
     "defineReactions"
     "defineStyles"
     "appendStyles"
@@ -131,10 +131,10 @@ viewImpl =
 
     # Define once per inheritance chain.
     unless @_kind instanceof modx_Type
+      @defineGetters viewImpl.defineGetters
       @willBuild -> # Try to be the very last phase.
-        @_initPhases.unshift viewImpl.initInstance
-        @_willUnmount.push viewImpl.willUnmount
-        @defineGetters viewImpl.defineGetters
+        @_phases.init.unshift viewImpl.initInstance
+        @willUnmount viewImpl.willUnmount
 
   defineGetters:
 

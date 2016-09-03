@@ -10,13 +10,13 @@ type.inherits Builder
 
 type.trace()
 
-type.initInstance ->
-  @_defaultKind = ReactComponent
-
 type.defineGetters
 
-  # 'modx_TypeBuilder' overrides this.
   _delegate: -> this
+
+type.definePrototype
+
+  _defaultKind: ReactComponent
 
 type.overrideMethods
 

@@ -6,8 +6,6 @@ Random = require "random"
 define = require "define"
 Event = require "Event"
 
-hasListeners = Symbol "Component.hasListeners"
-
 module.exports = (type) ->
   type.defineMethods typeImpl.methods
 
@@ -19,17 +17,17 @@ typeImpl = {}
 
 typeImpl.methods =
 
-  defineListeners: (createListeners) ->
+  defineMountedListeners: (createListeners) ->
 
     assertType createListeners, Function
 
     delegate = @_delegate
 
     # Some phases must only be defined once per inheritance chain.
-    if not this[hasListeners]
-      frozen.define this, hasListeners, { value: yes }
+    if not @__hasMountedListeners
+      frozen.define this, "__hasMountedListeners", { value: yes }
       kind = delegate._kind
-      unless kind and kind::[hasListeners]
+      unless kind and kind::__hasMountedListeners
         delegate.didBuild baseImpl.didBuild
         delegate.initInstance baseImpl.initInstance
 
@@ -49,7 +47,7 @@ typeImpl.methods =
       @__listeners[phaseId] = listeners
       return
 
-    @_willMount.push startListeners
+    @willMount startListeners
 
     #
     # Stop each Listener when the instance is unmounted.
@@ -60,7 +58,7 @@ typeImpl.methods =
         listener.stop()
       return
 
-    @_willUnmount.push stopListeners
+    @willUnmount stopListeners
     return
 
 #
@@ -70,8 +68,7 @@ typeImpl.methods =
 baseImpl = {}
 
 baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, hasListeners, { value: yes }
+  frozen.define type.prototype, "__hasMountedListeners", {value: yes}
 
 baseImpl.initInstance = ->
-  frozen.define this, "__listeners",
-    value: Object.create null
+  frozen.define this, "__listeners", {value: Object.create null}

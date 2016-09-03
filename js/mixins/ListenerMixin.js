@@ -1,4 +1,4 @@
-var Event, Random, assertType, baseImpl, define, frozen, hasListeners, typeImpl;
+var Event, Random, assertType, baseImpl, define, frozen, typeImpl;
 
 frozen = require("Property").frozen;
 
@@ -10,8 +10,6 @@ define = require("define");
 
 Event = require("Event");
 
-hasListeners = Symbol("Component.hasListeners");
-
 module.exports = function(type) {
   return type.defineMethods(typeImpl.methods);
 };
@@ -19,16 +17,16 @@ module.exports = function(type) {
 typeImpl = {};
 
 typeImpl.methods = {
-  defineListeners: function(createListeners) {
+  defineMountedListeners: function(createListeners) {
     var delegate, kind, phaseId, startListeners, stopListeners;
     assertType(createListeners, Function);
     delegate = this._delegate;
-    if (!this[hasListeners]) {
-      frozen.define(this, hasListeners, {
+    if (!this.__hasMountedListeners) {
+      frozen.define(this, "__hasMountedListeners", {
         value: true
       });
       kind = delegate._kind;
-      if (!(kind && kind.prototype[hasListeners])) {
+      if (!(kind && kind.prototype.__hasMountedListeners)) {
         delegate.didBuild(baseImpl.didBuild);
         delegate.initInstance(baseImpl.initInstance);
       }
@@ -49,7 +47,7 @@ typeImpl.methods = {
       }
       this.__listeners[phaseId] = listeners;
     };
-    this._willMount.push(startListeners);
+    this.willMount(startListeners);
     stopListeners = function() {
       var i, len, listener, ref;
       ref = this.__listeners[phaseId];
@@ -58,14 +56,14 @@ typeImpl.methods = {
         listener.stop();
       }
     };
-    this._willUnmount.push(stopListeners);
+    this.willUnmount(stopListeners);
   }
 };
 
 baseImpl = {};
 
 baseImpl.didBuild = function(type) {
-  return frozen.define(type.prototype, hasListeners, {
+  return frozen.define(type.prototype, "__hasMountedListeners", {
     value: true
   });
 };

@@ -69,7 +69,7 @@ type.willBuild(function() {
     "willUpdate": "willUpdate",
     "didUpdate": "didUpdate",
     "defineNativeValues": "defineNativeValues",
-    "defineListeners": "defineListeners",
+    "defineMountedListeners": "defineMountedListeners",
     "defineReactions": "defineReactions",
     "defineStyles": "defineStyles",
     "appendStyles": "appendStyles",
@@ -142,10 +142,10 @@ instImpl = {
 viewImpl = {
   willBuild: function() {
     if (!(this._kind instanceof modx_Type)) {
+      this.defineGetters(viewImpl.defineGetters);
       return this.willBuild(function() {
-        this._initPhases.unshift(viewImpl.initInstance);
-        this._willUnmount.push(viewImpl.willUnmount);
-        return this.defineGetters(viewImpl.defineGetters);
+        this._phases.init.unshift(viewImpl.initInstance);
+        return this.willUnmount(viewImpl.willUnmount);
       });
     }
   },

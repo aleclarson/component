@@ -13,30 +13,11 @@ applyChain = require("applyChain");
 Builder = require("Builder");
 
 module.exports = function(type) {
-  type.defineValues(typeImpl.values);
   type.defineMethods(typeImpl.methods);
   return type.initInstance(typeImpl.initInstance);
 };
 
 typeImpl = {};
-
-typeImpl.values = {
-  _willMount: function() {
-    return [];
-  },
-  _didMount: function() {
-    return [];
-  },
-  _willUpdate: function() {
-    return [];
-  },
-  _didUpdate: function() {
-    return [];
-  },
-  _willUnmount: function() {
-    return [];
-  }
-};
 
 typeImpl.methods = {
   render: function(func) {
@@ -59,27 +40,32 @@ typeImpl.methods = {
   },
   willMount: function(func) {
     assertType(func, Function);
-    this._willMount.push(func);
+    this._phases.willMount.push(func);
   },
   didMount: function(func) {
     assertType(func, Function);
-    this._didMount.push(func);
+    this._phases.didMount.push(func);
   },
   willUpdate: function(func) {
     assertType(func, Function);
-    this._willUpdate.push(func);
+    this._phases.willUpdate.push(func);
   },
   didUpdate: function(func) {
     assertType(func, Function);
-    this._didUpdate.push(func);
+    this._phases.didUpdate.push(func);
   },
   willUnmount: function(func) {
     assertType(func, Function);
-    this._willUnmount.push(func);
+    this._phases.willUnmount.push(func);
   }
 };
 
 typeImpl.initInstance = function() {
+  this._phases.willMount = [];
+  this._phases.didMount = [];
+  this._phases.willUpdate = [];
+  this._phases.didUpdate = [];
+  this._phases.willUnmount = [];
   return this.willBuild(instImpl.willBuild);
 };
 
@@ -100,24 +86,20 @@ instImpl.willBuild = function() {
     this._shouldUpdate && (ownMethods.__shouldUpdate = this._shouldUpdate);
     this._willReceiveProps && (ownMethods.__willReceiveProps = this._willReceiveProps);
     this._delegate.overrideMethods(ownMethods);
-    inheritArrays(this, (function() {
-      var prototype;
-      prototype = kind.prototype;
-      return {
-        _willMount: prototype.__willMount,
-        _didMount: prototype.__didMount,
-        _willUpdate: prototype.__willUpdate,
-        _didUpdate: prototype.__didUpdate,
-        _willUnmount: prototype.__willUnmount
-      };
-    })());
+    inheritArrays(this._phases, {
+      willMount: kind.prototype.__willMount,
+      didMount: kind.prototype.__didMount,
+      willUpdate: kind.prototype.__willUpdate,
+      didUpdate: kind.prototype.__didUpdate,
+      willUnmount: kind.prototype.__willUnmount
+    });
   }
   return this.definePrototype({
-    __willMount: this._willMount,
-    __didMount: this._didMount,
-    __willUpdate: this._willUpdate,
-    __didUpdate: this._didUpdate,
-    __willUnmount: this._willUnmount
+    __willMount: this._phases.willMount,
+    __didMount: this._phases.didMount,
+    __willUpdate: this._phases.willUpdate,
+    __didUpdate: this._phases.didUpdate,
+    __willUnmount: this._phases.willUnmount
   });
 };
 

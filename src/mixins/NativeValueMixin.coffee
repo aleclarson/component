@@ -21,19 +21,17 @@ typeImpl =
   defineMethods:
 
     defineNativeValues: (nativeValues) ->
-
       assertType nativeValues, Object.or Function
 
       delegate = @_delegate
-
       if not delegate.__hasNativeValues
         frozen.define delegate, "__hasNativeValues", { value: yes }
         kind = delegate._kind
         unless kind and kind::__hasNativeValues
           delegate.didBuild baseImpl.didBuild
           delegate.initInstance baseImpl.initInstance
-          @_willMount.push baseImpl.attachNativeValues
-          @_willUnmount.push baseImpl.detachNativeValues
+          # @willMount baseImpl.attachNativeValues
+          # @willUnmount baseImpl.detachNativeValues
 
       if isType nativeValues, Object
         nativeValues = sync.map nativeValues, (value) ->
@@ -47,11 +45,13 @@ typeImpl =
           return if value is undefined
           unless value instanceof NativeValue
             value = NativeValue value, obj.constructor.name + "." + key
-          frozen.define obj, key, {value}
+          if isDev then frozen.define obj, key, {value}
+          else obj[key] = value
           obj.__nativeKeys.push key
+          value.__attach()
           return
 
-      delegate._initPhases.push (args) ->
+      delegate._phases.init.push (args) ->
         nativeValues.define this, args
       return
 
@@ -67,12 +67,12 @@ baseImpl =
   initInstance: ->
     frozen.define this, "__nativeKeys", value: []
 
-  attachNativeValues: ->
-    for key in @__nativeKeys
-      this[key].__attach()
-    return
-
-  detachNativeValues: ->
-    for key in @__nativeKeys
-      this[key].__detach()
-    return
+  # attachNativeValues: ->
+  #   for key in @__nativeKeys
+  #     this[key].__attach()
+  #   return
+  #
+  # detachNativeValues: ->
+  #   for key in @__nativeKeys
+  #     this[key].__detach()
+  #   return

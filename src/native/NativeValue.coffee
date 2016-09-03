@@ -18,23 +18,25 @@ isType = require "isType"
 Event = require "Event"
 steal = require "steal"
 Type = require "Type"
-Any = require "Any"
 
 NativeAnimation = require "./NativeAnimation"
 
-ReactionOptions = Object.or Function.Kind
-
 type = Type "NativeValue"
 
+type.trace()
+
 type.defineArgs
-  value: Any
+  value: null
   keyPath: String
 
-type.returnExisting (value) ->
-  if isDev and value instanceof NativeValue
-    throw Error "'value' cannot inherit from NativeValue!"
+isDev and
+type.initArgs (value) ->
 
-type.trace()
+  if value instanceof NativeValue
+    throw TypeError "'value' cannot inherit from NativeValue!"
+
+  if value instanceof Reaction
+    throw TypeError "'value' cannot inherit from Reaction!"
 
 type.defineFrozenValues
 
@@ -73,14 +75,12 @@ type.defineReactiveValues
   _animation: null
 
 type.initInstance (value, keyPath) ->
-
-  if isType value, Reaction
-    throw Error "NativeValue must create its own Reaction!"
-
   @_keyPath = keyPath
-  if ReactionOptions.test value
-    @_attachReaction value
-  else @value = value
+  if isType(value, Function) or isType(value, Object)
+    @_createReaction value
+  else
+    @value = value
+  return
 
 type.defineGetters
 
@@ -103,34 +103,44 @@ type.defineGetters
 type.definePrototype
 
   value:
+
     get: ->
-      Tracker.isActive and @_dep.depend()
+      if Tracker.isActive
+        @_dep.depend()
       return @_value
+
     set: (newValue) ->
-      if @isReactive
-        throw Error "Cannot manually set 'value' when 'isReactive' is true!"
+
+      if isDev and @isReactive
+        throw Error "Reaction-backed values cannot be mutated!"
+
       if @isAnimated
         @_animated.setValue newValue
-      else @_setValue newValue
+      else
+        @_setValue newValue
+      return
 
   keyPath:
     get: -> @_keyPath
     set: (keyPath) ->
       @_keyPath = keyPath
       @_reaction and @_reaction.keyPath = keyPath
+      return
 
   reaction:
     get: -> @_reaction
     set: (newValue, oldValue) ->
-      return if newValue is oldValue
-      if newValue is null
-        @_detachReaction()
-      else @_attachReaction newValue
+      if newValue isnt oldValue
+        @isReactive and @_deleteReaction()
+        if newValue isnt null
+          @_createReaction newValue
+      return
 
   progress:
     get: -> @getProgress()
     set: (progress) ->
       @setProgress progress
+      return
 
 type.defineMethods
 
@@ -147,85 +157,27 @@ type.defineMethods
 
     if config.clamp is yes
 
-      if not @_fromValue?
+      if isDev and not @_fromValue?
         throw Error "Must define 'config.fromValue' or 'this.fromValue'!"
 
-      if not @_toValue?
+      if isDev and not @_toValue?
         throw Error "Must define 'config.toValue' or 'this.toValue'!"
 
       newValue = clampValue newValue, @_fromValue, @_toValue
 
     newValue = roundValue newValue, config.round if config.round?
-    @value = newValue
+    return @value = newValue
 
-  animate: (config) ->
-
-    if @isReactive
-      throw Error "Cannot call 'animate' when 'isReactive' is true!"
-
-    isDev and
-    @_tracers.animate = Tracer "NativeValue::animate()"
-
-    @stopAnimation()
-
-    @_attachAnimated()
-
-    isDev and
-    assertTypes config, configTypes.animate
-
-    onFinish = steal config, "onFinish", emptyFunction
-    onEnd = steal config, "onEnd", emptyFunction
-
-    @_animation = NativeAnimation
-      animated: @_animated
-      onUpdate: steal config, "onUpdate"
-      onEnd: (finished) =>
-        @_animation = null
-        finished and onFinish()
-        onEnd finished
-        @didAnimationEnd.emit finished
-
-    @_animation.start config
-    return @_animation
-
-  stopAnimation: ->
-    animation = @_animation
-    animation and animation.stop()
+  _setValue: (newValue) ->
+    if newValue isnt @_value
+      @_value = newValue
+      @_dep.changed()
+      @didSet.emit newValue
     return
 
-  # TODO: Should this be deprecated?
-  track: (nativeValue, config) ->
-
-    assertType nativeValue, NativeValue.Kind
-
-    if @_tracking
-      throw Error "Already tracking another value!"
-
-    fromRange = config.fromRange ?= {}
-    fromRange.fromValue ?= nativeValue._fromValue
-    fromRange.toValue ?= nativeValue._toValue
-
-    toRange = config.toRange ?= {}
-    toRange.fromValue ?= @_fromValue
-    toRange.toValue ?= @_toValue
-
-    isDev and
-    assertTypes config, configTypes.track
-
-    onChange = (value) =>
-      progress = Progress.fromValue value, fromRange
-      @value = Progress.toValue progress, toRange
-
-    # Update the value immediately.
-    onChange nativeValue.value
-
-    listener = nativeValue.didSet onChange
-    return @_tracking = listener.start()
-
-  stopTracking: ->
-    tracking = @_tracking
-    tracking.stop() if tracking
-    return
+#
+# Progress management
+#
 
   getProgress: (value, config) ->
 
@@ -247,8 +199,8 @@ type.defineMethods
 
   setProgress: (progress, config) ->
 
-    if @isReactive
-      throw Error "Cannot call 'setProgress' when 'isReactive' is true!"
+    if isDev and @isReactive
+      throw Error "Reaction-backed values cannot be mutated!"
 
     if config
       mergeDefaults config, @_getRange()
@@ -272,11 +224,26 @@ type.defineMethods
     @_toValue = config.toValue
     return
 
+  _getRange: ->
+    fromValue: @_fromValue
+    toValue: @_toValue
+
+#
+# Memory management
+#
+
   __attach: ->
+
+    if @_retainCount is 0
+      @isReactive and @_startReaction()
+
     @_retainCount += 1
-    return
+    return this
 
   __detach: ->
+
+    if isDev and @_retainCount is 0
+      throw Error "Must call '__attach' for every call to '__detach'!"
 
     if @_retainCount > 1
       @_retainCount -= 1
@@ -289,57 +256,87 @@ type.defineMethods
     @_detachAnimated()
     return
 
-  _getRange: ->
-    fromValue: @_fromValue
-    toValue: @_toValue
+#
+# Reaction management
+#
 
-  _setValue: (newValue) ->
-    return if @_value is newValue
-    @_value = newValue
-    @_dep.changed()
-    @didSet.emit newValue
+  _createReaction: (options) ->
+    assertType options, Object.or Function
 
-  _attachReaction: (options) ->
-
-    if isType options, Object
-      options.keyPath ?= @keyPath
-      reaction = Reaction.sync options
-
-    else if options instanceof Function
-      reaction = Reaction.sync { @keyPath, get: options }
-
-    else return
-
-    if @isReactive
-      @_detachReaction()
+    if isType options, Function
+      @_reaction = Reaction {@keyPath, get: options}
     else
-      @_detachAnimated()
+      options.keyPath ?= @keyPath
+      @_reaction = Reaction options
+    return
 
-    isDev and
-    @_tracers.reaction = reaction._traceInit
+  _startReaction: ->
 
-    @_reaction = reaction
-    @_setValue reaction.value
-    @_reactionListener = reaction
+    if isDev and not @isReactive
+      throw Error "Must call '_createReaction' before '_startReaction'!"
+
+    @_reactionListener = @_reaction
       .didSet (value) => @_setValue value
       .start()
 
-  _attachAnimated: ->
-    return if @_animated
+    @_reaction.start()
+    return
+
+  _deleteReaction: ->
+
+    if isDev and not @isReactive
+      throw Error "Must call '_createReaction' before '_deleteReaction'!"
+
+    @_reactionListener.stop()
+    @_reactionListener = null
+
+    @_reaction.stop()
+    @_reaction = null
+    return
+
+#
+# Animation management
+#
+
+  animate: (config) ->
+
+    if isDev and @isReactive
+      throw Error "Reaction-backed values cannot be mutated!"
+
+    @stopAnimation()
+    @_createAnimated()
+
+    isDev and
+    assertTypes config, configTypes.animate
+
+    onFinish = steal config, "onFinish", emptyFunction
+    onEnd = steal config, "onEnd", emptyFunction
+
+    @_animation = NativeAnimation
+      animated: @_animated
+      onUpdate: steal config, "onUpdate"
+      onEnd: (finished) =>
+        @_animation = null
+        finished and onFinish()
+        onEnd finished
+        @didAnimationEnd.emit finished
+
+    @_animation.start config
+    return @_animation
+
+  stopAnimation: ->
+    if @_animation
+      @_animation.stop()
+    return
+
+  _createAnimated: ->
+    return if @isAnimated
     @_animated = new AnimatedValue @_value
     @_animatedListener = @_animated
       .didSet (value) => @_setValue value
       .start()
 
-  _detachReaction: ->
-    return unless @isReactive
-    @_reactionListener.stop()
-    @_reactionListener = null
-    @_reaction.stop()
-    @_reaction = null
-    return
-
-  _detachAnimated: ->
+  _deleteAnimated: ->
     return unless @isAnimated
     @_animated.stopAnimation()
     @_animatedListener.stop()
@@ -355,10 +352,10 @@ configTypes = do ->
   Null = require "Null"
 
   animate:
-    type: Function.Kind
-    onUpdate: Function.Kind.Maybe
-    onFinish: Function.Kind.Maybe
-    onEnd: Function.Kind.Maybe
+    type: Type
+    onUpdate: Function.Maybe
+    onFinish: Function.Maybe
+    onEnd: Function.Maybe
 
   track:
     fromRange: Progress.Range
