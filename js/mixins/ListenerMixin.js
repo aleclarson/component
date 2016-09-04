@@ -1,12 +1,8 @@
-var Event, Random, assertType, baseImpl, define, frozen, typeImpl;
+var Event, assertType, frozen, hasMountedListeners, startListeners, stopListeners, typeImpl;
 
 frozen = require("Property").frozen;
 
 assertType = require("assertType");
-
-Random = require("random");
-
-define = require("define");
 
 Event = require("Event");
 
@@ -18,7 +14,7 @@ typeImpl = {};
 
 typeImpl.methods = {
   defineMountedListeners: function(createListeners) {
-    var delegate, kind, phaseId, startListeners, stopListeners;
+    var delegate, kind;
     assertType(createListeners, Function);
     delegate = this._delegate;
     if (!this.__hasMountedListeners) {
@@ -27,51 +23,52 @@ typeImpl.methods = {
       });
       kind = delegate._kind;
       if (!(kind && kind.prototype.__hasMountedListeners)) {
-        delegate.didBuild(baseImpl.didBuild);
-        delegate.initInstance(baseImpl.initInstance);
+        delegate.didBuild(hasMountedListeners);
+        this.willMount(startListeners);
+        this.willUnmount(stopListeners);
       }
     }
-    phaseId = Random.id();
-    startListeners = function() {
+    delegate.initInstance(function() {
       var i, len, listener, listeners, onAttach;
-      listeners = [];
-      onAttach = function(listener) {
+      listeners = this.__mountedListeners || [];
+      onAttach = Event.didAttach(function(listener) {
         return listeners.push(listener);
-      };
-      onAttach = Event.didAttach(onAttach).start();
+      }).start();
       createListeners.call(this);
-      onAttach.stop();
+      onAttach.detach();
       for (i = 0, len = listeners.length; i < len; i++) {
         listener = listeners[i];
         listener.start();
       }
-      this.__listeners[phaseId] = listeners;
-    };
-    this.willMount(startListeners);
-    stopListeners = function() {
-      var i, len, listener, ref;
-      ref = this.__listeners[phaseId];
-      for (i = 0, len = ref.length; i < len; i++) {
-        listener = ref[i];
-        listener.stop();
-      }
-    };
-    this.willUnmount(stopListeners);
+      this.__mountedListeners || frozen.define(this, "__mountedListeners", {
+        value: listeners
+      });
+    });
   }
 };
 
-baseImpl = {};
-
-baseImpl.didBuild = function(type) {
+hasMountedListeners = function(type) {
   return frozen.define(type.prototype, "__hasMountedListeners", {
     value: true
   });
 };
 
-baseImpl.initInstance = function() {
-  return frozen.define(this, "__listeners", {
-    value: Object.create(null)
-  });
+startListeners = function() {
+  var i, len, listener, ref;
+  ref = this.__mountedListeners;
+  for (i = 0, len = ref.length; i < len; i++) {
+    listener = ref[i];
+    listener.start();
+  }
+};
+
+stopListeners = function() {
+  var i, len, listener, ref;
+  ref = this.__mountedListeners;
+  for (i = 0, len = ref.length; i < len; i++) {
+    listener = ref[i];
+    listener.stop();
+  }
 };
 
 //# sourceMappingURL=map/ListenerMixin.map

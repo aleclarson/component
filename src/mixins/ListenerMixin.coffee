@@ -1,9 +1,7 @@
 
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
 assertType = require "assertType"
-Random = require "random"
-define = require "define"
 Event = require "Event"
 
 module.exports = (type) ->
@@ -25,50 +23,43 @@ typeImpl.methods =
 
     # Some phases must only be defined once per inheritance chain.
     if not @__hasMountedListeners
-      frozen.define this, "__hasMountedListeners", { value: yes }
+      frozen.define this, "__hasMountedListeners", {value: yes}
       kind = delegate._kind
       unless kind and kind::__hasMountedListeners
-        delegate.didBuild baseImpl.didBuild
-        delegate.initInstance baseImpl.initInstance
-
-    phaseId = Random.id()
+        delegate.didBuild hasMountedListeners
+        @willMount startListeners
+        @willUnmount stopListeners
 
     #
     # Create new Listeners every time the instance is mounted.
     #
 
-    startListeners = ->
-      listeners = []
-      onAttach = (listener) -> listeners.push listener
-      onAttach = Event.didAttach(onAttach).start()
+    delegate.initInstance ->
+      listeners = @__mountedListeners or []
+      onAttach = Event
+        .didAttach (listener) -> listeners.push listener
+        .start()
+
       createListeners.call this
-      onAttach.stop()
-      listener.start() for listener in listeners
-      @__listeners[phaseId] = listeners
+      onAttach.detach()
+
+      for listener in listeners
+        listener.start()
+
+      @__mountedListeners or
+      frozen.define this, "__mountedListeners", {value: listeners}
       return
-
-    @willMount startListeners
-
-    #
-    # Stop each Listener when the instance is unmounted.
-    #
-
-    stopListeners = ->
-      for listener in @__listeners[phaseId]
-        listener.stop()
-      return
-
-    @willUnmount stopListeners
     return
 
-#
-# The 'base' is the first type in the inheritance chain to define listeners.
-#
-
-baseImpl = {}
-
-baseImpl.didBuild = (type) ->
+hasMountedListeners = (type) ->
   frozen.define type.prototype, "__hasMountedListeners", {value: yes}
 
-baseImpl.initInstance = ->
-  frozen.define this, "__listeners", {value: Object.create null}
+startListeners = ->
+  for listener in @__mountedListeners
+    listener.start()
+  return
+
+stopListeners = ->
+  for listener in @__mountedListeners
+    listener.stop()
+  return
