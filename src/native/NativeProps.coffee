@@ -1,5 +1,4 @@
 
-fromArgs = require "fromArgs"
 isType = require "isType"
 Type = require "Type"
 
@@ -21,7 +20,7 @@ type.createInstance ->
 
 type.defineValues
 
-  _propTypes: fromArgs 1
+  _propTypes: (_, propTypes) -> propTypes
 
 type.initInstance (props) ->
   @attach props
