@@ -2,6 +2,13 @@
   "name": "modx",
   "version": "1.0.0",
   "main": "js/index",
+  "plugins": [
+    "lotus-coffee"
+  ],
+  "scripts": {
+    "build": "coffee -cb -o js src",
+    "postinstall": "postinstall-build js 'npm run build'"
+  },
   "dependencies": {
     "Animated": "aleclarson/Animated#2.0.0",
     "Any": "aleclarson/Any#1.0.0",
@@ -38,6 +45,7 @@
     "isDev": "aleclarson/isDev#1.0.0",
     "isType": "aleclarson/isType#1.0.0",
     "mergeDefaults": "aleclarson/mergeDefaults#1.0.0",
+    "postinstall-build": "0.2.x",
     "progress": "aleclarson/progress#1.0.0",
     "random": "aleclarson/random#1.0.4",
     "roundValue": "aleclarson/roundValue#1.0.0",
@@ -49,36 +57,27 @@
     "tracker": "aleclarson/tracker#2.0.0",
     "wrongType": "aleclarson/wrongType#1.0.0"
   },
-  "lotus": {
-    "plugins": [
-      "lotus-coffee"
-    ],
-    "implicitDependencies": [
-      "ReactCurrentOwner",
-      "ReactCompositeComponent",
-      "AppRegistry",
-      "Dimensions",
-      "Image",
-      "ImageView",
-      "ReactComponent",
-      "InteractionManager",
-      "ReactElement",
-      "ReactInstanceMap",
-      "StaticRenderer",
-      "StyleSheet",
-      "Text",
-      "TextInput",
-      "View",
-      "WebView",
-      "emptyObject",
-      "flattenStyle"
-    ]
+  "devDependencies": {
+    "coffee-script": "1.9.x"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/aleclarson/component.git"
-  },
-  "licenses": [
-    "MIT"
+  "implicitDependencies": [
+    "ReactCurrentOwner",
+    "ReactCompositeComponent",
+    "AppRegistry",
+    "Dimensions",
+    "Image",
+    "ImageView",
+    "ReactComponent",
+    "InteractionManager",
+    "ReactElement",
+    "ReactInstanceMap",
+    "StaticRenderer",
+    "StyleSheet",
+    "Text",
+    "TextInput",
+    "View",
+    "WebView",
+    "emptyObject",
+    "flattenStyle"
   ]
 }
