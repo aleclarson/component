@@ -12,7 +12,7 @@
   "dependencies": {
     "Animated": "aleclarson/Animated#2.0.0",
     "Any": "aleclarson/Any#1.0.0",
-    "Builder": "aleclarson/Builder#1.1.0",
+    "Builder": "aleclarson/Builder#2.0.0",
     "Event": "aleclarson/Event#2.0.1",
     "LazyMap": "aleclarson/LazyMap#1.0.0",
     "LazyVar": "aleclarson/LazyVar#2.1.0",
