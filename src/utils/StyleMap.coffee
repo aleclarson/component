@@ -18,11 +18,11 @@ type = Type "StyleMap"
 
 type.defineValues
 
-  _styleNames: -> Object.create null
+  _styleNames: PureObject.create
 
-  _constantStyles: -> Object.create null
+  _constantStyles: PureObject.create
 
-  _computedStyles: -> Object.create null
+  _computedStyles: PureObject.create
 
 type.initInstance (inherited) ->
 

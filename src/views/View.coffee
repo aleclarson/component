@@ -5,7 +5,12 @@ NativeComponent = require "../native/NativeComponent"
 Children = require "../validators/Children"
 Style = require "../validators/Style"
 
-PointerEventType = OneOf "PointerEventType", [ "box-none", "none", "box-only", "auto" ]
+PointerEventType = OneOf "PointerEventType", [
+  "auto"
+  "none"
+  "box-none"
+  "box-only"
+]
 
 View = NativeComponent "View",
 

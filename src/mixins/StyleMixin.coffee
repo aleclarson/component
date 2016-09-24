@@ -1,16 +1,14 @@
 
+{ frozen } = require "Property"
+
 assertType = require "assertType"
-Property = require "Property"
 isType = require "isType"
 
 StyleMap = require "../utils/StyleMap"
 
-{ frozen } = Property
-
 module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
-  type.initInstance typeImpl.initInstance
+  type[key] impl for key, impl of typeImpl
+  return
 
 #
 # The 'type' is the Component.Builder constructor
@@ -18,11 +16,11 @@ module.exports = (type) ->
 
 typeImpl = {}
 
-typeImpl.values =
+typeImpl.defineValues =
 
   _styles: null
 
-typeImpl.methods =
+typeImpl.defineMethods =
 
   defineStyles: (styles) ->
     assertType styles, Object

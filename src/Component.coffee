@@ -19,6 +19,6 @@ module.exports = setKind modx_Component, ReactComponent
 # A hook into 'modx_ComponentBuilder::build'
 build = (build) ->
   componentType = build.call this
-  elementType = ElementType componentType
+  elementType = ElementType componentType, componentType.processProps
   elementType.componentType = componentType
   return elementType

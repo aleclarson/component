@@ -1,8 +1,6 @@
 
 require "isDev"
 
-{hidden} = require "Property"
-
 ReactCurrentOwner = require "ReactCurrentOwner"
 NamedFunction = require "NamedFunction"
 emptyFunction = require "emptyFunction"
@@ -10,10 +8,9 @@ ReactElement = require "ReactElement"
 assertType = require "assertType"
 setType = require "setType"
 setKind = require "setKind"
-Tracer = require "tracer"
 isType = require "isType"
-define = require "define"
 steal = require "steal"
+sync = require "sync"
 
 # Created for every instance of 'Component.Type'
 # Created for every non-delegated subclass of 'Component'
@@ -22,36 +19,40 @@ ElementType = NamedFunction "ElementType", (componentType, initProps) ->
   assertType componentType, Function.Kind
   assertType initProps, Function.Maybe
 
-  if not initProps
-    initProps = emptyFunction.thatReturnsArgument
+  initProps ?= emptyFunction.thatReturnsArgument
 
-  self = (props, children) ->
+  elementType = (props = {}) ->
 
-    props = {} if not props
-    assertType props, Object, "props"
+    if props?
+    then assertType props, Object, "props"
+    else props = {}
 
-    if children
-      props.children = children
+    elementKey = steal props, "key", null
+    if elementKey isnt null
+      if not isType elementKey, String
+        elementKey = String elementKey
 
-    elementKey = stealKeyFromProps props
-    applyMixinsToProps props
+    elementRef = steal props, "ref", null
+    elementRef? and assertType elementRef, Function, "props.ref"
 
-    element =
-      key: elementKey
-      type: componentType
-      props: initProps props
+    if props.mixins?
+      mixins = steal props, "mixins"
+      assertType mixins, Array, "props.mixins"
+      applyMixins mixins, props
 
-    setInternals element,
-      $$typeof: ReactElement.type
-      _owner: ReactCurrentOwner.current
-      _store: { validated: no }
-      _trace: isDev and Tracer "ReactElement()"
+    props = initProps props
+    ReactElement.apply null, [
+      componentType
+      elementKey
+      elementRef
+      null
+      null
+      ReactCurrentOwner.current
+      props
+    ]
 
-    return element
-
-  self.componentType = componentType
-
-  return setType self, ElementType
+  elementType.componentType = componentType
+  return setType elementType, ElementType
 
 module.exports = setKind ElementType, Function
 
@@ -59,28 +60,9 @@ module.exports = setKind ElementType, Function
 # Helpers
 #
 
-define ElementType.prototype, "propTypes",
-  get: -> @componentType.propTypes
-
-setInternals = (obj, values) ->
-  config = {}
-  for key, value of values
-    config.value = value
-    hidden.define obj, key, config
-  return
-
-applyMixinsToProps = (props) ->
-  return if not props.mixins
-  mixins = steal props, "mixins"
-  assertType mixins, Array, "props.mixins"
+applyMixins = (mixins, props) ->
   for mixin in mixins
     for key, value of mixin
-      continue if props[key] isnt undefined
-      props[key] = value
+      if props[key] isnt undefined
+        props[key] = value
   return
-
-stealKeyFromProps = (props) ->
-  key = steal props, "key"
-  return if key is undefined
-  return key if isType key, String
-  return key + ""

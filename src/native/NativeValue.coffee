@@ -9,9 +9,8 @@ assertType = require "assertType"
 roundValue = require "roundValue"
 clampValue = require "clampValue"
 Progress = require "progress"
-Reaction = require "reaction"
+Reaction = require "Reaction"
 Tracker = require "tracker"
-Tracer = require "tracer"
 isType = require "isType"
 Event = require "Event"
 isDev = require "isDev"
@@ -37,11 +36,11 @@ type.initArgs (value) ->
   if value instanceof Reaction
     throw TypeError "'value' cannot inherit from Reaction!"
 
-type.defineFrozenValues
+type.defineFrozenValues ->
 
-  didSet: -> Event()
+  didSet: Event()
 
-  didAnimationEnd: -> Event()
+  didAnimationEnd: Event()
 
 type.defineValues
 

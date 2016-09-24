@@ -1,6 +1,6 @@
 
 assertType = require "assertType"
-Reaction = require "reaction"
+Reaction = require "Reaction"
 hook = require "hook"
 
 shift = Array::shift

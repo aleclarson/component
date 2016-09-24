@@ -1,4 +1,5 @@
 
+Typle = require "Typle"
 Shape = require "Shape"
 OneOf = require "OneOf"
 
@@ -7,9 +8,14 @@ Style = require "../validators/Style"
 
 RemoteImageSource = Shape "RemoteImageSource", { uri: String }
 
-ImageSource = [ Number, RemoteImageSource ]
+ImageSource = Typle [ Number, RemoteImageSource ]
 
-ImageResizeMode = OneOf "ImageResizeMode", [ "cover", "contain", "stretch" ]
+ImageResizeMode = OneOf "ImageResizeMode", [
+  "cover"
+  "contain"
+  "stretch"
+  "center"
+]
 
 EdgeInsetsType = Shape "EdgeInsetsType", {
   top: Number.Maybe
@@ -20,7 +26,7 @@ EdgeInsetsType = Shape "EdgeInsetsType", {
 
 ImageView = NativeComponent "ImageView",
 
-  render: require "ImageView"
+  render: require "Image"
 
   propTypes:
     style: Style

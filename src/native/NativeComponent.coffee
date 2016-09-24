@@ -1,9 +1,9 @@
 
-ReactElement = require "ReactElement"
-assertTypes = require "assertTypes"
+emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 hook = require "hook"
 
+PropValidator = require "../utils/PropValidator"
 ElementType = require "../utils/ElementType"
 NativeProps = require "./NativeProps"
 Component = require "../Component"
@@ -12,28 +12,30 @@ configTypes =
   render: Function
   propTypes: Object.Maybe
 
-module.exports =
-NativeComponent = (name, config) ->
+NativeComponent = (name, {render, propTypes}) ->
 
   assertType name, String
-  assertTypes config, configTypes
+  assertType render, Function
+  assertType propTypes, Object.Maybe
 
   type = Component "Native" + name
 
-  if config.propTypes
-    type.defineProps config.propTypes
+  if propTypes
+    props = PropValidator propTypes
+    type.didBuild (type) ->
+      type.propTypes = props.types
+      type.propDefaults = props.defaults
+      return
 
   type.definePrototype
-    _renderChild: ElementType config.render
+    _renderChild: ElementType render,
+      if propTypes then props.validate
+      else emptyFunction.thatReturnsArgument
 
-  type.defineValues typeImpl.values
-  type.defineBoundMethods typeImpl.boundMethods
-  type.defineMountedListeners typeImpl.mountedListeners
-  type.render typeImpl.render
-  type.willReceiveProps typeImpl.willReceiveProps
-  type.willUnmount typeImpl.willUnmount
-
+  type[key] impl for key, impl of typeImpl
   return type.build()
+
+module.exports = NativeComponent
 
 #
 # The `typeImpl` interface is used
@@ -42,7 +44,7 @@ NativeComponent = (name, config) ->
 
 typeImpl = {}
 
-typeImpl.values =
+typeImpl.defineValues =
 
   _child: null
 
@@ -51,7 +53,7 @@ typeImpl.values =
   _nativeProps: ->
     NativeProps @props, @constructor.propTypes
 
-typeImpl.boundMethods =
+typeImpl.defineBoundMethods =
 
   setNativeProps: (newProps) ->
 
@@ -72,8 +74,7 @@ typeImpl.boundMethods =
     orig this
     return
 
-typeImpl.mountedListeners = ->
-
+typeImpl.defineMountedListeners = ->
   @_nativeProps.didSet @setNativeProps
 
 #

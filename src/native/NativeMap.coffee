@@ -61,7 +61,7 @@ type.defineHooks
 
   __attachValue: (value, key) ->
 
-    if isType value, NativeValue.Kind
+    if value instanceof NativeValue
       return if @__nativeValues[key]?
       @__nativeValues[key] = value
       @__attachNativeValue value, key
@@ -72,7 +72,7 @@ type.defineHooks
       value = @__nativeMaps[key] or NativeMap {}
       value.attach values
 
-    if isType value, NativeMap.Kind
+    if value instanceof NativeMap
       return if @__nativeMaps[key]?
       @__nativeMaps[key] = value
       @__attachNativeValue value, key
