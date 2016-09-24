@@ -4,6 +4,7 @@
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
 isType = require "isType"
+isDev = require "isDev"
 bind = require "bind"
 sync = require "sync"
 

@@ -1,6 +1,4 @@
 
-require "isDev"
-
 assertType = require "assertType"
 Reaction = require "reaction"
 hook = require "hook"

@@ -1,8 +1,6 @@
 
 # TODO: Write a codemod that removes 'defineProps'?
 
-require "isDev"
-
 {mutable, frozen} = require "Property"
 
 ReactComponent = require "ReactComponent"

@@ -1,6 +1,4 @@
 
-require "isDev"
-
 {AnimatedValue} = require "Animated"
 {Number} = require "Nan"
 
@@ -16,6 +14,7 @@ Tracker = require "tracker"
 Tracer = require "tracer"
 isType = require "isType"
 Event = require "Event"
+isDev = require "isDev"
 steal = require "steal"
 Type = require "Type"
 

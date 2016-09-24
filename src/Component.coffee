@@ -1,6 +1,4 @@
 
-require "isDev"
-
 ReactComponent = require "ReactComponent"
 NamedFunction = require "NamedFunction"
 assertType = require "assertType"

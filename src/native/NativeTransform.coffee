@@ -1,6 +1,4 @@
 
-require "isDev"
-
 isType = require "isType"
 Type = require "Type"
 
