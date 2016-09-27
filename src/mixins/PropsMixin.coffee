@@ -34,7 +34,7 @@ typeImpl =
       props = PropValidator props
 
       # Expose `propTypes` and `propDefaults`.
-      @didBuild (type) ->
+      @_delegate.didBuild (type) ->
         type.propTypes = props.types
         type.propDefaults = props.defaults
         return
@@ -87,17 +87,17 @@ instImpl =
   willBuild: (type) ->
 
     propPhases = @_phases.props
-    propPhases.length and
-    processProps = (props) ->
-      for phase in propPhases
-        props = phase.call null, props
-      return props
+    if propPhases.length
+      initProps = (props) ->
+        for phase in propPhases
+          props = phase.call null, props
+        return props
 
-    if superImpl = @_kind and @_kind.processProps
-      processProps = superWrap processProps, superImpl
+    if superImpl = @_kind and @_kind.initProps
+      initProps = superWrap initProps, superImpl
 
-    processProps and @didBuild (type) ->
-      frozen.define type, "processProps", {value: processProps}
+    initProps and @didBuild (type) ->
+      frozen.define type, "initProps", {value: initProps}
 
     hook this, "_willReceiveProps", instImpl.willReceiveProps
     @didBuild instImpl.didBuild
@@ -107,11 +107,9 @@ instImpl =
     return if has type::, "_delegate"
     mutable.define type::, "_delegate", {get: -> this}
 
-# Wraps a 'processProps' static method
+# Wraps a 'initProps' static method
 # with the implementation of its supertype.
-superWrap = (processProps, superImpl) ->
-  if processProps
-  then (props) -> superImpl processProps props
+superWrap = (initProps, superImpl) ->
+  if initProps
+  then (props) -> superImpl initProps props
   else superImpl
-  return superImpl if not processProps
-  return

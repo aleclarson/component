@@ -26,9 +26,7 @@ type.defineValues
 type.overrideMethods
 
   inherits: (kind) ->
-
     @__super arguments
-
     if kind instanceof modx_Type
       @_componentType.inherits kind.View
     return
@@ -36,18 +34,9 @@ type.overrideMethods
 type.willBuild ->
 
   keys = {
-    "propTypes"
-    "propDefaults"
-  }
-
-  # Proxy both the getter and setter.
-  @definePrototype sync.map keys, (key) ->
-    get: -> @_componentType[key]
-    set: (newValue) ->
-      @_componentType[key] = newValue
-
-  keys = {
     "defineProps"
+    "replaceProps"
+    "initProps"
     "render"
     "isRenderPrevented"
     "shouldUpdate"
@@ -97,21 +86,20 @@ instImpl =
 
   willBuild: ->
 
-    # Build the underlying component type.
-    View = @_componentType.build()
-    @defineStatics { View }
-
     # Define once per inheritance chain.
     unless @_kind instanceof modx_Type
       @defineValues instImpl.defineValues
       @defineGetters instImpl.defineGetters
+      @defineMethods instImpl.defineMethods
+
+    # Build the underlying component type.
+    componentType = @_componentType.build()
+    @defineStatics
+      View: componentType
+      _createElement: ElementType componentType
+    return
 
   defineValues:
-
-    render: ->
-      ElementType @constructor.View, (props) =>
-        props.delegate = this
-        return props
 
     _props: null
 
@@ -123,6 +111,11 @@ instImpl =
 
     view: -> @_view
 
+  defineMethods:
+
+    render: (props) ->
+      @constructor._createElement props, this
+
 # In this context, 'view' is the component instance.
 # Thus 'viewImpl' is the component factory.
 viewImpl =
@@ -130,19 +123,24 @@ viewImpl =
   willBuild: ->
 
     # Define once per inheritance chain.
-    unless @_kind instanceof modx_Type
-      @defineGetters viewImpl.defineGetters
-      @willBuild -> # Try to be the very last phase.
-        @_phases.init.unshift viewImpl.initInstance
-        @willUnmount viewImpl.willUnmount
+    return if @_delegate._kind instanceof modx_Type
 
-  defineGetters:
+    @defineGetters viewImpl.defineGetters
 
-    _delegate: -> @props.delegate
+    # Try to be the very last phase.
+    @willBuild ->
+      @_phases.init.unshift viewImpl.initInstance
+      @willUnmount viewImpl.willUnmount
+    return
 
   initInstance: ->
     @_delegate._view = this
 
+  # NOTE: 'this' context equals 'this._delegate'.
   willUnmount: ->
     @_props = null
     @_view = null
+
+  defineGetters:
+
+    _delegate: -> @props.delegate

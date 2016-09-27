@@ -1,4 +1,6 @@
 
+{mutable} = require "Property"
+
 assertType = require "assertType"
 Reaction = require "Reaction"
 hook = require "hook"
@@ -6,20 +8,12 @@ hook = require "hook"
 shift = Array::shift
 
 module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
+  type.defineMethods typeImpl.defineMethods
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
+# This is defined on each modx_TypeBuilder.
 typeImpl = {}
 
-typeImpl.values =
-
-  _isRenderPrevented: null
-
-typeImpl.methods =
+typeImpl.defineMethods =
 
   isRenderPrevented: (func) ->
 
@@ -28,46 +22,48 @@ typeImpl.methods =
     if @_isRenderPrevented
       throw Error "'isRenderPrevented' is already defined!"
 
-    @_isRenderPrevented = func
-    @didBuild typeImpl.didBuild
+    mutable.define this, "_isRenderPrevented", {value: func}
 
     delegate = @_delegate
-    delegate.defineValues instImpl.values
-    delegate.defineReactions instImpl.reactions
-    delegate.defineMethods { isRenderPrevented: func }
+    delegate.defineMethods {isRenderPrevented: func}
+    delegate.willBuild instImpl.willBuild
+    delegate.defineValues instImpl.defineValues
+    delegate.defineReactions instImpl.defineReactions
     return
 
-typeImpl.didBuild = (type) ->
-  hook type.prototype, "__render", typeImpl.gatedRender
-  hook type.prototype, "__shouldUpdate", typeImpl.gatedRender
+# This is defined on each instance of a modx_Type.
+instImpl = {}
 
-# Must be used with 'hook()'.
-typeImpl.gatedRender = ->
+instImpl.defineValues =
 
-  # Allow the render to go through.
-  if @view.shouldRender.value
+  __needsRender: no
+
+instImpl.defineReactions = ->
+
+  __shouldRender:
+    cacheResult: yes
+    get: => not @isRenderPrevented()
+    didSet: (shouldRender) =>
+      if shouldRender and @__needsRender
+        @__needsRender = no
+        try @view.forceUpdate()
+      return
+
+instImpl.willBuild = ->
+  @didBuild instImpl.didBuild
+
+instImpl.didBuild = (type) ->
+  hook type.prototype, "__render", gatedRender
+  hook type.prototype, "__shouldUpdate", gatedRender
+
+# Must be used with `hook()`
+gatedRender = ->
+
+  # Allow the render to go through
+  if @__shouldRender.value
     orig = shift.call arguments
     return orig.call this
 
-  # Wait for 'isRenderPrevented'
-  @needsRender = yes
+  # Wait for `isRenderPrevented`
+  @__needsRender = yes
   return no
-
-#
-# The 'instance' is a Component.Builder
-#
-
-instImpl = {}
-
-instImpl.values =
-
-  needsRender: no
-
-instImpl.reactions =
-
-  shouldRender: ->
-    get: => not @isRenderPrevented()
-    didSet: (shouldRender) =>
-      return unless @needsRender and shouldRender
-      @needsRender = no
-      try @forceUpdate()

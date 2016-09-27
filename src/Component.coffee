@@ -3,22 +3,15 @@ ReactComponent = require "ReactComponent"
 NamedFunction = require "NamedFunction"
 assertType = require "assertType"
 setKind = require "setKind"
-define = require "define"
-hook = require "hook"
+bind = require "bind"
 
 modx_ComponentBuilder = require "./ComponentBuilder"
 ElementType = require "./utils/ElementType"
 
 modx_Component = NamedFunction "modx_Component", (name) ->
-  self = modx_ComponentBuilder name
-  hook self, "build", build
-  return self
+  componentType = modx_ComponentBuilder name
+  build = bind.method componentType, "build"
+  componentType.build = -> ElementType build()
+  return componentType
 
 module.exports = setKind modx_Component, ReactComponent
-
-# A hook into 'modx_ComponentBuilder::build'
-build = (build) ->
-  componentType = build.call this
-  elementType = ElementType componentType, componentType.processProps
-  elementType.componentType = componentType
-  return elementType

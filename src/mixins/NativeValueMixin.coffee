@@ -1,5 +1,5 @@
 
-{frozen} = require "Property"
+{frozen, mutable} = require "Property"
 
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
@@ -26,7 +26,7 @@ typeImpl =
 
       delegate = @_delegate
       if not delegate.__hasNativeValues
-        frozen.define delegate, "__hasNativeValues", { value: yes }
+        mutable.define delegate, "__hasNativeValues", {value: yes}
         kind = delegate._kind
         unless kind and kind::__hasNativeValues
           delegate.didBuild baseImpl.didBuild

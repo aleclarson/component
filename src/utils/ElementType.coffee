@@ -3,54 +3,16 @@ require "isDev"
 
 ReactCurrentOwner = require "ReactCurrentOwner"
 NamedFunction = require "NamedFunction"
-emptyFunction = require "emptyFunction"
 ReactElement = require "ReactElement"
 assertType = require "assertType"
 setType = require "setType"
 setKind = require "setKind"
 isType = require "isType"
 steal = require "steal"
-sync = require "sync"
 
-# Created for every instance of 'Component.Type'
-# Created for every non-delegated subclass of 'Component'
-ElementType = NamedFunction "ElementType", (componentType, initProps) ->
-
+ElementType = NamedFunction "ElementType", (componentType) ->
   assertType componentType, Function.Kind
-  assertType initProps, Function.Maybe
-
-  initProps ?= emptyFunction.thatReturnsArgument
-
-  elementType = (props = {}) ->
-
-    if props?
-    then assertType props, Object, "props"
-    else props = {}
-
-    elementKey = steal props, "key", null
-    if elementKey isnt null
-      if not isType elementKey, String
-        elementKey = String elementKey
-
-    elementRef = steal props, "ref", null
-    elementRef? and assertType elementRef, Function, "props.ref"
-
-    if props.mixins?
-      mixins = steal props, "mixins"
-      assertType mixins, Array, "props.mixins"
-      applyMixins mixins, props
-
-    props = initProps props
-    ReactElement.apply null, [
-      componentType
-      elementKey
-      elementRef
-      null
-      null
-      ReactCurrentOwner.current
-      props
-    ]
-
+  elementType = createType componentType, componentType.initProps
   elementType.componentType = componentType
   return setType elementType, ElementType
 
@@ -62,7 +24,45 @@ module.exports = setKind ElementType, Function
 
 applyMixins = (mixins, props) ->
   for mixin in mixins
+    continue if not mixin?
     for key, value of mixin
-      if props[key] isnt undefined
+      if props[key] is undefined
         props[key] = value
   return
+
+createType = (componentType, initProps) ->
+
+  createElement = (props, delegate) ->
+
+    if props?
+    then assertType props, Object, "props"
+    else props = {}
+
+    key = steal props, "key", null
+    if key isnt null
+      key = String key unless isType key, String
+
+    ref = steal props, "ref", null
+    if ref isnt null
+      assertType ref, Function, "props.ref"
+
+    mixins = steal props, "mixins", null
+    if mixins isnt null
+      assertType mixins, Array, "props.mixins"
+      applyMixins mixins, props
+
+    if initProps
+      props = initProps props
+
+    if delegate
+      props.delegate = delegate
+
+    ReactElement.apply null, [
+      componentType
+      key
+      ref
+      null
+      null
+      ReactCurrentOwner.current
+      props
+    ]

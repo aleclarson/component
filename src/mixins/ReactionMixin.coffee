@@ -70,24 +70,16 @@ baseImpl =
 # Helpers
 #
 
-getReaction = do ->
+getReaction = (obj, key, value) ->
 
-  createOptions = (arg, context) ->
+  if isType value, Reaction
+    value.keyPath ?= obj.constructor.name + "." + key
+    return value
 
-    if isType arg, Function
-      return
-
-    throw TypeError "Expected an Object or Function!"
-
-  return getReaction = (obj, key, value) ->
-
-    if isType value, Reaction
-      value.keyPath ?= obj.constructor.name + "." + key
-      return value
-
+  options =
     if isType value, Function
-      options = {get: bind.func value, obj}
-    else options = value
+    then get: bind.func value, obj
+    else value
 
-    options.keyPath ?= obj.constructor.name + "." + key
-    return Reaction options
+  options.keyPath ?= obj.constructor.name + "." + key
+  return Reaction options
