@@ -3,6 +3,7 @@
 
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
+Builder = require "Builder"
 isType = require "isType"
 isDev = require "isDev"
 bind = require "bind"
@@ -10,70 +11,51 @@ sync = require "sync"
 
 NativeValue = require "../native/NativeValue"
 
-module.exports = (type) ->
-  type.defineMethods typeImpl.defineMethods
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
+typeMixin.defineMethods
 
-typeImpl =
+  defineNativeValues: (nativeValues) ->
+    assertType nativeValues, Object.or Function
 
-  defineMethods:
+    delegate = @_delegate
+    if not delegate.__hasNativeValues
+      mutable.define delegate, "__hasNativeValues", {value: yes}
+      kind = delegate._kind
+      unless kind and kind::__hasNativeValues
+        delegate.didBuild baseImpl.didBuild
+        delegate.initInstance baseImpl.initInstance
 
-    defineNativeValues: (nativeValues) ->
-      assertType nativeValues, Object.or Function
+    if isType nativeValues, Object
+      nativeValues = sync.map nativeValues, (value) ->
+        if isType value, Function
+          return -> bind.func value, this
+        return value
 
-      delegate = @_delegate
-      if not delegate.__hasNativeValues
-        mutable.define delegate, "__hasNativeValues", {value: yes}
-        kind = delegate._kind
-        unless kind and kind::__hasNativeValues
-          delegate.didBuild baseImpl.didBuild
-          delegate.initInstance baseImpl.initInstance
-          # @willMount baseImpl.attachNativeValues
-          # @willUnmount baseImpl.detachNativeValues
+    nativeValues = ValueMapper
+      values: nativeValues
+      define: (obj, key, value) ->
+        return if value is undefined
+        unless value instanceof NativeValue
+          value = NativeValue value, obj.constructor.name + "." + key
+        if isDev then frozen.define obj, key, {value}
+        else obj[key] = value
+        obj.__nativeKeys.push key
+        value.__attach()
+        return
 
-      if isType nativeValues, Object
-        nativeValues = sync.map nativeValues, (value) ->
-          if isType value, Function
-            return -> bind.func value, this
-          return value
+    delegate._phases.init.push (args) ->
+      nativeValues.define this, args
+    return
 
-      nativeValues = ValueMapper
-        values: nativeValues
-        define: (obj, key, value) ->
-          return if value is undefined
-          unless value instanceof NativeValue
-            value = NativeValue value, obj.constructor.name + "." + key
-          if isDev then frozen.define obj, key, {value}
-          else obj[key] = value
-          obj.__nativeKeys.push key
-          value.__attach()
-          return
+module.exports = typeMixin.apply
 
-      delegate._phases.init.push (args) ->
-        nativeValues.define this, args
-      return
+# This is defined on the first type (in its inheritance chain) to call `defineNativeValues`.
+baseImpl = {}
 
-#
-# The 'base' is the first type in the inheritance chain to define native values.
-#
+baseImpl.didBuild = (type) ->
+  frozen.define type.prototype, "__hasNativeValues", { value: yes }
 
-baseImpl =
-
-  didBuild: (type) ->
-    frozen.define type.prototype, "__hasNativeValues", { value: yes }
-
-  initInstance: ->
-    frozen.define this, "__nativeKeys", value: []
-
-  # attachNativeValues: ->
-  #   for key in @__nativeKeys
-  #     this[key].__attach()
-  #   return
-  #
-  # detachNativeValues: ->
-  #   for key in @__nativeKeys
-  #     this[key].__detach()
-  #   return
+baseImpl.initInstance = ->
+  frozen.define this, "__nativeKeys", value: []

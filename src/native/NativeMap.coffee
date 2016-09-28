@@ -59,33 +59,63 @@ type.defineHooks
 
     return values
 
-  __attachValue: (value, key) ->
-
-    if value instanceof NativeValue
-      return if @__nativeValues[key]?
-      @__nativeValues[key] = value
-      @__attachNativeValue value, key
-      return
-
-    if isType value, Object
-      values = value
-      value = @__nativeMaps[key] or NativeMap {}
-      value.attach values
-
-    if value instanceof NativeMap
-      return if @__nativeMaps[key]?
-      @__nativeMaps[key] = value
-      @__attachNativeValue value, key
-      return
-
-    @__values[key] = value
-    return
+  #
+  # Attaching values
+  #
 
   __attachNewValues: (newValues) ->
     return if not newValues
     for key, value of newValues
       @__attachValue value, key
     return
+
+  __attachValue: (value, key) ->
+
+    if value instanceof NativeValue
+      @__attachNativeValue value, key
+      return
+
+    if isType value, Object
+      map = @__nativeMaps[key] or NativeMap {}
+      map.attach value
+      @__attachNativeMap map, key
+      return
+
+    if value instanceof NativeMap
+      @__attachNativeMap value, key
+      return
+
+    @__values[key] = value
+    return
+
+  __attachNativeValue: (nativeValue, key) ->
+    if not @__nativeValues[key]
+      @__values[key] = undefined
+      @__nativeValues[key] = value
+      @__attachNativeListener value, key
+    return
+
+  __attachNativeMap: (nativeMap, key) ->
+    if not @__nativeMaps[key]
+      @__values[key] = undefined
+      @__nativeMaps[key] = value
+      @__attachNativeListener value, key
+    return
+
+  __attachNativeListener: (nativeValue, key) ->
+
+    onChange = (newValue) =>
+      newValues = {}
+      newValues[key] = newValue
+      @__didSet newValues
+
+    listener = nativeValue.didSet onChange
+    @__nativeListeners[key] = listener.start()
+    return
+
+  #
+  # Detaching values
+  #
 
   __detachOldValues: (newValues) ->
 
@@ -121,18 +151,7 @@ type.defineHooks
       nativeMap.detach()
     return
 
-  __attachNativeValue: (nativeValue, key) ->
-
-    onChange = (newValue) =>
-      newValues = {}
-      newValues[key] = newValue
-      @__didSet newValues
-
-    listener = nativeValue.didSet onChange
-    @__nativeListeners[key] = listener.start()
-    return
-
-  __detachNativeValue: (nativeValue, key) ->
+  __detachNativeListener: (nativeValue, key) ->
     @__nativeListeners[key].stop()
     delete @__nativeListeners[key]
     return

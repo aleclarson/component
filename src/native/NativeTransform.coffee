@@ -29,12 +29,12 @@ type.overrideMethods
     transforms = []
 
     for key, value of @__values
-      [ index, key ] = key.split "."
+      [index, key] = key.split "."
       transform = transforms[index] ?= {}
       transform[key] = value
 
     for key, nativeValue of @__nativeValues
-      [ index, key ] = key.split "."
+      [index, key] = key.split "."
       transform = transforms[index] ?= {}
       transform[key] = nativeValue.value
 
@@ -49,11 +49,10 @@ type.overrideMethods
       key = index + "." + key
 
       if value instanceof NativeValue
-        @__nativeValues[key] = value
         @__attachNativeValue value, key
-        return
+      else @__values[key] = value
 
-      @__values[key] = value
+    return
 
   # All values are refreshed when attaching new values.
   __detachOldValues: (newValues) ->

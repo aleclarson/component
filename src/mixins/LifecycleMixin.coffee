@@ -7,17 +7,10 @@ assertType = require "assertType"
 applyChain = require "applyChain"
 Builder = require "Builder"
 
-module.exports = (type) ->
-  type.defineMethods typeImpl.methods
-  type.initInstance typeImpl.initInstance
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
-typeImpl = {}
-
-typeImpl.methods =
+typeMixin.defineMethods
 
   render: (func) ->
     assertType func, Function
@@ -59,25 +52,28 @@ typeImpl.methods =
     @_phases.willUnmount.push func
     return
 
-typeImpl.initInstance = ->
+typeMixin.initInstance ->
   @_phases.willMount = []
   @_phases.didMount = []
   @_phases.willUpdate = []
   @_phases.didUpdate = []
   @_phases.willUnmount = []
-  @willBuild instImpl.willBuild
+  @addMixins [
+    instanceMixin.apply
+  ]
 
-# In this context, 'inst' is a component factory.
-# Thus 'instImpl' defines the behavior of each component instance.
-instImpl = {}
+module.exports = typeMixin.apply
 
-instImpl.willBuild = ->
+# This is applied to every Component.Builder
+instanceMixin = Builder.Mixin()
+
+instanceMixin.willBuild ->
 
   kind = @_kind
   ownMethods = {}
 
   if kind is no
-    @defineMethods instImpl.methods
+    @defineMethods viewImpl
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
     ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
@@ -103,7 +99,8 @@ instImpl.willBuild = ->
     __didUpdate: @_phases.didUpdate
     __willUnmount: @_phases.willUnmount
 
-instImpl.methods =
+# This interface is shared by every component instance
+viewImpl =
 
   render: ->
     @_delegate.__render()

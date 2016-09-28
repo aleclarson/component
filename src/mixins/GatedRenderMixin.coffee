@@ -3,17 +3,13 @@
 
 assertType = require "assertType"
 Reaction = require "Reaction"
+Builder = require "Builder"
 hook = require "hook"
 
-shift = Array::shift
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-module.exports = (type) ->
-  type.defineMethods typeImpl.defineMethods
-
-# This is defined on each modx_TypeBuilder.
-typeImpl = {}
-
-typeImpl.defineMethods =
+typeMixin.defineMethods
 
   isRenderPrevented: (func) ->
 
@@ -22,25 +18,25 @@ typeImpl.defineMethods =
     if @_isRenderPrevented
       throw Error "'isRenderPrevented' is already defined!"
 
-    mutable.define this, "_isRenderPrevented", {value: func}
-
     delegate = @_delegate
     delegate.defineMethods {isRenderPrevented: func}
-    delegate.willBuild instImpl.willBuild
-    delegate.defineValues instImpl.defineValues
-    delegate.defineReactions instImpl.defineReactions
+    delegate.addMixins [
+      instanceMixin.apply
+    ]
+
+    mutable.define this, "_isRenderPrevented", {value: func}
     return
 
-# This is defined on each instance of a modx_Type.
-instImpl = {}
+module.exports = typeMixin.apply
 
-instImpl.defineValues =
+# This is applied to every Component.Builder
+instanceMixin = Builder.Mixin()
+
+instanceMixin.defineValues ->
 
   __needsRender: no
 
-instImpl.defineReactions = ->
-
-  __shouldRender:
+  __shouldRender: Reaction
     cacheResult: yes
     get: => not @isRenderPrevented()
     didSet: (shouldRender) =>
@@ -49,12 +45,19 @@ instImpl.defineReactions = ->
         try @view.forceUpdate()
       return
 
-instImpl.willBuild = ->
-  @didBuild instImpl.didBuild
+instanceMixin.initInstance ->
+  @__shouldRender.start()
 
-instImpl.didBuild = (type) ->
-  hook type.prototype, "__render", gatedRender
-  hook type.prototype, "__shouldUpdate", gatedRender
+instanceMixin.willBuild ->
+  @didBuild (type) ->
+    hook type.prototype, "__render", gatedRender
+    hook type.prototype, "__shouldUpdate", gatedRender
+
+#
+# Helpers
+#
+
+shift = Array::shift
 
 # Must be used with `hook()`
 gatedRender = ->

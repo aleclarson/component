@@ -1,26 +1,16 @@
 
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
 assertType = require "assertType"
+Builder = require "Builder"
 isType = require "isType"
 
 StyleMap = require "../utils/StyleMap"
 
-module.exports = (type) ->
-  type[key] impl for key, impl of typeImpl
-  return
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
-typeImpl = {}
-
-typeImpl.defineValues =
-
-  _styles: null
-
-typeImpl.defineMethods =
+typeMixin.defineMethods
 
   defineStyles: (styles) ->
     assertType styles, Object
@@ -42,18 +32,19 @@ typeImpl.defineMethods =
 
   _createStyles: ->
     kind = @_delegate._kind
-    @_styles = StyleMap kind and kind.styles
+    styles = StyleMap kind and kind.styles
+    frozen.define this, "_styles", {value: styles}
+    return styles
 
-typeImpl.initInstance = ->
-  @willBuild instImpl.willBuild
+typeMixin.initInstance ->
+  @addMixins [instanceMixin.apply]
 
-#
-# The 'instance' is a Component.Builder
-#
+module.exports = typeMixin.apply
 
-instImpl = {}
+# This is applied to every Component.Builder
+instanceMixin = Builder.Mixin()
 
-instImpl.willBuild = ->
+instanceMixin.willBuild ->
 
   styles = @_styles
   delegate = @_delegate

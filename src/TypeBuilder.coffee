@@ -80,67 +80,67 @@ module.exports = type.build()
 # Internal
 #
 
-# In this context, 'inst' is the model instance.
-# Thus 'instImpl' is the model factory.
-instImpl =
+# This is defined on each modx_TypeBuilder.
+instImpl = {}
 
-  willBuild: ->
+instImpl.willBuild = ->
 
-    # Define once per inheritance chain.
-    unless @_kind instanceof modx_Type
-      @defineValues instImpl.defineValues
-      @defineGetters instImpl.defineGetters
-      @defineMethods instImpl.defineMethods
+  # Define once per inheritance chain.
+  unless @_kind instanceof modx_Type
+    @defineValues instImpl.defineValues
+    @defineGetters instImpl.defineGetters
+    @defineMethods instImpl.defineMethods
 
-    # Build the underlying component type.
-    componentType = @_componentType.build()
-    @defineStatics
-      View: componentType
-      _createElement: ElementType componentType
-    return
+  # Build the underlying component type.
+  View = @_componentType.build()
+  createElement = ElementType View
 
-  defineValues:
+  @defineStatics {View, createElement}
+  return
 
-    _props: null
+instImpl.defineValues =
 
-    _view: null
+  _props: null
 
-  defineGetters:
+  _view: null
 
-    props: -> @_props
+instImpl.defineGetters =
 
-    view: -> @_view
+  props: -> @_props
 
-  defineMethods:
+  view: -> @_view
 
-    render: (props) ->
-      @constructor._createElement props, this
+instImpl.defineMethods =
+
+  render: (props) ->
+    @constructor.createElement props, this
 
 # In this context, 'view' is the component instance.
 # Thus 'viewImpl' is the component factory.
-viewImpl =
+# This is
+viewImpl = {}
 
-  willBuild: ->
+viewImpl.willBuild = ->
 
-    # Define once per inheritance chain.
-    return if @_delegate._kind instanceof modx_Type
+  # Define once per inheritance chain.
+  return if @_delegate._kind instanceof modx_Type
 
-    @defineGetters viewImpl.defineGetters
+  @defineGetters viewImpl.defineGetters
 
-    # Try to be the very last phase.
-    @willBuild ->
-      @_phases.init.unshift viewImpl.initInstance
-      @willUnmount viewImpl.willUnmount
-    return
+  # Try to be the very last phase.
+  @willBuild ->
+    @_phases.init.unshift viewImpl.initInstance
+    @willUnmount viewImpl.willUnmount
+  return
 
-  initInstance: ->
-    @_delegate._view = this
+viewImpl.initInstance = ->
+  @_delegate._view = this
 
-  # NOTE: 'this' context equals 'this._delegate'.
-  willUnmount: ->
-    @_props = null
-    @_view = null
+# NOTE: 'this' context equals 'this._delegate'.
+viewImpl.willUnmount = ->
+  @_props = null
+  @_view = null
 
-  defineGetters:
+viewImpl.defineGetters =
 
-    _delegate: -> @props.delegate
+  _delegate: -> @props.delegate

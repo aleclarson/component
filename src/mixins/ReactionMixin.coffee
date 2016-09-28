@@ -4,20 +4,15 @@
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
 Reaction = require "Reaction"
+Builder = require "Builder"
 isType = require "isType"
 bind = require "bind"
 sync = require "sync"
 
-module.exports = (type) ->
-  type.defineMethods typeImpl.methods
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
-typeImpl = {}
-
-typeImpl.methods =
+typeMixin.methods =
 
   defineReactions: (reactions) ->
 
@@ -30,8 +25,7 @@ typeImpl.methods =
       frozen.define this, "__hasReactions", { value: yes }
       kind = delegate._kind
       unless kind and kind::__hasReactions
-        delegate.didBuild baseImpl.didBuild
-        delegate.initInstance baseImpl.initInstance
+        delegate.addMixins [baseMixin.apply]
 
     if isType reactions, Object
       reactions = sync.map reactions, (value) ->
@@ -43,7 +37,7 @@ typeImpl.methods =
       values: reactions
       define: (obj, key, value) ->
         return if value is undefined
-        reaction = getReaction obj, key, value
+        reaction = createReaction obj, key, value
         frozen.define obj, key, {value: reaction}
         reaction.start()
 
@@ -53,24 +47,23 @@ typeImpl.methods =
     delegate._phases.init.push defineReactions
     return
 
-#
-# The 'base' is the first type in the inheritance chain to define reactions.
-#
+module.exports = typeMixin.apply
 
-baseImpl =
+# This is applied to the first type (in its inheritance chain) to call `defineReactions`
+baseMixin = Builder.Mixin()
 
-  didBuild: (type) ->
-    frozen.define type.prototype, "__hasReactions", { value: yes }
+baseMixin.didBuild = (type) ->
+  frozen.define type.prototype, "__hasReactions", { value: yes }
 
-  initInstance: ->
-    frozen.define this, "__reactions",
-      value: Object.create null
+baseMixin.initInstance = ->
+  frozen.define this, "__reactions",
+    value: Object.create null
 
 #
 # Helpers
 #
 
-getReaction = (obj, key, value) ->
+createReaction = (obj, key, value) ->
 
   if isType value, Reaction
     value.keyPath ?= obj.constructor.name + "." + key

@@ -2,18 +2,13 @@
 {frozen} = require "Property"
 
 assertType = require "assertType"
+Builder = require "Builder"
 Event = require "Event"
 
-module.exports = (type) ->
-  type.defineMethods typeImpl.methods
+# This is applied to the Component.Builder constructor
+typeMixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
-typeImpl = {}
-
-typeImpl.methods =
+typeMixin.defineMethods
 
   defineMountedListeners: (createListeners) ->
 
@@ -50,6 +45,8 @@ typeImpl.methods =
       frozen.define this, "__mountedListeners", {value: listeners}
       return
     return
+
+module.exports = typeMixin.apply
 
 hasMountedListeners = (type) ->
   frozen.define type.prototype, "__hasMountedListeners", {value: yes}
