@@ -7,7 +7,6 @@ cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
-fillValue = require "fillValue"
 inArray = require "in-array"
 isType = require "isType"
 Type = require "Type"
@@ -122,8 +121,8 @@ type.defineMethods
     assertType styleName, String
     assertType style, Object
 
-    constantStyle = fillValue @_constantStyles, styleName, PureObject.create
-    computedStyle = fillValue @_computedStyles, styleName, PureObject.create
+    constantStyle = @_constantStyles[styleName] ?= Object.create null
+    computedStyle = @_computedStyles[styleName] ?= Object.create null
 
     for key, value of style
 

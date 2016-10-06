@@ -2,7 +2,9 @@
 ReactComponent = require "ReactComponent"
 NamedFunction = require "NamedFunction"
 assertType = require "assertType"
+Builder = require "Builder"
 setKind = require "setKind"
+Mixin = require "Mixin"
 bind = require "bind"
 
 modx_ComponentBuilder = require "./ComponentBuilder"
@@ -15,3 +17,26 @@ modx_Component = NamedFunction "modx_Component", (name) ->
   return componentType
 
 module.exports = setKind modx_Component, ReactComponent
+
+modx_Component.Mixin = Mixin.create
+  extends: Builder.Mixin
+  methods: [
+    "defineProps"
+    "replaceProps"
+    "initProps"
+    "render"
+    "isRenderPrevented"
+    "shouldUpdate"
+    "willReceiveProps"
+    "willMount"
+    "didMount"
+    "willUnmount"
+    "willUpdate"
+    "didUpdate"
+    "defineNativeValues"
+    "defineMountedListeners"
+    "defineReactions"
+    "defineStyles"
+    "appendStyles"
+    "overrideStyles"
+  ]

@@ -32,28 +32,25 @@ NativeComponent = (name, {render, propTypes}) ->
       if propTypes then props.validate
       else emptyFunction.thatReturnsArgument
 
-  type[key] impl for key, impl of typeImpl
+  typeMixin.apply type
   return type.build()
 
 module.exports = NativeComponent
 
-#
-# The `typeImpl` interface is used
-# by every NativeComponent factory!
-#
+# This is applied to every NativeComponent type
+typeMixin = Component.Mixin()
 
-typeImpl = {}
-
-typeImpl.defineValues =
+typeMixin.defineValues
 
   _child: null
 
   _queuedProps: null
 
   _nativeProps: ->
-    NativeProps @props, @constructor.propTypes
+    props = NativeProps @constructor.propTypes
+    return props.attach @props
 
-typeImpl.defineBoundMethods =
+typeMixin.defineBoundMethods
 
   setNativeProps: (newProps) ->
 
@@ -74,22 +71,22 @@ typeImpl.defineBoundMethods =
     orig this
     return
 
-typeImpl.defineMountedListeners = ->
+typeMixin.defineMountedListeners ->
   @_nativeProps.didSet @setNativeProps
 
 #
 # Rendering
 #
 
-typeImpl.render = ->
+typeMixin.render ->
   props = @_nativeProps.values
   hook props, "ref", @_hookRef
   return @_renderChild props
 
-typeImpl.willUnmount = ->
+typeMixin.willUnmount ->
   @_nativeProps.detach()
   return
 
-typeImpl.willReceiveProps = (nextProps) ->
+typeMixin.willReceiveProps (nextProps) ->
   @_nativeProps.attach nextProps
   return

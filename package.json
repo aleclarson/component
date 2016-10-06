@@ -36,7 +36,6 @@
     "define": "aleclarson/define#1.0.0",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "emptyObject": "aleclarson/emptyObject#1.0.0",
-    "fillValue": "aleclarson/fillValue#1.0.0",
     "getKind": "aleclarson/getKind#1.0.0",
     "has": "aleclarson/has#1.0.0",
     "hasKeys": "aleclarson/hasKeys#1.0.0",

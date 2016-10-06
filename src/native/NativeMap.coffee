@@ -32,7 +32,7 @@ type.defineMethods
   attach: (newValues) ->
     @__detachOldValues newValues
     @__attachNewValues newValues
-    return
+    return this
 
   detach: ->
     @__detachNativeValues()
@@ -64,7 +64,7 @@ type.defineHooks
   #
 
   __attachNewValues: (newValues) ->
-    return if not newValues
+    assertType newValues, Object
     for key, value of newValues
       @__attachValue value, key
     return
@@ -90,16 +90,16 @@ type.defineHooks
 
   __attachNativeValue: (nativeValue, key) ->
     if not @__nativeValues[key]
-      @__values[key] = undefined
-      @__nativeValues[key] = value
-      @__attachNativeListener value, key
+      @__values[key] = undefined # <= Preserve key order within this.__values
+      @__nativeValues[key] = nativeValue
+      @__attachNativeListener nativeValue, key
     return
 
   __attachNativeMap: (nativeMap, key) ->
     if not @__nativeMaps[key]
-      @__values[key] = undefined
-      @__nativeMaps[key] = value
-      @__attachNativeListener value, key
+      @__values[key] = undefined # <= Preserve key order within this.__values
+      @__nativeMaps[key] = nativeMap
+      @__attachNativeListener nativeMap, key
     return
 
   __attachNativeListener: (nativeValue, key) ->

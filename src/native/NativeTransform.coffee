@@ -1,4 +1,5 @@
 
+assertType = require "assertType"
 isType = require "isType"
 Type = require "Type"
 
@@ -9,14 +10,8 @@ type = Type "NativeTransform"
 
 type.inherits NativeMap
 
-type.defineArgs
-  values: Array.isRequired
-
 type.createInstance ->
   return NativeMap {}
-
-type.initInstance (values) ->
-  @attach values
 
 type.overrideMethods
 
@@ -40,6 +35,12 @@ type.overrideMethods
 
     return transforms
 
+  __attachNewValues: (transforms) ->
+    assertType transforms, Array
+    for transform, index in transforms
+      @__attachValue transform, index
+    return
+
   __attachValue: (transform, index) ->
 
     return if not isType transform, Object
@@ -55,7 +56,7 @@ type.overrideMethods
     return
 
   # All values are refreshed when attaching new values.
-  __detachOldValues: (newValues) ->
+  __detachOldValues: ->
     @detach()
 
 module.exports = type.build()

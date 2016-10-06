@@ -12,18 +12,14 @@ type = Type "NativeProps"
 type.inherits NativeMap
 
 type.defineArgs
-  props: Object.isRequired
   propTypes: Object
 
 type.createInstance ->
   return NativeMap {}
 
-type.defineValues
+type.defineValues (propTypes) ->
 
-  _propTypes: (_, propTypes) -> propTypes
-
-type.initInstance (props) ->
-  @attach props
+  _propTypes: propTypes or {}
 
 type.overrideMethods
 
@@ -35,11 +31,13 @@ type.overrideMethods
       @__values[key] = value
       return
 
-    if type is Style
-      return if not value?
-      return if @__nativeMaps[key]
-      value = NativeStyle value
+    if type is Style and value?
+      style = @__nativeMaps[key] or NativeStyle()
+      style.attach value
+      @__attachNativeMap style, key
+      return
 
     @__super arguments
+    return
 
 module.exports = type.build()

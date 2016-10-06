@@ -12,7 +12,7 @@ sync = require "sync"
 # This is applied to the Component.Builder constructor
 typeMixin = Builder.Mixin()
 
-typeMixin.methods =
+typeMixin.defineMethods
 
   defineReactions: (reactions) ->
 
@@ -52,10 +52,10 @@ module.exports = typeMixin.apply
 # This is applied to the first type (in its inheritance chain) to call `defineReactions`
 baseMixin = Builder.Mixin()
 
-baseMixin.didBuild = (type) ->
+baseMixin.didBuild (type) ->
   frozen.define type.prototype, "__hasReactions", { value: yes }
 
-baseMixin.initInstance = ->
+baseMixin.initInstance ->
   frozen.define this, "__reactions",
     value: Object.create null
 
