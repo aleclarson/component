@@ -6,6 +6,8 @@ isDev = require "isDev"
 Type = require "Type"
 has = require "has"
 
+NativeValue = require "../native/NativeValue"
+
 type = Type "PropValidator"
 
 type.defineArgs
@@ -61,6 +63,9 @@ type.defineBoundMethods
 
         else if not @_required[name]
           continue
+
+      else if prop instanceof NativeValue
+        prop = prop.value
 
       if isDev and propType = @types[name]
         assertType prop, propType, "props." + name
