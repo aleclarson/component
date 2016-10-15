@@ -1,6 +1,8 @@
 
 emptyFunction = require "emptyFunction"
+assertTypes = require "assertTypes"
 assertType = require "assertType"
+sync = require "sync"
 hook = require "hook"
 
 PropValidator = require "../utils/PropValidator"
@@ -11,12 +13,14 @@ Component = require "../Component"
 configTypes =
   render: Function
   propTypes: Object.Maybe
+  methods: Array.Maybe
+  statics: Array.Maybe
 
-NativeComponent = (name, {render, propTypes}) ->
+NativeComponent = (name, config) ->
 
   assertType name, String
-  assertType render, Function
-  assertType propTypes, Object.Maybe
+  assertTypes config, configTypes
+  {render, propTypes} = config
 
   type = Component "Native" + name
 
@@ -31,6 +35,18 @@ NativeComponent = (name, {render, propTypes}) ->
     _renderChild: ElementType render,
       if propTypes then props.validate
       else emptyFunction.thatReturnsArgument
+
+  if config.methods
+    type.defineMethods do ->
+      sync.reduce config.methods, {}, (methods, key) ->
+        methods[key] = -> @_child[key].apply @_child, arguments
+        return methods
+
+  if config.statics
+    type.defineStatics do ->
+      sync.reduce config.statics, {}, (statics, key) ->
+        statics[key] = get: -> render[key]
+        return statics
 
   typeMixin.apply type
   return type.build()
