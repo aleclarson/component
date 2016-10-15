@@ -35,4 +35,9 @@ TextInput = NativeComponent "TextInput",
     style: Style
     # TODO: Add `android` and `ios` specific props?
 
+  methods: [
+    "focus"
+    "blur"
+  ]
+
 module.exports = TextInput
