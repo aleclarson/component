@@ -124,7 +124,7 @@ type.defineHooks
     nativeValues = @__nativeValues
     for key, nativeValue of nativeValues
       continue if nativeValue is newValues[key]
-      @__detachNativeValue nativeValue, key
+      @__detachNativeListener nativeValue, key
       delete nativeValues[key]
 
     nativeMaps = @__nativeMaps
@@ -132,22 +132,23 @@ type.defineHooks
 
       # Detach native maps recursively.
       if nativeMap is newValues[key]
-        nativeMap._detachOldValues newValues[key]
+        nativeMap.__detachOldValues newValues[key]
         continue
 
-      @__detachNativeValue nativeMap, key
-      delete nativeMaps[key]
+      @__detachNativeListener nativeMap, key
+      nativeMap.detach()
 
+      delete nativeMaps[key]
     return
 
   __detachNativeValues: ->
     for key, nativeValue of @__nativeValues
-      @__detachNativeValue nativeValue, key
+      @__detachNativeListener nativeValue, key
     return
 
   __detachNativeMaps: ->
     for key, nativeMap of @__nativeMaps
-      @__detachNativeValue nativeMap, key
+      @__detachNativeListener nativeMap, key
       nativeMap.detach()
     return
 
