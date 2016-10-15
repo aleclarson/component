@@ -64,6 +64,7 @@ baseMixin.initInstance ->
 #
 
 createReaction = (obj, key, value) ->
+  assertType value, Reaction.or Function, Object
 
   if isType value, Reaction
     value.keyPath ?= obj.constructor.name + "." + key
