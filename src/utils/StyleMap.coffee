@@ -134,13 +134,8 @@ type.defineMethods
       # Parse constant styles that use presets.
       else if StyleMap._presets[key]
         sync.each callPreset(key, value), (value, key) ->
-          if not value?
-            throw TypeError "Invalid style value for key: '#{styleName}.#{key}'"
           constantStyle[key] = value
           delete computedStyle[key] if has computedStyle, key
-
-      else if not value?
-        throw TypeError "Invalid style value for key: '#{styleName}.#{key}'"
 
       # Parse constant styles.
       else
@@ -164,6 +159,7 @@ type.defineMethods
   _applyConstantStyle: (values, style) ->
     return if not style
     for key, { value, isTransform } of style
+      continue if not value?
       if isTransform
         values.transform.push assign {}, key, value
       else values[key] = value
@@ -173,11 +169,10 @@ type.defineMethods
     return if not style
     for key, { value, isTransform } of style
       value = value.apply context, args
-      continue if value is undefined
+      continue if not value?
       if StyleMap._presets[key]
         sync.each callPreset(key, value), ({ value, isTransform }, key) ->
-          if not value?
-            throw TypeError "Invalid style value for key: '#{key}'"
+          return if not value?
           if isTransform
             values.transform.push assign {}, key, value
           else values[key] = value
