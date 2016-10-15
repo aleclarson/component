@@ -1,16 +1,13 @@
 
 OneOf = require "OneOf"
+Shape = require "Shape"
 
 NativeComponent = require "../native/NativeComponent"
 Children = require "../validators/Children"
 Style = require "../validators/Style"
 
-PointerEventType = OneOf "PointerEventType", [
-  "auto"
-  "none"
-  "box-none"
-  "box-only"
-]
+PointerEvents = OneOf "PointerEvents", "auto none box-none box-only"
+LayoutAttributes = Shape "LayoutAttributes", {top: Number, right: Number, bottom: Number, left: Number}
 
 View = NativeComponent "View",
 
@@ -19,7 +16,8 @@ View = NativeComponent "View",
   propTypes:
     style: Style
     children: Children
-    pointerEvents: PointerEventType
+    pointerEvents: PointerEvents
+    hitSlop: LayoutAttributes
     testID: String
     onLayout: Function
     onResponderReject: Function
