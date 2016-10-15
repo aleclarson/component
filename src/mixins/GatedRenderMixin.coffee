@@ -4,7 +4,7 @@
 assertType = require "assertType"
 Reaction = require "Reaction"
 Builder = require "Builder"
-hook = require "hook"
+sync = require "sync"
 
 # This is applied to the Component.Builder constructor
 typeMixin = Builder.Mixin()
@@ -20,9 +20,7 @@ typeMixin.defineMethods
 
     delegate = @_delegate
     delegate.defineMethods {isRenderPrevented: func}
-    delegate.addMixins [
-      instanceMixin.apply
-    ]
+    delegate.addMixin instanceMixin.apply
 
     mutable.define this, "_isRenderPrevented", {value: func}
     return
@@ -50,23 +48,28 @@ instanceMixin.initInstance ->
 
 instanceMixin.willBuild ->
   @didBuild (type) ->
-    hook type.prototype, "__render", gatedRender
-    hook type.prototype, "__shouldUpdate", gatedRender
+    hook type.prototype,
+      __render: gatedRender
+      __shouldUpdate: gatedRender
 
 #
 # Helpers
 #
 
-shift = Array::shift
+hook = (obj, methods) ->
+  sync.each methods, (method, key) ->
+    orig = obj[key]
+    value = -> method.call this, orig, arguments
+    mutable.define obj, key, {value}
+  return
 
 # Must be used with `hook()`
-gatedRender = ->
+gatedRender = (orig, args) ->
 
   # Allow the render to go through
   if @__shouldRender.value
-    orig = shift.call arguments
-    return orig.call this
+    return orig.apply this, args
 
   # Wait for `isRenderPrevented`
   @__needsRender = yes
-  return no
+  return null
