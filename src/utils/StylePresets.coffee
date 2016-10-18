@@ -4,16 +4,27 @@ module.exports =
   clear: ->
     backgroundColor: "transparent"
 
-  cover: ->
-    position: "absolute"
-    top: 0
-    left: 0
-    right: 0
-    bottom: 0
+  cover: (enabled) ->
+    if enabled
+      position: "absolute"
+      top: 0
+      left: 0
+      right: 0
+      bottom: 0
+    else
+      position: null
+      top: null
+      left: null
+      right: null
+      bottom: null
 
-  fill: ->
-    flex: 1
-    alignSelf: "stretch"
+  fill: (enabled) ->
+    if enabled
+      flex: 1
+      alignSelf: "stretch"
+    else
+      flex: null
+      alignSelf: null
 
   leftAlign: ->
     flex: 1
