@@ -19,10 +19,12 @@ typeMixin.defineMethods
 
   defineProps: (props) ->
 
-    if @_propTypes
-      throw Error "'defineProps' can only be called once!"
+    if @_props
+      @_props.define props
+      return
 
     props = PropValidator props
+    frozen.define this, "_props", {value: props}
 
     # Expose `propTypes` and `propDefaults`.
     @_delegate.didBuild (type) ->
@@ -32,9 +34,6 @@ typeMixin.defineMethods
 
     # Validate props and set defaults.
     @_phases.props.push props.validate
-
-    # Don't allow `defineProps` to be called again.
-    frozen.define this, "_propTypes", {value: props.types}
     return
 
   replaceProps: (func) ->

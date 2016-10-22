@@ -10,9 +10,6 @@ NativeValue = require "../native/NativeValue"
 
 type = Type "PropValidator"
 
-type.defineArgs
-  propTypes: Object.isRequired
-
 type.defineValues ->
 
   types: {}
@@ -23,31 +20,36 @@ type.defineValues ->
 
   _required: {}
 
-type.initInstance (propTypes) ->
+type.initInstance (props) ->
+  props and @define props
 
-  for name, prop of propTypes
+type.defineMethods
 
-    @_names.push name
+  # Any pre-defined props are overwritten.
+  define: (props) ->
+    assertType props, Object
+    for name, prop of props
 
-    if not isType prop, Object
-      @types[name] = prop
-      continue
+      if 0 > @_names.indexOf name
+        @_names.push name
 
-    if has prop, "default"
-      @defaults[name] = prop.default
+      if not isType prop, Object
+        @types[name] = prop
+        continue
 
-    if not prop.type
-      continue
+      if has prop, "default"
+        @defaults[name] = prop.default
 
-    @types[name] =
-      if isType prop.type, Object
-      then Shape prop.type
-      else prop.type
+      continue if not prop.type
+      @types[name] =
+        if isType prop.type, Object
+        then Shape prop.type
+        else prop.type
 
-    if prop.required
-      @_required[name] = yes
+      if prop.required
+        @_required[name] = yes
 
-  return
+    return
 
 type.defineBoundMethods
 
