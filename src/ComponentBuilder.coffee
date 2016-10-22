@@ -20,6 +20,11 @@ type.definePrototype
 
 type.overrideMethods
 
+  inherits: (kind) ->
+    if kind.componentType
+      kind = kind.componentType
+    @__super arguments
+
   _defaultBaseCreator: (args) ->
     instance = Builder::_defaultBaseCreator.call null, args
     ReactComponent.apply instance, args
