@@ -38,9 +38,9 @@ type.initArgs (value) ->
 
 type.defineFrozenValues ->
 
-  didSet: Event()
+  didSet: Event {async: no}
 
-  didAnimationEnd: Event()
+  didAnimationEnd: Event {async: no}
 
 type.defineValues
 
