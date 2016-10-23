@@ -22,7 +22,7 @@ typeMixin.defineMethods
 
     # Some phases must only be defined once per inheritance chain.
     if not @__hasReactions
-      frozen.define this, "__hasReactions", { value: yes }
+      frozen.define this, "__hasReactions", value: yes
       kind = delegate._kind
       unless kind and kind::__hasReactions
         delegate.addMixins [baseMixin.apply]
@@ -30,19 +30,18 @@ typeMixin.defineMethods
     if isType reactions, Object
       reactions = sync.map reactions, (value) ->
         if isType value, Function
-          return -> value
-        return value
+        then -> value
+        else value
 
     reactions = ValueMapper
       values: reactions
       define: (obj, key, value) ->
         return if value is undefined
+        obj.__reactionKeys.push key
         reaction = createReaction obj, key, value
-        frozen.define obj, key, {value: reaction}
+        frozen.define obj, key, value: reaction
         reaction.start()
 
-    # NOTE: 'args' are not used here since Reactions would
-    #         only be able to access them on the first run.
     defineReactions = -> reactions.define this
     delegate._phases.init.push defineReactions
     return
@@ -53,11 +52,17 @@ module.exports = typeMixin.apply
 baseMixin = Builder.Mixin()
 
 baseMixin.didBuild (type) ->
-  frozen.define type.prototype, "__hasReactions", { value: yes }
+  frozen.define type.prototype, "__hasReactions", value: yes
 
 baseMixin.initInstance ->
-  frozen.define this, "__reactions",
-    value: Object.create null
+  frozen.define this, "__reactionKeys", value: []
+
+baseMixin.defineMethods
+
+  stopReactions: ->
+    for key in @__reactionKeys
+      this[key].stop()
+    return
 
 #
 # Helpers
