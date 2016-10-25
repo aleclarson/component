@@ -59,19 +59,16 @@
     "ReactCompositeComponent",
     "AppRegistry",
     "Dimensions",
-    "Image",
-    "ImageView",
     "ReactComponent",
     "InteractionManager",
     "ReactElement",
-    "ReactInstanceMap",
     "StaticRenderer",
     "StyleSheet",
     "Text",
     "TextInput",
     "View",
     "WebView",
-    "emptyObject",
-    "flattenStyle"
+    "flattenStyle",
+    "requireNativeComponent"
   ]
 }
