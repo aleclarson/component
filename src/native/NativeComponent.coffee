@@ -1,4 +1,5 @@
 
+requireNativeComponent = require "requireNativeComponent"
 emptyFunction = require "emptyFunction"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
@@ -11,7 +12,7 @@ NativeProps = require "./NativeProps"
 Component = require "../Component"
 
 configTypes =
-  render: Function
+  render: Function.Maybe
   propTypes: Object.Maybe
   methods: Array.Maybe
   statics: Array.Maybe
@@ -21,6 +22,7 @@ NativeComponent = (name, config) ->
   assertType name, String
   assertTypes config, configTypes
   {render, propTypes} = config
+  render ?= requireNativeComponent name
 
   type = Component "Native" + name
 
@@ -50,6 +52,8 @@ NativeComponent = (name, config) ->
 
   typeMixin.apply type
   return type.build()
+
+NativeComponent.require = requireNativeComponent
 
 module.exports = NativeComponent
 
