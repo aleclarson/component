@@ -15,7 +15,7 @@ type.defineGetters
 
 type.defineFrozenValues
 
-  didSet: -> Event()
+  didSet: -> Event {async: no}
 
 type.defineValues (values) ->
 
