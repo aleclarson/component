@@ -7,11 +7,13 @@ cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
-inArray = require "in-array"
 isType = require "isType"
+OneOf = require "OneOf"
 Type = require "Type"
 sync = require "sync"
 has = require "has"
+
+StyleTransform = OneOf "scale perspective translateX translateY rotateX rotateY rotateZ"
 
 type = Type "StyleMap"
 
@@ -224,12 +226,8 @@ assign = (obj, key, value) ->
   obj[key] = value
   return obj
 
-isTransformKey = do ->
-  keys = [ "scale", "translateX", "translateY", "rotate" ]
-  return (key) -> inArray keys, key
-
 parseTransform = (value, key) ->
-  { value, isTransform: isTransformKey key }
+  { value, isTransform: StyleTransform.test key }
 
 callPreset = (presetName, presetArg) ->
   style = StyleMap._presets[presetName] presetArg
