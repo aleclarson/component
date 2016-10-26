@@ -215,11 +215,14 @@ type.defineMethods
 
   willProgress: (config) ->
 
-    isDev and
-    assertTypes config, configTypes.setProgress
+    if isDev
+      assertTypes config, configTypes.setProgress
 
     @_fromValue = config.fromValue ?= @_value
     @_toValue = config.toValue
+
+    @_clamp = config.clamp if config.clamp?
+    @_round = config.round if config.round?
     return
 
   _getRange: ->
