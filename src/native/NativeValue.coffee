@@ -66,10 +66,6 @@ type.defineValues
 
 type.defineReactiveValues
 
-  _fromValue: null
-
-  _toValue: null
-
   _animation: null
 
 type.initInstance (value, keyPath) ->
@@ -90,22 +86,13 @@ type.defineGetters
 
   animation: -> @_animation
 
-  velocity: -> if @_animation then @_animation.velocity else 0
-
-  fromValue: -> @_fromValue
-
-  toValue: -> @_toValue
-
-  distance: -> @_toValue - @_fromValue
-
 type.definePrototype
 
   value:
 
     get: ->
-      if Tracker.isActive
-        @_dep.depend()
-      return @_value
+      @_dep.depend() if Tracker.isActive
+      @_value
 
     set: (newValue) ->
 
@@ -113,10 +100,8 @@ type.definePrototype
         throw Error "Reaction-backed values cannot be mutated!"
 
       if @isAnimated
-        @_animated.setValue newValue
-      else
-        @_setValue newValue
-      return
+      then @_animated.setValue newValue
+      else @_set newValue
 
   keyPath:
     get: -> @_keyPath
@@ -134,100 +119,38 @@ type.definePrototype
           @_createReaction newValue
       return
 
-  progress:
-    get: -> @getProgress()
-    set: (progress) ->
-      @setProgress progress
-      return
-
 type.defineMethods
 
-  setValue: (newValue, config = {}) ->
+  get: -> @value
 
-    unless config.clamp?
-      config.clamp = @_clamp
+  set: (newValue) ->
+    @value = newValue
 
-    unless config.round?
-      config.round = @_round
+  createPath: (values) ->
+    assertType values, Array
+    path = AnimationPath()
+    path.listener = @didSet (newValue) ->
+      index = -1
+      maxIndex = values.length - 1
+      while newValue >= values[++index]
+        break if index is maxIndex
+      startValue = values[index - 1]
+      if startValue is undefined
+        index += 1
+        progress = 0
+      else
+        progress = (newValue - startValue) / (values[index] - startValue)
+        progress = clampValue progress, 0, 1
+      path._update index - 1, progress
+      return
+    return path
 
-    isDev and
-    assertTypes config, configTypes.setValue
-
-    if config.clamp is yes
-
-      if isDev and not @_fromValue?
-        throw Error "Must define 'config.fromValue' or 'this.fromValue'!"
-
-      if isDev and not @_toValue?
-        throw Error "Must define 'config.toValue' or 'this.toValue'!"
-
-      newValue = clampValue newValue, @_fromValue, @_toValue
-
-    newValue = roundValue newValue, config.round if config.round?
-    return @value = newValue
-
-  _setValue: (newValue) ->
+  _set: (newValue) ->
     if newValue isnt @_value
       @_value = newValue
       @_dep.changed()
       @didSet.emit newValue
     return
-
-#
-# Progress management
-#
-
-  getProgress: (value, config) ->
-
-    if isType value, Object
-      config = value
-      value = @_value
-    else
-      config ?= {}
-      value ?= @_value
-
-    config.fromValue ?= if @_fromValue? then @_fromValue else @_value
-    config.toValue ?= @_toValue
-
-    if isDev
-      assertType value, Number
-      assertTypes config, configTypes.setProgress
-
-    return Progress.fromValue value, config
-
-  setProgress: (progress, config) ->
-
-    if isDev and @isReactive
-      throw Error "Reaction-backed values cannot be mutated!"
-
-    if config
-      mergeDefaults config, @_getRange()
-    else config = @_getRange()
-
-    if isDev
-      assertType progress, Number
-      assertTypes config, configTypes.setProgress
-
-    value = Progress.toValue progress, config
-    value = roundValue value, config.round if config.round?
-    @value = value
-    return
-
-  willProgress: (config) ->
-
-    if isDev
-      assertTypes config, configTypes.setProgress
-
-    @_fromValue = config.fromValue ?= @_value
-    @_toValue = config.toValue
-
-    @_clamp = config.clamp if config.clamp?
-    @_round = config.round if config.round?
-    return
-
-  _getRange: ->
-    fromValue: @_fromValue
-    toValue: @_toValue
 
 #
 # Memory management
@@ -277,7 +200,7 @@ type.defineMethods
       throw Error "Must call '_createReaction' before '_startReaction'!"
 
     @_reactionListener = @_reaction
-      .didSet (value) => @_setValue value
+      .didSet (value) => @_set value
       .start()
 
     @_reaction.start()
@@ -334,7 +257,7 @@ type.defineMethods
     return if @isAnimated
     @_animated = new AnimatedValue @_value
     @_animatedListener = @_animated
-      .didSet (value) => @_setValue value
+      .didSet (value) => @_set value
       .start()
 
   _deleteAnimated: ->
@@ -358,16 +281,58 @@ configTypes = do ->
     onFinish: Function.Maybe
     onEnd: Function.Maybe
 
-  track:
-    fromRange: Progress.Range
-    toRange: Progress.Range
+# This class is used by `NativeValue::createPath` for easier
+# animation along a path in response to another value changing.
+AnimationPath = do ->
 
-  setValue:
-    clamp: Boolean.Maybe
-    round: Number.or(Null).Maybe
+  type = Type "AnimationPath"
 
-  setProgress:
-    fromValue: Number
-    toValue: Number
-    clamp: Boolean.Maybe
-    round: Boolean.Maybe
+  type.defineValues ->
+
+    _paths: []
+
+  type.defineMethods
+
+    attach: (value, nodes) ->
+      assertType value, NativeValue
+      assertType nodes, Array
+
+      path = {}
+      index = -1
+
+      # Connect the dots of each animation path.
+      for node in nodes
+
+        if path.endValue isnt undefined
+          path = {startValue: path.endValue}
+
+        if path.startValue is undefined
+          assertType node, Number
+          path.startValue = node
+
+        else if typeof node is "function"
+          path.easing = node
+
+        else
+          assertType node, Number
+          path.endValue = node
+          path.easing ?= emptyFunction.thatReturnsArgument
+          @_attach ++index, value, path
+
+      if path.endValue is undefined
+        throw Error "Animation path is missing an 'endValue'!"
+
+      return this
+
+    _attach: (index, value, { startValue, endValue, easing }) ->
+      distance = endValue - startValue
+      @_paths.push [] if @_paths.length <= index
+      @_paths[index].push (progress) ->
+        value.set startValue + distance * easing progress
+
+    _update: (index, progress) ->
+      for update in @_paths[index]
+        update progress
+      return
+
+  return type.build()
