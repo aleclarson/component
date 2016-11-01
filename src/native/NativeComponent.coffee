@@ -6,7 +6,6 @@ emptyFunction = require "emptyFunction"
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 sync = require "sync"
-hook = require "hook"
 
 PropValidator = require "../utils/PropValidator"
 ElementType = require "../utils/ElementType"
@@ -83,14 +82,13 @@ typeMixin.defineBoundMethods
     @_child.setNativeProps newProps
     return
 
-  _hookRef: (orig, view) ->
+  _onRef: (view) ->
 
     if view and @_queuedProps
       view.setNativeProps @_queuedProps
       @_queuedProps = null
 
     @_child = view
-    orig this
     return
 
 typeMixin.defineListeners ->
@@ -102,13 +100,11 @@ typeMixin.defineListeners ->
 
 typeMixin.render ->
   props = @_nativeProps.values
-  hook props, "ref", @_hookRef
-  return @_renderChild props
+  props.ref = @_onRef
+  @_renderChild props
 
 typeMixin.willUnmount ->
   @_nativeProps.detach()
-  return
 
 typeMixin.willReceiveProps (nextProps) ->
   @_nativeProps.attach nextProps
-  return
