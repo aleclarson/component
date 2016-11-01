@@ -1,4 +1,6 @@
 
+{ListenerMixin} = require "Event"
+
 requireNativeComponent = require "requireNativeComponent"
 emptyFunction = require "emptyFunction"
 assertTypes = require "assertTypes"
@@ -91,7 +93,7 @@ typeMixin.defineBoundMethods
     orig this
     return
 
-typeMixin.defineMountedListeners ->
+typeMixin.defineListeners ->
   @_nativeProps.didSet @setNativeProps
 
 #

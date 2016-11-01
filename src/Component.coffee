@@ -34,7 +34,7 @@ modx_Component.Mixin = Mixin.create
     "willUpdate"
     "didUpdate"
     "defineNativeValues"
-    "defineMountedListeners"
+    "defineListeners"
     "defineReactions"
     "defineStyles"
     "appendStyles"

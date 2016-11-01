@@ -47,7 +47,7 @@ type.willBuild ->
     "willUpdate"
     "didUpdate"
     "defineNativeValues"
-    "defineMountedListeners"
+    "defineListeners"
     "defineReactions"
     "defineStyles"
     "appendStyles"
