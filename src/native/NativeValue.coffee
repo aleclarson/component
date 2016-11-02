@@ -3,12 +3,8 @@
 {Number} = require "Nan"
 
 emptyFunction = require "emptyFunction"
-mergeDefaults = require "mergeDefaults"
-assertTypes = require "assertTypes"
 assertType = require "assertType"
-roundValue = require "roundValue"
 clampValue = require "clampValue"
-Progress = require "progress"
 Reaction = require "Reaction"
 Tracker = require "tracker"
 isType = require "isType"
