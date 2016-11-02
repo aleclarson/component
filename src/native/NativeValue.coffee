@@ -17,8 +17,6 @@ isDev = require "isDev"
 steal = require "steal"
 Type = require "Type"
 
-NativeAnimation = require "./NativeAnimation"
-
 type = Type "NativeValue"
 
 type.trace()
@@ -39,8 +37,6 @@ type.initArgs (value) ->
 type.defineFrozenValues ->
 
   didSet: Event {async: no}
-
-  didAnimationEnd: Event {async: no}
 
 type.defineValues
 
@@ -227,26 +223,41 @@ type.defineMethods
     if isDev and @isReactive
       throw Error "Reaction-backed values cannot be mutated!"
 
-    @stopAnimation()
-    @_createAnimated()
-
-    isDev and
-    assertTypes config, configTypes.animate
+    onUpdate = steal config, "onUpdate"
+    isDev and assertType onUpdate, Function.Maybe
 
     onFinish = steal config, "onFinish", emptyFunction
+    isDev and assertType onFinish, Function
+
     onEnd = steal config, "onEnd", emptyFunction
+    isDev and assertType onEnd, Function
 
-    @_animation = NativeAnimation
-      animated: @_animated
-      onUpdate: steal config, "onUpdate"
-      onEnd: (finished) =>
-        @_animation = null
-        finished and onFinish()
-        onEnd finished
-        @didAnimationEnd.emit finished
+    if @isAnimated
+    then @stopAnimation()
+    else @_createAnimated()
 
-    @_animation.start config
-    return @_animation
+    if onUpdate
+      updater = @_animated
+        .didSet onUpdate
+        .start()
+
+    type = steal config, "type"
+    isDev and assertType type, String.or Function.Kind
+
+    if isType type, String
+      if isDev and not Animation.types[type]
+        throw Error "Invalid animation type: '#{type}'"
+      type = Animation.types[type]
+
+    animation = type config
+    isDev and assertType animation, Animation.Kind
+
+    @_animation = animation
+    @_animated.animate animation, (finished) =>
+      @_animation = null
+      updater and updater.detach()
+      finished and onFinish()
+      onEnd finished
 
   stopAnimation: ->
     if @_animation
@@ -254,7 +265,6 @@ type.defineMethods
     return
 
   _createAnimated: ->
-    return if @isAnimated
     @_animated = new AnimatedValue @_value
     @_animatedListener = @_animated
       .didSet (value) => @_set value
@@ -269,17 +279,6 @@ type.defineMethods
     return
 
 module.exports = NativeValue = type.build()
-
-isDev and
-configTypes = do ->
-
-  Null = require "Null"
-
-  animate:
-    type: Type
-    onUpdate: Function.Maybe
-    onFinish: Function.Maybe
-    onEnd: Function.Maybe
 
 # This class is used by `NativeValue::createPath` for easier
 # animation along a path in response to another value changing.
