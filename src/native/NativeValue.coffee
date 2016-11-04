@@ -1,5 +1,5 @@
 
-{AnimatedValue} = require "Animated"
+{Animation, AnimatedValue} = require "Animated"
 {Number} = require "Nan"
 
 emptyFunction = require "emptyFunction"
