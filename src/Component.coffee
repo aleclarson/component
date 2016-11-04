@@ -7,18 +7,18 @@ setKind = require "setKind"
 Mixin = require "Mixin"
 bind = require "bind"
 
-modx_ComponentBuilder = require "./ComponentBuilder"
+ComponentBuilder = require "./ComponentBuilder"
 ElementType = require "./utils/ElementType"
 
-modx_Component = NamedFunction "modx_Component", (name) ->
-  componentType = modx_ComponentBuilder name
+Component = NamedFunction "Component", (name) ->
+  componentType = ComponentBuilder name
   build = bind.method componentType, "build"
   componentType.build = -> ElementType build()
   return componentType
 
-module.exports = setKind modx_Component, ReactComponent
+module.exports = setKind Component, ReactComponent
 
-modx_Component.Mixin = Mixin.create
+Component.Mixin = Mixin.create
   extends: Builder.Mixin
   methods: [
     "defineProps"
