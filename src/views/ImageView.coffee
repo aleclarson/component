@@ -1,45 +1,41 @@
 
-Typle = require "Typle"
+{AnimatedValue} = require "Animated"
+
+React = require "react"
+Image = require "Image"
 Shape = require "Shape"
 OneOf = require "OneOf"
 
-NativeComponent = require "../native/NativeComponent"
+AnimatedComponent = require "../AnimatedComponent"
 Style = require "../validators/Style"
 
-RemoteImageSource = Shape "RemoteImageSource", { uri: String }
+ImageResizeMode = OneOf "ImageResizeMode", "cover contain stretch center"
+EdgeInsetsType = Shape "EdgeInsetsType", {top: Number.Maybe, left: Number.Maybe, bottom: Number.Maybe, right: Number.Maybe}
 
-ImageSource = Typle [ Number, RemoteImageSource ]
+type = AnimatedComponent "ImageView"
 
-ImageResizeMode = OneOf "ImageResizeMode", [
-  "cover"
-  "contain"
-  "stretch"
-  "center"
-]
+type.render (props) ->
+  React.createElement Image, props
 
-EdgeInsetsType = Shape "EdgeInsetsType", {
-  top: Number.Maybe
-  left: Number.Maybe
-  bottom: Number.Maybe
-  right: Number.Maybe
-}
+type.defineProps
+  style: Style
+  source: Object.isRequired
+  defaultSource: Object
+  resizeMode: ImageResizeMode
+  capInsets: EdgeInsetsType
+  onLayout: Function
+  onLoadStart: Function
+  onProgress: Function
+  onError: Function
+  onLoad: Function
+  onLoadEnd: Function
+  testID: String
 
-ImageView = NativeComponent "ImageView",
+type.defineValues ->
+  source: @props.source
 
-  render: require "Image"
+type.defineListeners ->
+  if @source instanceof AnimatedValue
+    @source.didSet => @forceUpdate()
 
-  propTypes:
-    style: Style
-    source: ImageSource.isRequired
-    defaultSource: ImageSource
-    resizeMode: ImageResizeMode
-    capInsets: EdgeInsetsType
-    onLayout: Function
-    onLoadStart: Function
-    onProgress: Function
-    onError: Function
-    onLoad: Function
-    onLoadEnd: Function
-    testID: String
-
-module.exports = ImageView
+module.exports = type.build()

@@ -1,18 +1,42 @@
 
-NativeComponent = require "../native/NativeComponent"
+{AnimatedValue} = require "Animated"
+
+React = require "react"
+steal = require "steal"
+Text = require "Text"
+
+AnimatedComponent = require "../AnimatedComponent"
 Style = require "../validators/Style"
 
-TextView = NativeComponent "TextView",
+type = AnimatedComponent "TextView"
 
-  render: require "Text"
+type.render (props) ->
+  React.createElement Text, props, @text
 
-  propTypes:
-    style: Style
-    onPress: Function
-    onLayout: Function
-    numberOfLines: Number
-    allowFontScaling: Boolean
-    suppressHighlighting: Boolean
-    testID: String
+type.defineProps
+  text: String.isRequired
+  style: Style
+  onPress: Function
+  onLayout: Function
+  numberOfLines: Number
+  allowFontScaling: Boolean
+  suppressHighlighting: Boolean
+  testID: String
 
-module.exports = TextView
+type.defineValues ->
+  _text: steal @props, "text"
+
+type.defineListeners ->
+  if @_text instanceof AnimatedValue
+    @_text.didSet => @forceUpdate()
+
+type.defineGetters
+
+  text: ->
+    if text = @_text
+      if text instanceof AnimatedValue
+      then text.get()
+      else text
+    else null
+
+module.exports = type.build()

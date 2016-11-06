@@ -8,9 +8,9 @@ applyChain = require "applyChain"
 Builder = require "Builder"
 
 # This is applied to the Component.Builder constructor
-typeMixin = Builder.Mixin()
+mixin = Builder.Mixin()
 
-typeMixin.defineMethods
+mixin.defineMethods
 
   render: (func) ->
     assertType func, Function
@@ -52,22 +52,20 @@ typeMixin.defineMethods
     @_phases.willUnmount.push func
     return
 
-typeMixin.initInstance ->
+mixin.initInstance ->
   @_phases.willMount = []
   @_phases.didMount = []
   @_phases.willUpdate = []
   @_phases.didUpdate = []
   @_phases.willUnmount = []
-  @addMixins [
-    instanceMixin.apply
-  ]
+  @addMixin instMixin.apply
 
-module.exports = typeMixin.apply
+module.exports = mixin.apply
 
 # This is applied to every Component.Builder
-instanceMixin = Builder.Mixin()
+instMixin = Builder.Mixin()
 
-instanceMixin.willBuild ->
+instMixin.willBuild ->
 
   kind = @_kind
   ownMethods = {}

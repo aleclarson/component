@@ -28,7 +28,7 @@ type.overrideMethods
   inherits: (kind) ->
     @__super arguments
     if kind instanceof modx_Type
-      @_componentType.inherits kind.View
+      @_componentType.inherits kind.render.componentType
     return
 
 type.willBuild ->
@@ -46,7 +46,7 @@ type.willBuild ->
     "willUnmount"
     "willUpdate"
     "didUpdate"
-    "defineNativeValues"
+    "defineAnimatedValues"
     "defineListeners"
     "defineReactions"
     "defineStyles"
@@ -92,10 +92,8 @@ instImpl.willBuild = ->
     @defineMethods instImpl.defineMethods
 
   # Build the underlying component type.
-  View = @_componentType.build()
-  createElement = ElementType View
-
-  @defineStatics {View, createElement}
+  @defineStatics
+    render: @_componentType.build()
   return
 
 instImpl.defineValues =
@@ -113,7 +111,7 @@ instImpl.defineGetters =
 instImpl.defineMethods =
 
   render: (props) ->
-    @constructor.createElement props, this
+    @constructor.render props, this
 
 # In this context, 'view' is the component instance.
 # Thus 'viewImpl' is the component factory.

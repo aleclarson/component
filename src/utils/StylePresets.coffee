@@ -2,9 +2,10 @@
 assertTypes = require "assertTypes"
 assertType = require "assertType"
 hexToRgb = require "hex-rgb"
+isDev = require "isDev"
 sync = require "sync"
 
-propTypes =
+isDev and propTypes =
 
   border:
     color: String
@@ -38,7 +39,7 @@ sync.each styles, (style, key) ->
 module.exports = Object.assign styles,
 
   border: (props) ->
-    assertTypes props, propTypes.border
+    isDev and assertTypes props, propTypes.border
 
     style =
       borderWidth: props.width
@@ -53,7 +54,7 @@ module.exports = Object.assign styles,
     return style
 
   cover: (enabled) ->
-    assertType enabled, Boolean
+    isDev and assertType enabled, Boolean
     if enabled
       position: "absolute"
       top: 0
@@ -68,7 +69,7 @@ module.exports = Object.assign styles,
       bottom: null
 
   fill: (enabled) ->
-    assertType enabled, Boolean
+    isDev and assertType enabled, Boolean
     if enabled
       flex: 1
       alignSelf: "stretch"
@@ -77,12 +78,12 @@ module.exports = Object.assign styles,
       alignSelf: null
 
   size: (size) ->
-    assertType size, Number
+    isDev and assertType size, Number
     width: size
     height: size
 
   diameter: (size) ->
-    assertType size, Number
+    isDev and assertType size, Number
     width: size
     height: size
     borderRadius: size / 2

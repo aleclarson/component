@@ -12,7 +12,6 @@ has = require "has"
 
 PropValidator = require "../utils/PropValidator"
 
-# This is applied to the Component.Builder constructor
 typeMixin = Builder.Mixin()
 
 typeMixin.defineMethods
@@ -50,16 +49,13 @@ typeMixin.defineMethods
 
 typeMixin.initInstance ->
   @_phases.props = []
-  @addMixins [
-    instanceMixin.apply
-  ]
+  instMixin.apply this
 
 module.exports = typeMixin.apply
 
-# This is applied to every Component.Builder
-instanceMixin = Builder.Mixin()
+instMixin = Builder.Mixin()
 
-instanceMixin.initInstance ->
+instMixin.initInstance ->
   delegate = @_delegate
   if delegate isnt this
     delegate._props = @props
@@ -68,7 +64,7 @@ instanceMixin.initInstance ->
 # NOTE: Inherited 'propPhases' come after the phases of the subtype.
 #       This allows for the subtype to edit the 'props' before the
 #       supertype gets to inspect them.
-instanceMixin.willBuild ->
+instMixin.willBuild ->
 
   propPhases = @_phases.props
   if propPhases.length

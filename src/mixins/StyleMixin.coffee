@@ -7,10 +7,9 @@ isType = require "isType"
 
 StyleMap = require "../utils/StyleMap"
 
-# This is applied to the Component.Builder constructor
-typeMixin = Builder.Mixin()
+mixin = Builder.Mixin()
 
-typeMixin.defineMethods
+mixin.defineMethods
 
   defineStyles: (styles) ->
     assertType styles, Object
@@ -36,15 +35,14 @@ typeMixin.defineMethods
     frozen.define this, "_styles", {value: styles}
     return styles
 
-typeMixin.initInstance ->
-  @addMixins [instanceMixin.apply]
+mixin.initInstance ->
+  @addMixins [instMixin.apply]
 
-module.exports = typeMixin.apply
+module.exports = mixin.apply
 
-# This is applied to every Component.Builder
-instanceMixin = Builder.Mixin()
+instMixin = Builder.Mixin()
 
-instanceMixin.willBuild ->
+instMixin.willBuild ->
 
   styles = @_styles
   delegate = @_delegate
@@ -53,12 +51,12 @@ instanceMixin.willBuild ->
   styles = inherited unless styles or not inherited
 
   return if not isType styles, StyleMap
-  delegate.defineStatics { styles }
+  delegate.defineStatics {styles}
 
   # Only define 'instance.styles' once in the inheritance chain.
   if not inherited
     delegate.definePrototype
       styles: get: ->
         styles = @constructor.styles.bind this
-        frozen.define this, "styles", { value: styles }
+        frozen.define this, "styles", {value: styles}
         return styles

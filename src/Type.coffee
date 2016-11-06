@@ -16,4 +16,6 @@ modx_Type = NamedFunction "modx_Type", (name) ->
 
   return self
 
+modx_Type.Builder = modx_TypeBuilder
+
 module.exports = setKind modx_Type, Type

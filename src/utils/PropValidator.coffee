@@ -1,12 +1,12 @@
 
+{AnimatedValue} = require "Animated"
+
 assertType = require "assertType"
 isType = require "isType"
 Shape = require "Shape"
 isDev = require "isDev"
 Type = require "Type"
 has = require "has"
-
-NativeValue = require "../native/NativeValue"
 
 type = Type "PropValidator"
 
@@ -66,8 +66,8 @@ type.defineBoundMethods
         else if not @_required[name]
           continue
 
-      else if prop instanceof NativeValue
-        prop = prop.value
+      else if prop instanceof AnimatedValue
+        prop = (animatedProp = prop).get()
 
       if isDev and propType = @types[name]
         assertType prop, propType, "props." + name

@@ -3,50 +3,44 @@
 
 assertType = require "assertType"
 Reaction = require "Reaction"
-Builder = require "Builder"
-sync = require "sync"
 
-# This is applied to the Component.Builder constructor
-typeMixin = Builder.Mixin()
+ComponentMixin = require "../ComponentMixin"
 
-typeMixin.defineMethods
+module.exports = (type) ->
+  type.defineMethods {isRenderPrevented}
 
-  isRenderPrevented: (func) ->
+isRenderPrevented = (func) ->
 
-    assertType func, Function
+  assertType func, Function
 
-    if @_isRenderPrevented
-      throw Error "'isRenderPrevented' is already defined!"
+  if @_isRenderPrevented
+    throw Error "'isRenderPrevented' is already defined!"
+  mutable.define this, "_isRenderPrevented", {value: func}
 
-    delegate = @_delegate
-    delegate.defineMethods {isRenderPrevented: func}
-    delegate.addMixin instanceMixin.apply
+  delegate = @_delegate
+  delegate.defineMethods {isRenderPrevented: func}
+  mixin.apply delegate
+  return
 
-    mutable.define this, "_isRenderPrevented", {value: func}
-    return
+mixin = ComponentMixin()
 
-module.exports = typeMixin.apply
-
-# This is applied to every Component.Builder
-instanceMixin = Builder.Mixin()
-
-instanceMixin.defineValues ->
+mixin.defineValues ->
 
   __needsRender: no
 
-  __shouldRender: Reaction
-    cacheResult: yes
-    get: => not @isRenderPrevented()
-    didSet: (shouldRender) =>
-      if shouldRender and @__needsRender
-        @__needsRender = no
-        try @view.forceUpdate()
-      return
+mixin.defineReactions
 
-instanceMixin.initInstance ->
-  @__shouldRender.start()
+  __shouldRender: ->
+    @isRenderPrevented() is no
 
-instanceMixin.willBuild ->
+mixin.defineListeners ->
+  @__shouldRender.didSet (shouldRender) =>
+    if shouldRender and @__needsRender
+      @__needsRender = no
+      @view.forceUpdate()
+    return
+
+mixin.willBuild ->
   @didBuild (type) ->
     hook type.prototype,
       __render: gatedRender
@@ -57,17 +51,19 @@ instanceMixin.willBuild ->
 #
 
 hook = (obj, methods) ->
-  sync.each methods, (method, key) ->
-    orig = obj[key]
-    value = -> method.call this, orig, arguments
-    mutable.define obj, key, {value}
+  for key, method of methods
+    mutable.define obj, key,
+      value: createHook method, obj[key]
   return
+
+createHook = (method, orig) ->
+  return -> method.call this, orig, arguments
 
 # Must be used with `hook()`
 gatedRender = (orig, args) ->
 
   # Allow the render to go through
-  if @__shouldRender.value
+  if @__shouldRender.get()
     return orig.apply this, args
 
   # Wait for `isRenderPrevented`
