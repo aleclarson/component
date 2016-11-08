@@ -1,17 +1,17 @@
 
+{Style, Children} = require "react-validators"
+
 React = require "react"
 OneOf = require "OneOf"
 Shape = require "Shape"
 View = require "View"
 
-AnimatedComponent = require "../AnimatedComponent"
-Children = require "../validators/Children"
-Style = require "../validators/Style"
+NativeComponent = require "../NativeComponent"
 
 PointerEvents = OneOf "PointerEvents", "auto none box-none box-only"
 LayoutAttributes = Shape "LayoutAttributes", {top: Number, right: Number, bottom: Number, left: Number}
 
-type = AnimatedComponent "View"
+type = NativeComponent "View"
 
 type.render (props) ->
   React.createElement View, props

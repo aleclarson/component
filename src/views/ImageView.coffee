@@ -1,18 +1,18 @@
 
 {AnimatedValue} = require "Animated"
+{Style} = require "react-validators"
 
 React = require "react"
 Image = require "Image"
 Shape = require "Shape"
 OneOf = require "OneOf"
 
-AnimatedComponent = require "../AnimatedComponent"
-Style = require "../validators/Style"
+NativeComponent = require "../NativeComponent"
 
 ImageResizeMode = OneOf "ImageResizeMode", "cover contain stretch center"
 EdgeInsetsType = Shape "EdgeInsetsType", {top: Number.Maybe, left: Number.Maybe, bottom: Number.Maybe, right: Number.Maybe}
 
-type = AnimatedComponent "ImageView"
+type = NativeComponent "ImageView"
 
 type.render (props) ->
   React.createElement Image, props

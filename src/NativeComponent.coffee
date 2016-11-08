@@ -9,7 +9,7 @@ sync = require "sync"
 
 Component = require "./Component"
 
-type = Type "AnimatedComponent"
+type = Type "NativeComponent"
 
 type.inherits Component.Builder
 
@@ -54,15 +54,16 @@ mixin.defineValues
 
   _queuedProps: null
 
-  _animatedProps: ->
-    props = AnimatedProps @constructor.propTypes
-    return props.attach @props
+  _animatedProps: -> AnimatedProps @constructor.propTypes
 
-mixin.willReceiveProps (nextProps) ->
-  @_animatedProps.attach nextProps
+mixin.willMount ->
+  @_animatedProps.attach @props
 
 mixin.defineListeners ->
   @_animatedProps.didSet @setNativeProps
+
+mixin.willReceiveProps (nextProps) ->
+  @_animatedProps.attach nextProps
 
 mixin.willUnmount ->
   @_animatedProps.detach()
@@ -70,12 +71,9 @@ mixin.willUnmount ->
 mixin.defineBoundMethods
 
   setNativeProps: (newProps) ->
-
     if @_child is null
-      @_queuedProps = newProps
-      return
-
-    @_child.setNativeProps newProps
+    then @_queuedProps = newProps
+    else @_child.setNativeProps newProps
     return
 
   _setChild: (view) ->
@@ -85,4 +83,5 @@ mixin.defineBoundMethods
       @_queuedProps = null
 
     @_child = view
+    @_animatedProps.setAnimatedView @_child
     return

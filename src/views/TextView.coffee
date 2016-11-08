@@ -1,14 +1,14 @@
 
 {AnimatedValue} = require "Animated"
+{Style} = require "react-validators"
 
 React = require "react"
 steal = require "steal"
 Text = require "Text"
 
-AnimatedComponent = require "../AnimatedComponent"
-Style = require "../validators/Style"
+NativeComponent = require "../NativeComponent"
 
-type = AnimatedComponent "TextView"
+type = NativeComponent "TextView"
 
 type.render (props) ->
   React.createElement Text, props, @text

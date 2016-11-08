@@ -1,13 +1,14 @@
 
+{Style} = require "react-validators"
+
 TextInput = require "TextInput"
 React = require "react"
 OneOf = require "OneOf"
 steal = require "steal"
 
-AnimatedComponent = require "../AnimatedComponent"
-Style = require "../validators/Style"
+NativeComponent = require "../NativeComponent"
 
-type = AnimatedComponent "TextInput"
+type = NativeComponent "TextInput"
 
 type.render (props) ->
   React.createElement TextInput, props

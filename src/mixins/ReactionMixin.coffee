@@ -57,6 +57,7 @@ defineReaction = (obj, key, reaction) ->
     reaction = Reaction
       get: bind.func reaction.get, obj
       didSet: (newValue) ->
+        return if newValue is value.get()
         value._updateValue newValue
         onUpdate.call obj, newValue
 
