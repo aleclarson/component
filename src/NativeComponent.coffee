@@ -83,5 +83,5 @@ mixin.defineBoundMethods
       @_queuedProps = null
 
     @_child = view
-    @_animatedProps.setAnimatedView @_child
+    @_animatedProps.setAnimatedView view
     return

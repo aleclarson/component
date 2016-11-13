@@ -9,9 +9,7 @@ define Device = exports,
   name: null
 
   specific: (devices) ->
-    value = devices[Device.name]
-    value = devices.else unless value?
-    value
+    devices[Device.name] ? devices.else
 
   size: get: ->
     { width, height } = Dimensions.get "window"
