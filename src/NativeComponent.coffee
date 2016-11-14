@@ -33,10 +33,11 @@ type.overrideMethods
       throw Error "Missing native component: '#{@_name}'"
 
     @_render = ->
-      props = @_animatedProps.__getValue()
+      if @_hasMounted
+      then props = @_animatedProps.__getValue()
+      else props = @_animatedProps.__getInitialValue()
       props.ref = @_setChild
-      element = render.call this, props
-      return element
+      render.call this, props
 
     @__super arguments
 
@@ -52,12 +53,17 @@ mixin.defineValues
 
   _child: null
 
+  _hasMounted: no
+
   _queuedProps: null
 
   _animatedProps: -> AnimatedProps @constructor.propTypes
 
 mixin.willMount ->
   @_animatedProps.attach @props
+
+mixin.didMount ->
+  @_hasMounted = yes
 
 mixin.defineListeners ->
   @_animatedProps.didSet @setNativeProps
@@ -66,6 +72,7 @@ mixin.willReceiveProps (nextProps) ->
   @_animatedProps.attach nextProps
 
 mixin.willUnmount ->
+  @_hasMounted = no
   @_animatedProps.detach()
 
 mixin.defineBoundMethods
