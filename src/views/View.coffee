@@ -1,35 +1,42 @@
 
+{Style, Children} = require "react-validators"
+
+React = require "react"
 OneOf = require "OneOf"
-Void = require "Void"
+Shape = require "Shape"
+View = require "View"
 
-NativeComponent = require "../native/NativeComponent"
-Children = require "../validators/Children"
-Style = require "../validators/Style"
+NativeComponent = require "../NativeComponent"
 
-PointerEventType = OneOf "PointerEventType", [ "box-none", "none", "box-only", "auto" ]
+PointerEvents = OneOf "PointerEvents", "auto none box-none box-only"
+LayoutAttributes = Shape "LayoutAttributes", {top: Number, right: Number, bottom: Number, left: Number}
 
-module.exports = NativeComponent "View",
+type = NativeComponent "View"
 
-  render: require "View"
+type.render (props) ->
+  React.createElement View, props
 
-  propTypes:
-    style: Style
-    children: Children
-    pointerEvents: [ PointerEventType, Void ]
-    testID: String.Maybe
-    onLayout: Function.Maybe
-    onResponderReject: Function.Maybe
-    onResponderGrant: Function.Maybe
-    onResponderMove: Function.Maybe
-    onResponderRelease: Function.Maybe
-    onResponderTerminate: Function.Maybe
-    onResponderTerminationRequest: Function.Maybe
-    onStartShouldSetResponder: Function.Maybe
-    onStartShouldSetResponderCapture: Function.Maybe
-    onMoveShouldSetResponder: Function.Maybe
-    onMoveShouldSetResponderCapture: Function.Maybe
-    needsOffscreenAlphaCompositing: Boolean.Maybe
-    renderToHardwareTextureAndroid: Boolean.Maybe
-    removeClippedSubviews: Boolean.Maybe
-    shouldRasterizeIOS: Boolean.Maybe
-    collapsable: Boolean.Maybe
+type.defineProps
+  style: Style
+  children: Children
+  pointerEvents: PointerEvents
+  hitSlop: LayoutAttributes
+  testID: String
+  onLayout: Function
+  onResponderReject: Function
+  onResponderGrant: Function
+  onResponderMove: Function
+  onResponderRelease: Function
+  onResponderTerminate: Function
+  onResponderTerminationRequest: Function
+  onStartShouldSetResponder: Function
+  onStartShouldSetResponderCapture: Function
+  onMoveShouldSetResponder: Function
+  onMoveShouldSetResponderCapture: Function
+  needsOffscreenAlphaCompositing: Boolean
+  renderToHardwareTextureAndroid: Boolean
+  removeClippedSubviews: Boolean
+  shouldRasterizeIOS: Boolean
+  collapsable: Boolean
+
+module.exports = type.build()

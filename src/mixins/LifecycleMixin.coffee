@@ -1,111 +1,104 @@
 
-require "isDev"
-
-{ frozen } = require "Property"
+{mutable} = require "Property"
 
 ReactComponent = require "ReactComponent"
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 applyChain = require "applyChain"
 Builder = require "Builder"
-assert = require "assert"
-sync = require "sync"
 
-module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
-  type.initInstance typeImpl.initInstance
+# This is applied to the Component.Builder constructor
+mixin = Builder.Mixin()
 
-#
-# The 'type' is the Component.Builder constructor
-#
-
-typeImpl = {}
-
-typeImpl.values =
-
-  _willMount: -> []
-
-  _didMount: -> []
-
-  _willUnmount: -> []
-
-typeImpl.methods =
+mixin.defineMethods
 
   render: (func) ->
     assertType func, Function
-    frozen.define this, "_render", { value: func }
+    mutable.define this, "_render", {value: func}
     return
 
   shouldUpdate: (func) ->
     assertType func, Function
-    frozen.define this, "_shouldUpdate", { value: func }
+    mutable.define this, "_shouldUpdate", {value: func}
     return
 
   willReceiveProps: (func) ->
     assertType func, Function
-    frozen.define this, "_willReceiveProps", { value: func }
+    mutable.define this, "_willReceiveProps", {value: func}
     return
 
   willMount: (func) ->
     assertType func, Function
-    @_willMount.push func
+    @_phases.willMount.push func
     return
 
   didMount: (func) ->
     assertType func, Function
-    @_didMount.push func
+    @_phases.didMount.push func
+    return
+
+  willUpdate: (func) ->
+    assertType func, Function
+    @_phases.willUpdate.push func
+    return
+
+  didUpdate: (func) ->
+    assertType func, Function
+    @_phases.didUpdate.push func
     return
 
   willUnmount: (func) ->
     assertType func, Function
-    @_willUnmount.push func
+    @_phases.willUnmount.push func
     return
 
-typeImpl.initInstance = ->
-  @_willBuild.push instImpl.willBuild
+mixin.initInstance ->
+  @_phases.willMount = []
+  @_phases.didMount = []
+  @_phases.willUpdate = []
+  @_phases.didUpdate = []
+  @_phases.willUnmount = []
+  @addMixin instMixin.apply
 
-#
-# The 'instance' is a Component.Builder
-#
+module.exports = mixin.apply
 
-instImpl = {}
+# This is applied to every Component.Builder
+instMixin = Builder.Mixin()
 
-instImpl.willBuild = ->
+instMixin.willBuild ->
 
   kind = @_kind
   ownMethods = {}
 
-  if kind is ReactComponent
-    @defineMethods viewImpl.methods
+  if kind is no
+    @defineMethods viewImpl
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
     ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
     @_delegate.defineMethods ownMethods
 
   else
-    inheritArray this, "_willMount", kind::__willMount
-    inheritArray this, "_didMount", kind::__didMount
-    inheritArray this, "_willUnmount", kind::__willUnmount
-    ownMethods.__render = @_render if @_render
-    ownMethods.__shouldUpdate = @_shouldUpdate if @_shouldUpdate
-    ownMethods.__willReceiveProps = @_willReceiveProps if @_willReceiveProps
+    @_render and ownMethods.__render = @_render
+    @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
+    @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
     @_delegate.overrideMethods ownMethods
+    inheritArrays @_phases,
+      willMount: kind::__willMount
+      didMount: kind::__didMount
+      willUpdate: kind::__willUpdate
+      didUpdate: kind::__didUpdate
+      willUnmount: kind::__willUnmount
 
   # Define the arrays on the view to avoid crowding the delegate namespace.
   @definePrototype
-    __willMount: @_willMount
-    __didMount: @_didMount
-    __willUnmount: @_willUnmount
+    __willMount: @_phases.willMount
+    __didMount: @_phases.didMount
+    __willUpdate: @_phases.willUpdate
+    __didUpdate: @_phases.didUpdate
+    __willUnmount: @_phases.willUnmount
 
-#
-# The 'view' is a subclass of 'ReactComponent'
-#   that was created by 'Component.Builder'
-#
-
-viewImpl = {}
-
-viewImpl.methods =
+# This interface is shared by every component instance
+viewImpl =
 
   render: ->
     @_delegate.__render()
@@ -122,12 +115,24 @@ viewImpl.methods =
   componentDidMount: ->
     applyChain @__didMount, @_delegate
 
+  componentWillUpdate: ->
+    applyChain @__willUpdate, @_delegate
+
+  componentDidUpdate: ->
+    applyChain @__didUpdate, @_delegate
+
   componentWillUnmount: ->
     applyChain @__willUnmount, @_delegate
 
 #
 # Helpers
 #
+
+inheritArrays = (obj, arrayMap) ->
+  for key, array of arrayMap
+    if Array.isArray array
+      inheritArray obj, key, array
+  return
 
 inheritArray = (obj, key, inherited) ->
   assertType inherited, Array

@@ -1,97 +1,86 @@
 
+{AnimatedValue} = require "Animated"
+{ListenerMixin} = require "Event"
+{frozen} = require "Property"
+
+emptyFunction = require "emptyFunction"
+ValueMapper = require "ValueMapper"
 assertType = require "assertType"
-Property = require "Property"
-Reaction = require "reaction"
-Random = require "random"
+Reaction = require "Reaction"
 isType = require "isType"
-assert = require "assert"
-define = require "define"
+isDev = require "isDev"
+bind = require "bind"
 
-hasReactions = Symbol "Component.hasReactions"
-
-frozen = Property { frozen: yes }
+ComponentMixin = require "../ComponentMixin"
 
 module.exports = (type) ->
-  type.defineMethods typeImpl.methods
+  type.defineMethods {defineReactions}
 
-#
-# The 'type' is the Component.Builder constructor
-#
+defineReactions = (reactions) ->
 
-typeImpl = {}
+  isDev and
+  assertType reactions, Object.or Function
 
-typeImpl.methods =
+  # Treat object methods as reaction getters.
+  if isType reactions, Object
+    for key, reaction of reactions
+      if isType reaction, Function
+        reactions[key] = emptyFunction.thatReturns reaction
 
-  defineReactions: (reactions) ->
+  delegate = @_delegate
+  unless delegate._hasReactions
+    frozen.define delegate, "_hasReactions", {value: yes}
+    kind = delegate._kind
+    unless kind and kind::_hasReactions
+      mixin.apply delegate
 
-    assertType reactions, Object
+  mapValues = ValueMapper reactions, defineReaction
+  delegate._phases.init.push (args) ->
+    mapValues this, args
+  return
 
-    delegate = @_delegate
+defineReaction = (obj, key, reaction) ->
+  return if reaction is undefined
 
-    # Some phases must only be defined once per inheritance chain.
-    if not this[hasReactions]
-      frozen.define this, hasReactions, { value: yes }
-      kind = delegate._kind
-      unless kind and kind::[hasReactions]
-        delegate._didBuild.push baseImpl.didBuild
-        delegate._initInstance.push baseImpl.initInstance
+  isDev and
+  assertType reaction, Reaction.or Function, Object
 
-    phaseId = Random.id()
+  value = AnimatedValue null
 
-    #
-    # Create the Reaction objects for each instance.
-    #
+  if isType reaction, Function
+    reaction = Reaction
+      get: bind.func reaction, obj
+      didSet: value._updateValue
 
-    createReactions = (args) ->
-      keys = []
-      for key, value of reactions
-        assertType value, Function, key
-        options = value.apply this, args
-        continue if options is undefined
-        keys.push key
-        value =
-          if isType options, Reaction then options
-          else Reaction.sync options
+  else if isType reaction, Object
+    onUpdate = reaction.didSet or emptyFunction
+    reaction = Reaction
+      get: bind.func reaction.get, obj
+      didSet: (newValue) ->
+        return if newValue is value.get()
+        value._updateValue newValue
+        onUpdate.call obj, newValue
 
-        frozen.define this, key, { value }
+  reaction.keyPath ?= obj.constructor.name + "." + key
+  frozen.define obj, key, {value}
+  obj.__reactions.push reaction
 
-      @__reactionKeys[phaseId] = keys
-      return
+mixin = ComponentMixin()
 
-    delegate._initInstance.push createReactions
+mixin.defineFrozenValues ->
+  __reactions: []
 
-    #
-    # Start each Reaction right before the instance is mounted.
-    #
+mixin.willMount ->
+  reactions = @__reactions
+  for reaction in reactions
+    reaction.start()
+  return
 
-    startReactions = ->
-      for key in @__reactionKeys[phaseId]
-        this[key].start()
-      return
+mixin.willUnmount ->
+  reactions = @__reactions
+  for reaction in reactions
+    reaction.stop()
+  return
 
-    @_willMount.push startReactions
-
-    #
-    # Stop each Reaction right after the instance unmounts.
-    #
-
-    stopReactions = ->
-      for key in @__reactionKeys[phaseId]
-        this[key].stop()
-      return
-
-    @_willUnmount.push stopReactions
-    return
-
-#
-# The 'base' is the first type in the inheritance chain to define reactions.
-#
-
-baseImpl = {}
-
-baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, hasReactions, { value: yes }
-
-baseImpl.initInstance = ->
-  frozen.define this, "__reactionKeys",
-    value: Object.create null
+mixin.didBuild (type) ->
+  frozen.define type::, "_hasReactions", {value: yes}

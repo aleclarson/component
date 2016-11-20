@@ -1,121 +1,103 @@
 
-# TODO: Write a codemod that removes 'propTypes'.
+# TODO: Write a codemod that removes 'defineProps'?
 
-require "isDev"
+{mutable, frozen} = require "Property"
 
 ReactComponent = require "ReactComponent"
-mergeDefaults = require "mergeDefaults"
-assertTypes = require "assertTypes"
 assertType = require "assertType"
-Property = require "Property"
+Builder = require "Builder"
 getKind = require "getKind"
-define = require "define"
-assert = require "assert"
+hook = require "hook"
 has = require "has"
 
-module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.definePrototype typeImpl.prototype
-  type.initInstance typeImpl.initInstance
+PropValidator = require "../utils/PropValidator"
 
-#
-# The 'type' is the Component.Builder constructor
-#
+typeMixin = Builder.Mixin()
 
-typeImpl = {}
+typeMixin.defineMethods
 
-typeImpl.values =
+  defineProps: (props) ->
 
-  _propTypes: null
+    if @_props
+      @_props.define props
+      return
 
-  _propDefaults: null
+    props = PropValidator props
+    frozen.define this, "_props", {value: props}
 
-  _initProps: -> []
+    # Expose `propTypes` and `propDefaults`.
+    @_delegate.didBuild (type) ->
+      type.propTypes = props.types
+      type.propDefaults = props.defaults
+      return
 
-typeImpl.prototype =
+    # Validate props and set defaults.
+    @_phases.props.push props.validate
+    return
 
-  propTypes:
-    get: -> @_propTypes
-    set: (propTypes) ->
-
-      assertType propTypes, Object
-      assert not @_propTypes, "'propTypes' is already defined!"
-
-      @_propTypes = propTypes
-
-      @_didBuild.push (type) ->
-        type.propTypes = propTypes
-
-      if isDev
-        @initProps (props) ->
-          assertTypes props, propTypes
-
-  propDefaults:
-    get: -> @_propDefaults
-    set: (propDefaults) ->
-
-      assertType propDefaults, Object
-      assert not @_propDefaults, "'propDefaults' is already defined!"
-
-      @_propDefaults = propDefaults
-
-      @_didBuild.push (type) ->
-        type.propDefaults = propDefaults
-
-      @initProps (props) ->
-        mergeDefaults props, propDefaults
-
-  createProps: (func) ->
+  replaceProps: (func) ->
     assertType func, Function
-    @_initProps.unshift func
+    @_phases.props.unshift func
     return
 
   initProps: (func) ->
     assertType func, Function
-    @_initProps.push (props) ->
+    @_phases.props.push (props) ->
       func.call this, props
       return props
     return
 
-typeImpl.initInstance = ->
-  @_willBuild.push instImpl.willBuild
+typeMixin.initInstance ->
+  @_phases.props = []
+  instMixin.apply this
 
-#
-# The 'instance' is a Component.Builder
-#
+module.exports = typeMixin.apply
 
-instImpl = {}
+instMixin = Builder.Mixin()
+
+instMixin.initInstance ->
+  delegate = @_delegate
+  if delegate isnt this
+    delegate._props = @props
+  return
 
 # NOTE: Inherited 'propPhases' come after the phases of the subtype.
 #       This allows for the subtype to edit the 'props' before the
 #       supertype gets to inspect them.
-instImpl.willBuild = ->
+instMixin.willBuild ->
 
-  phases = @_initProps
-  if phases.length
-    processProps = (props) ->
-      for phase in phases
+  propPhases = @_phases.props
+  if propPhases.length
+    initProps = (props) ->
+      for phase in propPhases
         props = phase.call null, props
       return props
 
-  if superImpl = @_kind and @_kind::_processProps
-    processProps = superWrap processProps, superImpl
+  if superImpl = @_kind and @_kind.initProps
+    initProps = superWrap initProps, superImpl
 
-  if processProps
-    @_didBuild.push (type) ->
-      define type.prototype, "_processProps",
-        value: processProps
+  initProps and @didBuild (type) ->
+    frozen.define type, "initProps", {value: initProps}
 
-  # Try to be the last 'didBuild' phase.
-  @_didBuild.push => @_didBuild.push instImpl.didBuild
+  hook this, "_willReceiveProps", baseImpl.willReceiveProps
+  @didBuild baseImpl.didBuild
 
-instImpl.didBuild = (type) ->
+baseImpl = {}
+
+baseImpl.willReceiveProps = (orig, props) ->
+  orig.call this, props
+  if delegate = props.delegate
+    delegate._props = props
+  return
+
+baseImpl.didBuild = (type) ->
   return if ReactComponent isnt getKind type
-  return if has type.prototype, "_delegate"
-  define type.prototype, "_delegate", get: -> this
+  return if has type::, "_delegate"
+  mutable.define type::, "_delegate", {get: -> this}
 
-# Wraps a 'processProps' static method
+# Wraps a 'initProps' static method
 # with the implementation of its supertype.
-superWrap = (processProps, superImpl) ->
-  return superImpl if not processProps
-  return (props) -> superImpl processProps props
+superWrap = (initProps, superImpl) ->
+  if initProps
+  then (props) -> superImpl initProps props
+  else superImpl

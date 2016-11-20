@@ -1,86 +1,41 @@
 
-{ frozen } = require "Property"
+{frozen} = require "Property"
 
-assertType = require "assertType"
-Random = require "random"
-define = require "define"
 Event = require "Event"
 
-hasListeners = Symbol "Component.hasListeners"
+ComponentMixin = require "../ComponentMixin"
 
 module.exports = (type) ->
-  type.defineMethods typeImpl.methods
+  type.defineMethods {defineListeners}
 
-#
-# The 'type' is the Component.Builder constructor
-#
+defineListeners = (createListeners) ->
 
-typeImpl = {}
+  delegate = @_delegate
+  unless delegate._hasListeners
+    frozen.define delegate, "_hasListeners", {value: yes}
+    kind = delegate._kind
+    unless kind and kind::_hasListeners
+      mixin.apply delegate
 
-typeImpl.methods =
+  # Create/start listeners in the `willMount` phase.
+  delegate.willMount (args) ->
 
-  defineListeners: (func) ->
+    listeners = @__listeners
+    onAttach = Event.didAttach (listener) ->
+      listeners.push listener.start()
 
-    assertType func, Function
+    onAttach.start()
+    createListeners.apply this, args
+    onAttach.detach()
 
-    delegate = @_delegate
+mixin = ComponentMixin()
 
-    # Some phases must only be defined once per inheritance chain.
-    if not this[hasListeners]
-      frozen.define this, hasListeners, { value: yes }
-      kind = delegate._kind
-      unless kind and kind::[hasListeners]
-        delegate._didBuild.push baseImpl.didBuild
-        delegate._initInstance.push baseImpl.initInstance
+mixin.defineValues ->
+  __listeners: []
 
-    phaseId = Random.id()
+mixin.willUnmount ->
+  listener.detach() for listener in @__listeners
+  @__listeners = []
 
-    #
-    # Create the Listener objects for each instance.
-    #
-
-    createListeners = (args) ->
-      listeners = []
-      onAttach = (listener) -> listeners.push listener
-      onAttach = Event.didAttach onAttach
-      onAttach.start()
-      func.apply this, args
-      onAttach.stop()
-      return listeners
-
-    #
-    # Create new Listeners every time the instance is mounted.
-    #
-
-    startListeners = ->
-      listeners = createListeners()
-      listener.start() for listener in listeners
-      @__listeners[phaseId] = listeners
-      return
-
-    @_willMount.push startListeners
-
-    #
-    # Stop each Listener when the instance is unmounted.
-    #
-
-    stopListeners = ->
-      for listener in @__listeners[phaseId]
-        listener.stop()
-      return
-
-    @_willUnmount.push stopListeners
-    return
-
-#
-# The 'base' is the first type in the inheritance chain to define listeners.
-#
-
-baseImpl = {}
-
-baseImpl.didBuild = (type) ->
-  frozen.define type.prototype, hasListeners, { value: yes }
-
-baseImpl.initInstance = ->
-  frozen.define this, "__listeners",
-    value: Object.create null
+mixin.didBuild (type) ->
+  frozen.define type::, "_hasListeners", {value: yes}

@@ -1,74 +1,71 @@
 
-require "isDev"
+{mutable} = require "Property"
 
 assertType = require "assertType"
-Reaction = require "reaction"
-assert = require "assert"
-hook = require "hook"
+Reaction = require "Reaction"
 
-shift = Array::shift
+ComponentMixin = require "../ComponentMixin"
 
 module.exports = (type) ->
-  type.defineValues typeImpl.values
-  type.defineMethods typeImpl.methods
+  type.defineMethods {isRenderPrevented}
 
-#
-# The 'type' is the Component.Builder constructor
-#
+isRenderPrevented = (func) ->
 
-typeImpl = {}
+  assertType func, Function
 
-typeImpl.values =
+  if @_isRenderPrevented
+    throw Error "'isRenderPrevented' is already defined!"
+  mutable.define this, "_isRenderPrevented", {value: func}
 
-  _isRenderPrevented: null
+  delegate = @_delegate
+  delegate.defineMethods {isRenderPrevented: func}
+  mixin.apply delegate
+  return
 
-typeImpl.methods =
+mixin = ComponentMixin()
 
-  isRenderPrevented: (func) ->
+mixin.defineValues ->
 
-    assert not @_isRenderPrevented, "'isRenderPrevented' is already defined!"
-    assertType func, Function
+  __needsRender: no
 
-    @_isRenderPrevented = func
-    @_didBuild.push typeImpl.didBuild
+mixin.defineReactions
 
-    delegate = @_delegate
-    delegate.defineValues instImpl.values
-    delegate.defineReactions instImpl.reactions
-    delegate.defineMethods { isRenderPrevented: func }
+  __shouldRender: ->
+    @isRenderPrevented() is no
+
+mixin.defineListeners ->
+  @__shouldRender.didSet (shouldRender) =>
+    if shouldRender and @__needsRender
+      @__needsRender = no
+      @view.forceUpdate()
     return
 
-typeImpl.didBuild = (type) ->
-  hook type.prototype, "__render", typeImpl.gatedRender
-  hook type.prototype, "__shouldUpdate", typeImpl.gatedRender
-
-# Must be used with 'hook()'.
-typeImpl.gatedRender = ->
-
-  # Allow the render to go through.
-  if @view.shouldRender.value
-    orig = shift.call arguments
-    return orig.call this
-
-  # Wait for 'isRenderPrevented'
-  @needsRender = yes
-  return no
+mixin.willBuild ->
+  @didBuild (type) ->
+    hook type.prototype,
+      __render: gatedRender
+      __shouldUpdate: gatedRender
 
 #
-# The 'instance' is a Component.Builder
+# Helpers
 #
 
-instImpl = {}
+hook = (obj, methods) ->
+  for key, method of methods
+    mutable.define obj, key,
+      value: createHook method, obj[key]
+  return
 
-instImpl.values =
+createHook = (method, orig) ->
+  return -> method.call this, orig, arguments
 
-  needsRender: no
+# Must be used with `hook()`
+gatedRender = (orig, args) ->
 
-instImpl.reactions =
+  # Allow the render to go through
+  if @__shouldRender.get()
+    return orig.apply this, args
 
-  shouldRender: ->
-    get: => not @isRenderPrevented()
-    didSet: (shouldRender) =>
-      return unless @needsRender and shouldRender
-      @needsRender = no
-      try @forceUpdate()
+  # Wait for `isRenderPrevented`
+  @__needsRender = yes
+  return null
