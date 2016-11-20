@@ -13,6 +13,7 @@ steal = require "steal"
 ElementType = NamedFunction "ElementType", (componentType) ->
   assertType componentType, Function.Kind
   elementType = createType componentType, componentType.initProps
+  elementType.propTypes = componentType.propTypes
   elementType.componentType = componentType
   return setType elementType, ElementType
 
