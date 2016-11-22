@@ -25,11 +25,16 @@ typeMixin.defineMethods
     props = PropValidator props
     frozen.define this, "_props", {value: props}
 
-    # Expose `propTypes` and `propDefaults`.
-    @_delegate.didBuild (type) ->
-      type.propTypes = props.types
-      type.propDefaults = props.defaults
-      return
+    statics =
+      propTypes: props.types
+      propDefaults: props.defaults
+
+    # Expose 'propTypes' and 'propDefaults' on the instance constructor
+    @_delegate.defineStatics statics
+
+    # Expose them on the element constructor, too
+    if @_delegate isnt this
+      @defineStatics statics
 
     # Validate props and set defaults.
     @_phases.props.push props.validate

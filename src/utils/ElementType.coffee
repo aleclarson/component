@@ -12,8 +12,7 @@ steal = require "steal"
 
 ElementType = NamedFunction "ElementType", (componentType) ->
   assertType componentType, Function.Kind
-  elementType = createType componentType, componentType.initProps
-  elementType.propTypes = componentType.propTypes
+  elementType = createType componentType
   elementType.componentType = componentType
   return setType elementType, ElementType
 
@@ -31,9 +30,9 @@ applyMixins = (mixins, props) ->
         props[key] = value
   return
 
-createType = (componentType, initProps) ->
-
-  createElement = (props, delegate) ->
+createType = (componentType) ->
+  {initProps} = componentType
+  return createElement = (props, delegate) ->
 
     if props?
     then assertType props, Object, "props"
