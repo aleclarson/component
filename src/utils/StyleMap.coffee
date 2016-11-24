@@ -7,13 +7,12 @@ cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
-isType = require "isType"
-OneOf = require "OneOf"
 Type = require "Type"
 sync = require "sync"
 has = require "has"
 
-StyleTransform = OneOf "scale perspective translateX translateY rotateX rotateY rotateZ"
+StyleTransform = require "./StyleTransform"
+StylePresets = require "./StylePresets"
 
 type = Type "StyleMap"
 
@@ -51,7 +50,7 @@ type.defineMethods
     { props } = context
     if props and props.styles
       contextStyles = sync.map props.styles, (style, styleName) =>
-        style = sync.map style, parseTransform
+        style = sync.map style, StyleTransform.parse
         if not @_styleNames[styleName]
           frozen.define styles, styleName, value: =>
             @_getValues styleName, contextStyles, context, arguments
@@ -130,18 +129,19 @@ type.defineMethods
 
       # Parse computed styles.
       if value instanceof Function
-        computedStyle[key] = parseTransform value, key
+        computedStyle[key] = StyleTransform.parse value, key
         delete constantStyle[key] if has constantStyle, key
 
       # Parse constant styles that use presets.
-      else if StyleMap._presets[key]
-        sync.each callPreset(key, value), (value, key) ->
-          constantStyle[key] = value
+      else if StylePresets.has key
+        presetStyle = StylePresets.call key, value
+        sync.each presetStyle, (value, key) ->
+          constantStyle[key] = StyleTransform.parse value, key
           delete computedStyle[key] if has computedStyle, key
 
       # Parse constant styles.
       else
-        constantStyle[key] = parseTransform value, key
+        constantStyle[key] = StyleTransform.parse value, key
         delete computedStyle[key] if has computedStyle, key
 
     return
@@ -163,57 +163,36 @@ type.defineMethods
     for key, { value, isTransform } of style
       continue if not value?
       if isTransform
-        values.transform.push assign {}, key, value
+      then addTransform values.transform, key, value
       else values[key] = value
     return
 
   _applyComputedStyle: (values, style, context, args) ->
     return if not style
     for key, { value, isTransform } of style
+
       value = value.apply context, args
       continue if not value?
-      if StyleMap._presets[key]
-        sync.each callPreset(key, value), ({ value, isTransform }, key) ->
+
+      if StylePresets.has key
+        presetStyle = StylePresets.call key, value
+        sync.each presetStyle, (value, key) ->
           return if not value?
-          if isTransform
-            values.transform.push assign {}, key, value
+          if StyleTransform.test value, key
+          then addTransform values.transform, key, value
           else values[key] = value
-      else if isTransform
-        values.transform.push assign {}, key, value
+        continue
+
+      if isTransform
+      then addTransform values.transform, key, value
       else values[key] = value
     return
 
   _applyContextStyle: (values, style) ->
     for key, { value, isTransform } of style
       if isTransform
-        values.transform.push assign {}, key, value
+      then addTransform values.transform, key, value
       else values[key] = value
-    return
-
-type.defineStatics
-
-  _presets: Object.create null
-
-  addPreset: (presetName, style) ->
-
-    assertType presetName, String
-    assertType style, Object.or Function
-
-    if isType style, Object
-      style = sync.map style, parseTransform
-      preset = -> style
-
-    else
-      preset = ->
-        values = style.apply this, arguments
-        return sync.map values, parseTransform
-
-    StyleMap._presets[presetName] = preset
-    return
-
-  addPresets: (presets) ->
-    for presetName, createStyle of presets
-      @addPreset presetName, createStyle
     return
 
 module.exports = StyleMap = type.build()
@@ -222,21 +201,8 @@ module.exports = StyleMap = type.build()
 # Helpers
 #
 
-assign = (obj, key, value) ->
+addTransform = (array, key, value) ->
+  obj = {}
   obj[key] = value
-  return obj
-
-parseTransform = (value, key) ->
-  { value, isTransform: StyleTransform.test key }
-
-callPreset = (presetName, presetArg) ->
-  style = StyleMap._presets[presetName] presetArg
-  assertType style, Object
-  return style
-
-#
-# Initialize default presets
-#
-
-presets = require "./StylePresets"
-StyleMap.addPresets presets
+  array.push obj
+  return

@@ -6,3 +6,4 @@ module.exports = LazyMap
   Component: -> require "./Component"
   NativeComponent: -> require "./NativeComponent"
   Device: -> require "./utils/Device"
+  StylePresets: -> require "./utils/StylePresets"
