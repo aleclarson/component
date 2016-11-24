@@ -29,7 +29,17 @@ type.overrideMethods
 
   build: ->
     componentType = @__super arguments
-    ElementType componentType
+    elementType = ElementType componentType
+    if statics = @_statics
+      Object.assign elementType, statics
+      Object.assign componentType, statics
+    return elementType
+
+  defineStatics: (statics) ->
+    assertType statics, Object
+    @_statics ?= {}
+    Object.assign @_statics, statics
+    return
 
   _defaultBaseCreator: (args) ->
     instance = Builder::_defaultBaseCreator.call null, args

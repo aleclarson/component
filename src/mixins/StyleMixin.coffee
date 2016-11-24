@@ -51,7 +51,13 @@ instMixin.willBuild ->
   styles = inherited unless styles or not inherited
 
   return if not isType styles, StyleMap
+
+  # Expose 'styles' on instance constructor.
   delegate.defineStatics {styles}
+
+  # Expose 'styles' on element constructor.
+  if delegate isnt this
+    @defineStatics {styles}
 
   # Only define 'instance.styles' once in the inheritance chain.
   if not inherited

@@ -1,5 +1,5 @@
 
-# modx v2.0.0 ![experimental](https://img.shields.io/badge/stability-experimental-EC5315.svg?style=flat)
+# modx v2.0.1 ![experimental](https://img.shields.io/badge/stability-experimental-EC5315.svg?style=flat)
 
 > Model-backed components for [React Native](https://github.com/facebook/react-native)
 
