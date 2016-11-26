@@ -6,6 +6,7 @@ React = require "react"
 Image = require "Image"
 Shape = require "Shape"
 OneOf = require "OneOf"
+Null = require "Null"
 
 NativeComponent = require "../NativeComponent"
 
@@ -19,7 +20,7 @@ type.render (props) ->
 
 type.defineProps
   style: Style
-  source: Object.isRequired
+  source: Object.or Null
   defaultSource: Object
   resizeMode: ImageResizeMode
   capInsets: EdgeInsetsType
