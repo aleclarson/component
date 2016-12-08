@@ -14,15 +14,16 @@ type.render (props) ->
   React.createElement TextInput, props
 
 type.defineProps
+  text: String
   style: Style
   autoCapitalize: OneOf ["characters", "words", "sentences", "none"]
   autoCorrect: Boolean
   autoFocus: Boolean
   blurOnSubmit: Boolean
-  defaultValue: String
   editable: Boolean
   # keyboardType: OneOf []
   maxLength: Number
+  maxLineCount: Number
   multiline: Boolean
   onBlur: Function
   onChange: Function
