@@ -40,12 +40,16 @@ type.defineProps
   selectionColor: String
   # TODO: Add `android` and `ios` specific props?
 
-type.defineMethods
+type.defineMethods do ->
 
-  focus: ->
-    @_child.focus()
+  methods = {}
 
-  blur: ->
-    @_child.blur()
+  [ "focus"
+    "blur"
+  ].forEach (key) ->
+    methods[key] = ->
+      @_child[key].apply @_child, arguments
+
+  return methods
 
 module.exports = type.build()
