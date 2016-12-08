@@ -7,8 +7,6 @@ isDev = require "isDev"
 Type = require "Type"
 sync = require "sync"
 
-StyleTransform = require "./StyleTransform"
-
 type = Type "StylePresets"
 
 type.defineValues ->

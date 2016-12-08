@@ -7,11 +7,12 @@ cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
 PureObject = require "PureObject"
 assertType = require "assertType"
+OneOf = require "OneOf"
 Type = require "Type"
 sync = require "sync"
+bind = require "bind"
 has = require "has"
 
-StyleTransform = require "./StyleTransform"
 StylePresets = require "./StylePresets"
 
 type = Type "StyleMap"
@@ -50,7 +51,7 @@ type.defineMethods
     { props } = context
     if props and props.styles
       contextStyles = sync.map props.styles, (style, styleName) =>
-        style = sync.map style, StyleTransform.parse
+        style = sync.map style, parseTransform
         if not @_styleNames[styleName]
           frozen.define styles, styleName, value: =>
             @_getValues styleName, contextStyles, context, arguments
@@ -129,19 +130,19 @@ type.defineMethods
 
       # Parse computed styles.
       if value instanceof Function
-        computedStyle[key] = StyleTransform.parse value, key
+        computedStyle[key] = parseTransform value, key
         delete constantStyle[key] if has constantStyle, key
 
       # Parse constant styles that use presets.
       else if StylePresets.has key
         presetStyle = StylePresets.call key, value
         sync.each presetStyle, (value, key) ->
-          constantStyle[key] = StyleTransform.parse value, key
+          constantStyle[key] = parseTransform value, key
           delete computedStyle[key] if has computedStyle, key
 
       # Parse constant styles.
       else
-        constantStyle[key] = StyleTransform.parse value, key
+        constantStyle[key] = parseTransform value, key
         delete computedStyle[key] if has computedStyle, key
 
     return
@@ -178,7 +179,7 @@ type.defineMethods
         presetStyle = StylePresets.call key, value
         sync.each presetStyle, (value, key) ->
           return if not value?
-          if StyleTransform.test value, key
+          if testTransform value, key
           then addTransform values.transform, key, value
           else values[key] = value
         continue
@@ -206,3 +207,10 @@ addTransform = (array, key, value) ->
   obj[key] = value
   array.push obj
   return
+
+testTransform = do ->
+  validator = OneOf "scale perspective translateX translateY rotateX rotateY rotateZ"
+  bind.method validator, "test"
+
+parseTransform = (value, key) ->
+  {value, isTransform: testTransform key}
