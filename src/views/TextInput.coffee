@@ -5,6 +5,7 @@ TextInput = require "TextInput"
 React = require "react"
 OneOf = require "OneOf"
 steal = require "steal"
+sync = require "sync"
 
 NativeComponent = require "../NativeComponent"
 
@@ -42,15 +43,13 @@ type.defineProps
   # TODO: Add `android` and `ios` specific props?
 
 type.defineMethods do ->
-
-  methods = {}
-
-  [ "focus"
+  keys = [
+    "focus"
     "blur"
-  ].forEach (key) ->
+  ]
+  sync.reduce keys, {}, (methods, key) ->
     methods[key] = ->
       @_child[key].apply @_child, arguments
-
-  return methods
+    return methods
 
 module.exports = type.build()
