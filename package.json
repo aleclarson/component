@@ -16,6 +16,7 @@
     "LazyVar": "aleclarson/LazyVar#2.1.1",
     "Mixin": "aleclarson/Mixin#1.0.0",
     "NamedFunction": "aleclarson/NamedFunction#2.0.1",
+    "Null": "aleclarson/Null#1.0.1",
     "OneOf": "aleclarson/OneOf#1.0.1",
     "Property": "aleclarson/Property#1.2.1",
     "PureObject": "aleclarson/PureObject#1.0.1",
