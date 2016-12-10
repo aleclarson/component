@@ -13,7 +13,6 @@
     "Animated": "aleclarson/Animated#3.0.0",
     "Builder": "aleclarson/Builder#2.1.0",
     "Event": "aleclarson/Event#2.2.1",
-    "LazyMap": "aleclarson/LazyMap#1.0.1",
     "LazyVar": "aleclarson/LazyVar#2.1.1",
     "Mixin": "aleclarson/Mixin#1.0.0",
     "NamedFunction": "aleclarson/NamedFunction#2.0.1",
