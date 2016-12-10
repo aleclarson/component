@@ -1,6 +1,6 @@
 {
   "name": "modx",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "main": "js/index",
   "plugins": [
     "lotus-coffee"
@@ -12,11 +12,11 @@
   "dependencies": {
     "Animated": "aleclarson/Animated#3.0.0",
     "Builder": "aleclarson/Builder#2.1.0",
-    "Event": "aleclarson/Event#2.1.1",
-    "LazyMap": "aleclarson/LazyMap#1.0.1",
+    "Event": "aleclarson/Event#2.3.0",
     "LazyVar": "aleclarson/LazyVar#2.1.1",
     "Mixin": "aleclarson/Mixin#1.0.0",
     "NamedFunction": "aleclarson/NamedFunction#2.0.1",
+    "Null": "aleclarson/Null#1.0.1",
     "OneOf": "aleclarson/OneOf#1.0.1",
     "Property": "aleclarson/Property#1.2.1",
     "PureObject": "aleclarson/PureObject#1.0.1",
