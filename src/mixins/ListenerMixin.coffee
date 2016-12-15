@@ -19,12 +19,9 @@ defineListeners = (createListeners) ->
 
   # Create/start listeners in the `willMount` phase.
   delegate.willMount (args) ->
-
     listeners = @__listeners
-    onAttach = Event.didAttach (listener) ->
-      listeners.push listener.start()
-
-    onAttach.start()
+    onAttach = (listener) -> listeners.push listener.start()
+    onAttach = Event.didAttach(onAttach).start()
     createListeners.apply this, args
     onAttach.detach()
 
