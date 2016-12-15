@@ -7,25 +7,29 @@ emptyFunction = require "emptyFunction"
 ValueMapper = require "ValueMapper"
 assertType = require "assertType"
 Reaction = require "Reaction"
+Random = require "random"
 isType = require "isType"
 isDev = require "isDev"
 bind = require "bind"
+sync = require "sync"
 
 ComponentMixin = require "../ComponentMixin"
 
 module.exports = (type) ->
   type.defineMethods {defineReactions}
 
+mixin = ComponentMixin()
+
+mixin.defineValues ->
+  __reactions: Object.create null
+
+mixin.didBuild (type) ->
+  frozen.define type::, "_hasReactions", {value: yes}
+
 defineReactions = (reactions) ->
 
   isDev and
   assertType reactions, Object.or Function
-
-  # Treat object methods as reaction getters.
-  if isType reactions, Object
-    for key, reaction of reactions
-      if isType reaction, Function
-        reactions[key] = emptyFunction.thatReturns reaction
 
   delegate = @_delegate
   unless delegate._hasReactions
@@ -34,53 +38,66 @@ defineReactions = (reactions) ->
     unless kind and kind::_hasReactions
       mixin.apply delegate
 
-  mapValues = ValueMapper reactions, defineReaction
+  id = Random.id()
+  delegate.willUnmount ->
+    reaction.stop() for reaction in @__reactions[id]
+    delete @__reactions[id]
+
+  if isType reactions, Function
+    createReactions = reactions
+    delegate.didMount ->
+      @__reactions[id] = cache = []
+      onInit = (reaction) -> cache.push reaction.start()
+      onInit = Reaction.didInit(onInit).start()
+      createReactions.apply this, arguments
+      onInit.detach()
+    return
+
+  # Use functions in `reactions` as `options.get`
+  # passed to the `Reaction` constructor.
+  sync.each reactions, (reaction, key) ->
+    if isType reaction, Function
+      reactions[key] = emptyFunction.thatReturns reaction
+
+  mapValues = ValueMapper reactions, (obj, key, getter) ->
+
+    return if getter is undefined
+
+    isDev and
+    assertType getter, Reaction.or Function, Object
+
+    value = AnimatedValue null
+    frozen.define obj, key, {value}
+
+    if isType getter, Function
+      options =
+        get: bind.func getter, obj
+        didSet: (newValue) ->
+          if newValue isnt value.get()
+            value._updateValue newValue
+
+    else if isType getter, Object
+      options = getter
+      options.didSet = do ->
+        didSet = options.didSet or emptyFunction
+        return (newValue) ->
+          if newValue isnt value.get()
+            value._updateValue newValue
+            didSet.call obj, newValue
+
+    reaction =
+      if options
+      then Reaction options
+      else getter
+
+    reaction.keyPath ?= obj.constructor.name + "." + key
+    obj.__reactions[id].push reaction
+
   delegate._phases.init.push (args) ->
+    @__reactions[id] = []
     mapValues this, args
-  return
 
-defineReaction = (obj, key, reaction) ->
-  return if reaction is undefined
-
-  isDev and
-  assertType reaction, Reaction.or Function, Object
-
-  value = AnimatedValue null
-
-  if isType reaction, Function
-    reaction = Reaction
-      get: bind.func reaction, obj
-      didSet: value._updateValue
-
-  else if isType reaction, Object
-    onUpdate = reaction.didSet or emptyFunction
-    reaction = Reaction
-      get: bind.func reaction.get, obj
-      didSet: (newValue) ->
-        return if newValue is value.get()
-        value._updateValue newValue
-        onUpdate.call obj, newValue
-
-  reaction.keyPath ?= obj.constructor.name + "." + key
-  frozen.define obj, key, {value}
-  obj.__reactions.push reaction
-
-mixin = ComponentMixin()
-
-mixin.defineFrozenValues ->
-  __reactions: []
-
-mixin.willMount ->
-  reactions = @__reactions
-  for reaction in reactions
-    reaction.start()
-  return
-
-mixin.willUnmount ->
-  reactions = @__reactions
-  for reaction in reactions
-    reaction.stop()
-  return
-
-mixin.didBuild (type) ->
-  frozen.define type::, "_hasReactions", {value: yes}
+  delegate.willMount ->
+    for reaction in @__reactions[id]
+      reaction.start()
+    return
