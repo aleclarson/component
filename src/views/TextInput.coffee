@@ -15,7 +15,8 @@ type.render (props) ->
   React.createElement TextInput, props
 
 type.defineProps
-  text: String
+  value: String
+  defaultValue: String
   style: Style
   autoCapitalize: OneOf ["characters", "words", "sentences", "none"]
   autoCorrect: Boolean
