@@ -10,7 +10,7 @@
     "postinstall": "npm run build"
   },
   "dependencies": {
-    "Animated": "aleclarson/Animated#3.1.0",
+    "Animated": "aleclarson/Animated#3.2.0",
     "Builder": "aleclarson/Builder#2.1.0",
     "Event": "aleclarson/Event#3.0.0",
     "LazyVar": "aleclarson/LazyVar#2.1.1",

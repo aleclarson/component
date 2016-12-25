@@ -23,19 +23,18 @@ type.overrideMethods
 
   build: ->
 
-    render = @_render
-
-    if not render
-      component = requireNativeComponent @_name
-      render = (props) -> React.createElement component, props
-
-    if not render
-      throw Error "Missing native component: '#{@_name}'"
+    name = @_name
+    render = @_render ? do ->
+      componentType = requireNativeComponent name
+      if componentType
+      then (props) -> React.createElement componentType, props
+      else throw Error "Missing native component: '#{name}'"
 
     @_render = ->
-      if @_hasMounted
-      then props = @_animatedProps.__getValue()
-      else props = @_animatedProps.__getInitialValue()
+      props =
+        if @_hasMounted
+        then @_animatedProps.__getNonNativeValues()
+        else @_animatedProps.__getAllValues()
       props.ref = @_setChild
       render.call this, props
 
