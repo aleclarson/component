@@ -4,13 +4,17 @@ assertType = require "assertType"
 Builder = require "Builder"
 Type = require "Type"
 
-ElementType = require "./utils/ElementType"
+ElementType = require "../utils/ElementType"
 
-type = Type "modx_ComponentBuilder"
+type = Type "modx_Component"
 
 type.inherits Builder
 
 type.trace()
+
+type.defineStatics
+
+  Mixin: require "./Mixin"
 
 type.defineGetters
 
@@ -27,6 +31,12 @@ type.overrideMethods
       kind = kind.componentType
     @__super arguments
 
+  defineStatics: (statics) ->
+    assertType statics, Object
+    @_statics ?= {}
+    Object.assign @_statics, statics
+    return
+
   build: ->
     componentType = @__super arguments
     elementType = ElementType componentType
@@ -35,25 +45,21 @@ type.overrideMethods
       Object.assign componentType, statics
     return elementType
 
-  defineStatics: (statics) ->
-    assertType statics, Object
-    @_statics ?= {}
-    Object.assign @_statics, statics
-    return
-
-  _defaultBaseCreator: (args) ->
-    instance = Builder::_defaultBaseCreator.call null, args
-    ReactComponent.apply instance, args
-    return instance
+  _defaultBaseCreator: do ->
+    createInstance = Builder::_defaultBaseCreator
+    return (args) ->
+      instance = createInstance args
+      ReactComponent.apply instance, args
+      return instance
 
 type.addMixins [
-  require "./mixins/StyleMixin"
-  require "./mixins/PropsMixin"
-  require "./mixins/LifecycleMixin"
-  require "./mixins/AnimatedMixin"
-  require "./mixins/ReactionMixin"
-  require "./mixins/ListenerMixin"
-  require "./mixins/GatedRenderMixin"
+  require "./StyleMixin"
+  require "./PropsMixin"
+  require "./LifecycleMixin"
+  require "./AnimatedMixin"
+  require "./ReactionMixin"
+  require "./ListenerMixin"
+  require "./GatedRenderMixin"
 ]
 
 module.exports = type.build()

@@ -1,6 +1,4 @@
 
-require "isDev"
-
 ReactCurrentOwner = require "ReactCurrentOwner"
 NamedFunction = require "NamedFunction"
 ReactElement = require "ReactElement"

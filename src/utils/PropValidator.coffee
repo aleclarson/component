@@ -4,7 +4,6 @@
 assertType = require "assertType"
 isType = require "isType"
 Shape = require "Shape"
-isDev = require "isDev"
 Type = require "Type"
 has = require "has"
 
@@ -16,61 +15,68 @@ type.defineValues ->
 
   defaults: {}
 
-  _names: []
+  allKeys: []
 
-  _required: {}
-
-type.initInstance (props) ->
-  props and @define props
+  requiredKeys: {}
 
 type.defineMethods
 
-  # Any pre-defined props are overwritten.
-  define: (props) ->
-    assertType props, Object
-    for name, prop of props
+  # Pre-existing prop configs WILL get clobbered.
+  define: (propConfigs) ->
+    assertType propConfigs, Object
+    {types, defaults, allKeys, requiredKeys} = this
+    for key, propConfig of propConfigs
+      allKeys.push key if 0 > allKeys.indexOf key
 
-      if 0 > @_names.indexOf name
-        @_names.push name
-
-      if not isType prop, Object
-        @types[name] = prop
+      unless isType propConfig, Object
+        types[key] = propConfig
         continue
 
-      if has prop, "default"
-        @defaults[name] = prop.default
+      if propConfig.required
+        requiredKeys[key] = yes
 
-      continue if not prop.type
-      @types[name] =
-        if isType prop.type, Object
-        then Shape prop.type
-        else prop.type
+      else if has propConfig, "default"
+        defaults[key] = propConfig.default
 
-      if prop.required
-        @_required[name] = yes
+      continue unless propType = propConfig.type
+      types[key] =
+        if isType propType, Object
+        then Shape propType
+        else propType
 
+    return
+
+  setDefaults: (values) ->
+    assertType values, Object
+    {defaults, allKeys} = this
+    for key, value of values
+      allKeys.push key if 0 > allKeys.indexOf key
+      defaults[key] = value
     return
 
 type.defineBoundMethods
 
   validate: (props) ->
+    assertType props, Object
+    {types, defaults, allKeys, requiredKeys} = this
+    for key in allKeys
+      prop = props[key]
 
-    for name in @_names
-
-      prop = props[name]
+      # Check for undefined props.
       if prop is undefined
 
-        if @defaults[name] isnt undefined
-          props[name] = prop = @defaults[name]
+        # Use the default value (if one exists).
+        if defaults[key] isnt undefined
+          props[key] = prop = defaults[key]
 
-        else if not @_required[name]
-          continue
+        else
+          # Avoid type checking unless required.
+          continue unless requiredKeys[key]
 
-      else if prop instanceof AnimatedValue
-        prop = (animatedProp = prop).get()
-
-      if isDev and propType = @types[name]
-        assertType prop, propType, "props." + name
+      if propType = types[key]
+        if prop instanceof AnimatedValue
+        then assertType prop.get(), propType, "props." + key
+        else assertType prop, propType, "props." + key
 
     return props
 
