@@ -2,9 +2,8 @@
 {mutable} = require "Property"
 
 assertType = require "assertType"
-Reaction = require "Reaction"
 
-ComponentMixin = require "../ComponentMixin"
+Mixin = require "./Mixin"
 
 module.exports = (type) ->
   type.defineMethods {isRenderPrevented}
@@ -22,7 +21,7 @@ isRenderPrevented = (func) ->
   mixin.apply delegate
   return
 
-mixin = ComponentMixin()
+mixin = Mixin()
 
 mixin.defineValues ->
 

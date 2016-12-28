@@ -13,12 +13,12 @@ isDev = require "isDev"
 bind = require "bind"
 sync = require "sync"
 
-ComponentMixin = require "../ComponentMixin"
+Mixin = require "./Mixin"
 
 module.exports = (type) ->
   type.defineMethods {defineReactions}
 
-mixin = ComponentMixin()
+mixin = Mixin()
 
 mixin.defineValues ->
   __reactions: Object.create null

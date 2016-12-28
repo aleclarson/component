@@ -11,7 +11,7 @@ Component = require "./Component"
 
 type = Type "NativeComponent"
 
-type.inherits Component.Builder
+type.inherits Component
 
 type.defineArgs
   name: String.isRequired

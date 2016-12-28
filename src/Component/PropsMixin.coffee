@@ -16,28 +16,14 @@ typeMixin = Builder.Mixin()
 
 typeMixin.defineMethods
 
-  defineProps: (props) ->
+  definePropDefaults: (values) ->
+    props = @_props or @_createProps()
+    props.setDefaults values
+    return
 
-    if @_props
-      @_props.define props
-      return
-
-    props = PropValidator props
-    frozen.define this, "_props", {value: props}
-
-    statics =
-      propTypes: props.types
-      propDefaults: props.defaults
-
-    # Expose 'propTypes' and 'propDefaults' on the instance constructor
-    @_delegate.defineStatics statics
-
-    # Expose them on the element constructor, too
-    if @_delegate isnt this
-      @defineStatics statics
-
-    # Validate props and set defaults.
-    @_phases.props.push props.validate
+  defineProps: (propConfigs) ->
+    props = @_props or @_createProps()
+    props.define propConfigs
     return
 
   replaceProps: (func) ->
@@ -51,6 +37,24 @@ typeMixin.defineMethods
       func.call this, props
       return props
     return
+
+  _createProps: ->
+
+    frozen.define this, "_props",
+      value: props = PropValidator()
+
+    # Expose 'propTypes' and 'propDefaults' on the instance constructor
+    @_delegate.defineStatics statics =
+      propTypes: props.types
+      propDefaults: props.defaults
+
+    # Expose them on the element constructor, too
+    if @_delegate isnt this
+      @defineStatics statics
+
+    # Validate props and set defaults.
+    @_phases.props.push props.validate
+    return props
 
 typeMixin.initInstance ->
   @_phases.props = []

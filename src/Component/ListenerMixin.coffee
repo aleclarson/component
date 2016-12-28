@@ -3,7 +3,7 @@
 
 Event = require "Event"
 
-ComponentMixin = require "../ComponentMixin"
+Mixin = require "./Mixin"
 
 module.exports = (type) ->
   type.defineMethods {defineListeners}
@@ -25,7 +25,7 @@ defineListeners = (createListeners) ->
     createListeners.apply this, args
     onAttach.detach()
 
-mixin = ComponentMixin()
+mixin = Mixin()
 
 mixin.defineValues ->
   __listeners: []
