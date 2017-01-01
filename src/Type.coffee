@@ -136,8 +136,14 @@ ViewMixin = do ->
 
   # Try to be the very last phase.
   mixin.willBuild do ->
-    updateView = -> @_delegate._view = this
-    return -> @_phases.init.unshift updateView
+
+    # We must connect the view to its delegate,
+    # so the delegate can access it while rendering.
+    connectToDelegate = ->
+      @_delegate._view = this
+
+    # Try to be the very first "init" phase.
+    return -> @_phases.init.unshift connectToDelegate
 
   apply: (type) ->
     # Define once per inheritance chain.

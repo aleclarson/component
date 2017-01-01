@@ -32,9 +32,9 @@ type.overrideMethods
 
     @_render = ->
       props =
-        if @_hasMounted
-        then @_animatedProps.__getNonNativeValues()
-        else @_animatedProps.__getAllValues()
+        if @_isMounting
+        then @_animatedProps.__getAllValues()
+        else @_animatedProps.__getNonNativeValues()
       props.ref = @_setChild
       render.call this, props
 
@@ -50,19 +50,20 @@ mixin = Component.Mixin()
 
 mixin.defineValues
 
-  _child: null
+  _isMounting: no
 
-  _hasMounted: no
+  _child: null
 
   _queuedProps: null
 
   _animatedProps: -> AnimatedProps @constructor.propTypes
 
 mixin.willMount ->
+  @_isMounting = yes
   @_animatedProps.attach @props
 
 mixin.didMount ->
-  @_hasMounted = yes
+  @_isMounting = no
 
 mixin.defineListeners ->
   @_animatedProps.didSet @setNativeProps
@@ -71,7 +72,6 @@ mixin.willReceiveProps (nextProps) ->
   @_animatedProps.attach nextProps
 
 mixin.willUnmount ->
-  @_hasMounted = no
   @_animatedProps.detach()
 
 mixin.defineBoundMethods
