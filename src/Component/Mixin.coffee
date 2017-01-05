@@ -18,6 +18,7 @@ module.exports = Mixin.create
     "willUnmount"
     "willUpdate"
     "didUpdate"
+    "defineNativeValues"
     "defineAnimatedValues"
     "defineReactions"
     "defineListeners"

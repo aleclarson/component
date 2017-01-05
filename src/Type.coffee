@@ -70,6 +70,7 @@ modx_Type.Builder = do ->
       "willUnmount"
       "willUpdate"
       "didUpdate"
+      "defineNativeValues"
       "defineAnimatedValues"
       "defineListeners"
       "defineReactions"
