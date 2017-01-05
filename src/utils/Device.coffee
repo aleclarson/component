@@ -1,41 +1,50 @@
 
 Dimensions = require "Dimensions"
 inArray = require "in-array"
-define = require "define"
-sync = require "sync"
+Type = require "Type"
 
-define Device = exports,
+type = Type "Device"
 
-  name: null
+type.defineGetters
 
-  specific: (devices) ->
-    devices[Device.name] ? devices.else
+  size: ->
+    size = Dimensions.get "window"
+    width: size.width
+    height: size.height
 
-  size: get: ->
-    { width, height } = Dimensions.get "window"
-    { width, height }
-
-  width: get: ->
+  width: ->
     Dimensions.get("window").width
 
-  height: get: ->
+  height: ->
     Dimensions.get("window").height
 
-  scale: get: ->
+  scale: ->
     Dimensions.get("window").scale
 
+type.defineMethods
+
+  specific: (obj) ->
+    value = obj[@name]
+    value ? obj.else
+
   round: (value) ->
-    Math.round(value * Device.scale) / Device.scale
+    {scale} = this
+    Math.round(value * scale) / scale
 
-devices =
-  iPad:     [768, 1024]
-  iPhone4:  [320, 480]
-  iPhone5:  [320, 568]
-  iPhone6:  [375, 667]
-  iPhone6P: [414, 736]
+module.exports = Device = type.construct()
 
-isDevice = (a, b) ->
+isCurrentDevice = (a, b) ->
   inArray(a, b.width) and inArray(a, b.height)
 
-sync.each devices, (screenSize, deviceName) ->
-  Device.name = deviceName if Device[deviceName] = isDevice screenSize, Device.size
+registerDevices = (devices) ->
+  for name, size of devices
+    if Device[name] = isCurrentDevice size, Device.size
+      Device.name = name
+  return
+
+registerDevices
+  iPad: [768, 1024]
+  iPhone4: [320, 480]
+  iPhone5: [320, 568]
+  iPhone6: [375, 667]
+  iPhone6P: [414, 736]
