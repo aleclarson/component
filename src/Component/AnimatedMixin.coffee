@@ -6,20 +6,27 @@ ValueMapper = require "ValueMapper"
 isDev = require "isDev"
 
 module.exports = (type) ->
-  type.defineMethods {defineAnimatedValues}
+  type.defineMethods methods
 
-defineAnimatedValues = (values) ->
-  mapValues = ValueMapper values, defineAnimatedValue
-  @_delegate._phases.init.push (args) ->
-    mapValues this, args
-  return
+methods =
 
-defineAnimatedValue = (obj, key, value) ->
-  return if value is undefined
+  defineAnimatedValues: (values) ->
+    mapValues = createValueMapper values, no
+    @_delegate._phases.init.push (args) ->
+      mapValues this, args
+    return
 
-  unless value instanceof AnimatedValue
-    value = AnimatedValue value, obj.constructor.name + "." + key
+  defineNativeValues: (values) ->
+    mapValues = createValueMapper values, yes
+    @_delegate._phases.init.push (args) ->
+      mapValues this, args
+    return
 
-  if isDev
-  then frozen.define obj, key, {value}
-  else obj[key] = value
+createValueMapper = (values, isNative) ->
+  return ValueMapper values, (obj, key, value) ->
+    if value isnt undefined
+      value = AnimatedValue value, {isNative}
+      if isDev
+      then frozen.define obj, key, {value}
+      else obj[key] = value
+    return

@@ -5,104 +5,142 @@
 
 ReactComponent = require "ReactComponent"
 assertType = require "assertType"
+getProto = require "getProto"
 Builder = require "Builder"
 getKind = require "getKind"
+inArray = require "in-array"
 hook = require "hook"
 has = require "has"
 
 PropValidator = require "../utils/PropValidator"
 
-typeMixin = Builder.Mixin()
+module.exports = do ->
 
-typeMixin.defineMethods
+  mixin = Builder.Mixin()
 
-  definePropDefaults: (values) ->
-    props = @_props or @_createProps()
-    props.setDefaults values
-    return
+  mixin.initInstance ->
+    @_phases.props = []
+    BuilderMixin.apply this
 
-  defineProps: (propConfigs) ->
-    props = @_props or @_createProps()
-    props.define propConfigs
-    return
+  mixin.defineMethods
 
-  replaceProps: (func) ->
-    assertType func, Function
-    @_phases.props.unshift func
-    return
+    inheritProps: (type, options) ->
+      {propTypes, requiredProps} = type.componentType or type
+      propConfigs = {}
+      exclude = options?.exclude
+      for key, propType of propTypes
+        unless inArray exclude, key
+          propConfigs[key] =
+            if requiredProps[key]
+            then {type: propType, required: yes}
+            else propType
+      @defineProps propConfigs
+      return
 
-  initProps: (func) ->
-    assertType func, Function
-    @_phases.props.push (props) ->
-      func.call this, props
-      return props
-    return
+    definePropDefaults: (values) ->
+      props = @_props or @_createProps()
+      props.setDefaults values
+      return
 
-  _createProps: ->
+    defineProps: (propConfigs) ->
+      props = @_props or @_createProps()
+      props.define propConfigs
+      return
 
-    frozen.define this, "_props",
-      value: props = PropValidator()
+    replaceProps: (func) ->
+      assertType func, Function
+      @_phases.props.unshift func
+      return
 
-    # Expose 'propTypes' and 'propDefaults' on the instance constructor
-    @_delegate.defineStatics statics =
-      propTypes: props.types
-      propDefaults: props.defaults
+    initProps: (func) ->
+      assertType func, Function
+      @_phases.props.push (props) ->
+        func.call this, props
+        return props
+      return
 
-    # Expose them on the element constructor, too
-    if @_delegate isnt this
-      @defineStatics statics
+    _createProps: ->
 
-    # Validate props and set defaults.
-    @_phases.props.push props.validate
-    return props
+      frozen.define this, "_props",
+        value: props = PropValidator()
 
-typeMixin.initInstance ->
-  @_phases.props = []
-  instMixin.apply this
+      # Expose 'propTypes' and 'propDefaults' on the instance constructor
+      @_delegate.defineStatics statics =
+        propTypes: props.types
+        propDefaults: props.defaults
+        requiredProps: props.requiredKeys
 
-module.exports = typeMixin.apply
+      # Expose them on the element constructor, too
+      if @_delegate isnt this
+        @defineStatics statics
 
-instMixin = Builder.Mixin()
-
-instMixin.initInstance ->
-  delegate = @_delegate
-  if delegate isnt this
-    delegate._props = @props
-  return
-
-# NOTE: Inherited 'propPhases' come after the phases of the subtype.
-#       This allows for the subtype to edit the 'props' before the
-#       supertype gets to inspect them.
-instMixin.willBuild ->
-
-  propPhases = @_phases.props
-  if propPhases.length
-    initProps = (props) ->
-      for phase in propPhases
-        props = phase.call null, props
+      # Validate props and set defaults.
+      @_phases.props.push props.validate
       return props
 
-  if superImpl = @_kind and @_kind.initProps
-    initProps = superWrap initProps, superImpl
+  return mixin.apply
 
-  initProps and @didBuild (type) ->
-    frozen.define type, "initProps", {value: initProps}
+BuilderMixin = do ->
 
-  hook this, "_willReceiveProps", baseImpl.willReceiveProps
-  @didBuild baseImpl.didBuild
+  mixin = Builder.Mixin()
 
-baseImpl = {}
+  mixin.defineStatics
 
-baseImpl.willReceiveProps = (orig, props) ->
-  orig.call this, props
-  if delegate = props.delegate
-    delegate._props = props
-  return
+    parseProps: (input) ->
+      assertType input, Object
+      props = {}
+      componentTypes = gatherTypes @componentType or this
+      for componentType in componentTypes
+        if propTypes = componentType.propTypes
+          for key, propType of propTypes
+            continue if input[key] is undefined
+            continue if props[key] isnt undefined
+            props[key] = input[key]
+      return props
 
-baseImpl.didBuild = (type) ->
-  return if ReactComponent isnt getKind type
-  return if has type::, "_delegate"
-  mutable.define type::, "_delegate", {get: -> this}
+  mixin.initInstance ->
+    delegate = @_delegate
+    if delegate isnt this
+      delegate._props = @props
+    return
+
+  # NOTE: Inherited 'propPhases' come after the phases of the subtype.
+  #       This allows for the subtype to edit the 'props' before the
+  #       supertype gets to inspect them.
+  mixin.willBuild ->
+
+    propPhases = @_phases.props
+    if propPhases.length
+      initProps = (props) ->
+        for phase in propPhases
+          props = phase.call null, props
+        return props
+
+    if superImpl = @_kind and @_kind.initProps
+      initProps = superWrap initProps, superImpl
+
+    initProps and @didBuild (type) ->
+      frozen.define type, "initProps", {value: initProps}
+
+    hook this, "_willReceiveProps", willReceiveProps
+    @didBuild didBuild
+
+  willReceiveProps = (orig, props) ->
+    orig.call this, props
+    if delegate = props.delegate
+      delegate._props = props
+    return
+
+  didBuild = (type) ->
+    return if ReactComponent isnt getKind type
+    return if has type::, "_delegate"
+    mutable.define type::, "_delegate", {get: -> this}
+
+  return mixin
+
+#
+# Helpers
+#
 
 # Wraps a 'initProps' static method
 # with the implementation of its supertype.
@@ -110,3 +148,13 @@ superWrap = (initProps, superImpl) ->
   if initProps
   then (props) -> superImpl initProps props
   else superImpl
+
+gatherTypes = (type) ->
+  types = [type]
+  while type isnt Object
+    type = getParentType type
+    types.push type
+  return types
+
+getParentType = (type) ->
+  getProto(type.prototype).constructor

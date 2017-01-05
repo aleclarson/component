@@ -5,6 +5,7 @@ Mixin = require "Mixin"
 module.exports = Mixin.create
   extends: Builder.Mixin
   methods: [
+    "inheritProps"
     "definePropDefaults"
     "defineProps"
     "replaceProps"
@@ -18,6 +19,7 @@ module.exports = Mixin.create
     "willUnmount"
     "willUpdate"
     "didUpdate"
+    "defineNativeValues"
     "defineAnimatedValues"
     "defineReactions"
     "defineListeners"
