@@ -57,6 +57,7 @@ modx_Type.Builder = do ->
   type.willBuild ->
 
     keys = {
+      "inheritProps"
       "definePropDefaults"
       "defineProps"
       "replaceProps"
