@@ -75,7 +75,7 @@ type.defineBoundMethods
 
       if propType = types[key]
         if prop instanceof AnimatedValue
-        then assertType prop.get(), propType, "props." + key
+        then prop.type = propType
         else assertType prop, propType, "props." + key
 
     return props

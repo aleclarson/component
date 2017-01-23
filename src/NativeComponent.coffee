@@ -26,9 +26,7 @@ type.overrideMethods
     name = @_name
     render = @_render ? do ->
       componentType = requireNativeComponent name
-      if componentType
-      then (props) -> React.createElement componentType, props
-      else throw Error "Missing native component: '#{name}'"
+      return (props) -> React.createElement componentType, props
 
     @_render = ->
       props =
