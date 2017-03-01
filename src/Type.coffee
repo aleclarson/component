@@ -39,8 +39,35 @@ modx_Type.Builder = do ->
       return type
 
   type.initInstance ->
-    ViewMixin.apply @_componentType
-    ViewModelMixin.apply this
+    # Define once per inheritance chain.
+    unless @_kind instanceof modx_Type
+      ViewModelMixin.apply this
+    return
+
+  # Define the `_delegate` getter.
+  type.initInstance do ->
+
+    getters =
+      _delegate: -> @props.delegate
+
+    # We must attach the view to its delegate,
+    # so the delegate can access it while rendering.
+    attachView = (args) ->
+      args[0].delegate._view = this
+      return
+
+    return ->
+      componentType = @_componentType
+
+      # Define once per inheritance chain.
+      return if componentType._delegate._kind instanceof modx_Type
+
+      componentType.defineGetters getters
+      componentType.willBuild ->
+        # Attach the view as early as possible.
+        @_phases.init.unshift attachView
+        return
+      return
 
   type.overrideMethods
 
@@ -122,33 +149,6 @@ ViewModelMixin = do ->
   mixin.willUnmount ->
     @_props = null
     @_view = null
-
-  apply: (type) ->
-    # Define once per inheritance chain.
-    unless type._kind instanceof modx_Type
-      mixin.apply type
     return
 
-ViewMixin = do ->
-
-  mixin = Component.Mixin()
-
-  mixin.defineGetters
-    _delegate: -> @props.delegate
-
-  # Try to be the very last phase.
-  mixin.willBuild do ->
-
-    # We must connect the view to its delegate,
-    # so the delegate can access it while rendering.
-    connectToDelegate = ->
-      @_delegate._view = this
-
-    # Try to be the very first "init" phase.
-    return -> @_phases.init.unshift connectToDelegate
-
-  apply: (type) ->
-    # Define once per inheritance chain.
-    unless type._delegate._kind instanceof modx_Type
-      mixin.apply type
-    return
+  return mixin

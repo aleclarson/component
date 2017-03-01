@@ -1,6 +1,6 @@
 {
   "name": "modx",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "main": "js/index",
   "plugins": [
     "lotus-coffee"
@@ -10,28 +10,29 @@
     "postinstall": "npm run build"
   },
   "dependencies": {
-    "Animated": "aleclarson/Animated#3.5.0",
-    "Builder": "aleclarson/Builder#2.2.2",
-    "Event": "aleclarson/Event#3.1.2",
+    "Animated": "aleclarson/Animated#3.6.0",
+    "Builder": "aleclarson/Builder#2.2.3",
+    "Event": "aleclarson/Event#3.2.1",
     "Mixin": "aleclarson/Mixin#1.0.0",
     "NamedFunction": "aleclarson/NamedFunction#2.0.1",
     "Null": "aleclarson/Null#1.0.1",
     "OneOf": "aleclarson/OneOf#1.0.1",
-    "Property": "aleclarson/Property#1.2.1",
+    "Property": "aleclarson/Property#1.2.3",
     "PureObject": "aleclarson/PureObject#1.0.1",
-    "Reaction": "aleclarson/Reaction#2.1.0",
+    "Reaction": "aleclarson/Reaction#2.1.1",
     "Shape": "aleclarson/Shape#2.0.1",
-    "Type": "aleclarson/Type#2.2.0",
-    "ValueMapper": "aleclarson/ValueMapper#1.1.0",
+    "Type": "aleclarson/Type#2.3.1",
+    "ValueMapper": "aleclarson/ValueMapper#1.1.1",
     "applyChain": "aleclarson/applyChain#1.0.1",
     "assertType": "aleclarson/assertType#2.0.1",
     "assertTypes": "aleclarson/assertTypes#2.0.1",
-    "bind": "aleclarson/bind#1.0.1",
-    "cloneObject": "aleclarson/cloneObject#1.0.1",
+    "bind": "aleclarson/bind#1.0.2",
+    "cloneObject": "aleclarson/cloneObject#1.0.2",
     "define": "aleclarson/define#1.0.1",
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "emptyObject": "aleclarson/emptyObject#1.0.0",
     "getKind": "aleclarson/getKind#1.0.0",
+    "getProto": "aleclarson/getProto#1.0.0",
     "has": "aleclarson/has#1.0.0",
     "hex-rgb": "^1.0.0",
     "hook": "aleclarson/hook#1.0.0",
@@ -43,7 +44,7 @@
     "setKind": "aleclarson/setKind#1.0.0",
     "setType": "aleclarson/setType#1.0.0",
     "steal": "aleclarson/steal#1.2.0",
-    "sync": "aleclarson/sync#1.0.1"
+    "sync": "aleclarson/sync#1.0.2"
   },
   "implicitDependencies": [
     "Dimensions",

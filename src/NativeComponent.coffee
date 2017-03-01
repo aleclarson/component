@@ -13,8 +13,7 @@ type = Type "NativeComponent"
 
 type.inherits Component
 
-type.defineArgs
-  name: String.isRequired
+type.defineArgs [String]
 
 type.initInstance ->
   mixin.apply this

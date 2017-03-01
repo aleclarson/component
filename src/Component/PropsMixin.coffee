@@ -4,12 +4,11 @@
 {mutable, frozen} = require "Property"
 
 ReactComponent = require "ReactComponent"
+emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 getProto = require "getProto"
 Builder = require "Builder"
-getKind = require "getKind"
 inArray = require "in-array"
-hook = require "hook"
 has = require "has"
 
 PropValidator = require "../utils/PropValidator"
@@ -20,12 +19,15 @@ module.exports = do ->
 
   mixin.initInstance ->
     @_phases.props = []
-    BuilderMixin.apply this
+    @willBuild ->
+      ViewMixin.apply this
+    return
 
   mixin.defineMethods
 
     inheritProps: (type, options) ->
       {propTypes, requiredProps} = type.componentType or type
+
       propConfigs = {}
       exclude = options?.exclude
       for key, propType of propTypes
@@ -34,6 +36,7 @@ module.exports = do ->
             if requiredProps[key]
             then {type: propType, required: yes}
             else propType
+
       @defineProps propConfigs
       return
 
@@ -80,7 +83,7 @@ module.exports = do ->
 
   return mixin.apply
 
-BuilderMixin = do ->
+ViewMixin = do ->
 
   mixin = Builder.Mixin()
 
@@ -98,43 +101,56 @@ BuilderMixin = do ->
             props[key] = input[key]
       return props
 
-  mixin.initInstance ->
-    delegate = @_delegate
-    if delegate isnt this
-      delegate._props = @props
-    return
-
   # NOTE: Inherited 'propPhases' come after the phases of the subtype.
   #       This allows for the subtype to edit the 'props' before the
   #       supertype gets to inspect them.
-  mixin.willBuild ->
+  mixin.willBuild do ->
 
-    propPhases = @_phases.props
-    if propPhases.length
-      initProps = (props) ->
-        for phase in propPhases
-          props = phase.call null, props
-        return props
+    # Construct the `initProps` static method.
+    PropInitializer = (kind, phases) ->
 
-    if superImpl = @_kind and @_kind.initProps
-      initProps = superWrap initProps, superImpl
+      if phases.length
+        initProps = (props) ->
+          for phase in phases
+            props = phase.call null, props
+          return props
 
-    initProps and @didBuild (type) ->
-      frozen.define type, "initProps", {value: initProps}
+      if superImpl = kind and kind.initProps
+      then superWrap initProps, superImpl
+      else initProps
 
-    hook this, "_willReceiveProps", willReceiveProps
-    @didBuild didBuild
+    # Make the `_delegate` property point to `this` when no delegate is being used.
+    setDefaultDelegate = (prototype) ->
+      return if has prototype, "_delegate"
+      if getProto(prototype).constructor is ReactComponent
+        mutable.define prototype, "_delegate", {get: -> this}
+      return
 
-  willReceiveProps = (orig, props) ->
-    orig.call this, props
-    if delegate = props.delegate
-      delegate._props = props
-    return
+    attachProps = (props) ->
+      if delegate = props.delegate
+        delegate._props = props
+      return
 
-  didBuild = (type) ->
-    return if ReactComponent isnt getKind type
-    return if has type::, "_delegate"
-    mutable.define type::, "_delegate", {get: -> this}
+    return ->
+
+      initProps = PropInitializer @_kind, @_phases.props
+      @didBuild (type) ->
+        frozen.define type, "initProps", {value: initProps}
+        setDefaultDelegate type.prototype
+        return
+
+      # Attach the first props as early as possible.
+      @_phases.init.unshift (args) ->
+        attachProps args[0]
+        return
+
+      # Updated props must be attached to the delegate.
+      willReceiveProps = @_willReceiveProps or emptyFunction
+      @_willReceiveProps = (props) ->
+        attachProps props
+        willReceiveProps.call this, props
+        return
+      return
 
   return mixin
 
@@ -152,9 +168,6 @@ superWrap = (initProps, superImpl) ->
 gatherTypes = (type) ->
   types = [type]
   while type isnt Object
-    type = getParentType type
+    type = getProto(type.prototype).constructor
     types.push type
   return types
-
-getParentType = (type) ->
-  getProto(type.prototype).constructor
