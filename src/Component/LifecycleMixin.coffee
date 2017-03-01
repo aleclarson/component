@@ -70,7 +70,7 @@ instMixin.willBuild ->
   kind = @_kind
   ownMethods = {}
 
-  if kind is no
+  if kind is ReactComponent
     @defineMethods viewImpl
     ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
     ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
