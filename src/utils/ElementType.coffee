@@ -6,7 +6,6 @@ assertType = require "assertType"
 setType = require "setType"
 setKind = require "setKind"
 isType = require "isType"
-steal = require "steal"
 
 ElementType = NamedFunction "ElementType", (componentType) ->
   assertType componentType, Function.Kind
@@ -32,28 +31,32 @@ createType = (componentType) ->
   {initProps} = componentType
   return createElement = (props, delegate) ->
 
+    assertType props, Object.Maybe, "props"
     if props?
-    then assertType props, Object, "props"
+
+      if Object.isFrozen props
+        throw Error "'props' cannot be frozen!"
+
+      key = props.key
+      if key?
+        delete props.key
+        key = String key
+
+      ref = props.ref
+      if ref?
+        delete props.ref
+        assertType ref, Function, "props.ref"
+
+      mixins = props.mixins
+      if mixins?
+        delete props.mixins
+        assertType mixins, Array, "props.mixins"
+        applyMixins mixins, props
+
     else props = {}
 
-    key = steal props, "key", null
-    if key isnt null
-      key = String key unless isType key, String
-
-    ref = steal props, "ref", null
-    if ref isnt null
-      assertType ref, Function, "props.ref"
-
-    mixins = steal props, "mixins", null
-    if mixins isnt null
-      assertType mixins, Array, "props.mixins"
-      applyMixins mixins, props
-
-    if initProps
-      props = initProps props
-
-    if delegate
-      props.delegate = delegate
+    props = initProps props if initProps
+    props.delegate = delegate or null
 
     ReactElement.apply null, [
       componentType
