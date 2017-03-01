@@ -32,6 +32,7 @@
     "emptyFunction": "aleclarson/emptyFunction#1.0.0",
     "emptyObject": "aleclarson/emptyObject#1.0.0",
     "getKind": "aleclarson/getKind#1.0.0",
+    "getProto": "aleclarson/getProto#1.0.0",
     "has": "aleclarson/has#1.0.0",
     "hex-rgb": "^1.0.0",
     "hook": "aleclarson/hook#1.0.0",
