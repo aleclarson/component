@@ -3,7 +3,8 @@
 
 {mutable, frozen} = require "Property"
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 getProto = require "getProto"

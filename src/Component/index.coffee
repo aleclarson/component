@@ -1,5 +1,6 @@
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 assertType = require "assertType"
 Builder = require "Builder"
 Type = require "Type"

@@ -1,7 +1,8 @@
 
 {mutable} = require "Property"
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 applyChain = require "applyChain"

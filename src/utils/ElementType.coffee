@@ -1,7 +1,8 @@
 
-ReactCurrentOwner = require "ReactCurrentOwner"
+ReactCurrentOwner = require "react/lib/ReactCurrentOwner"
+ReactElement = require "react/lib/ReactElement"
+
 NamedFunction = require "NamedFunction"
-ReactElement = require "ReactElement"
 assertType = require "assertType"
 setType = require "setType"
 setKind = require "setKind"
