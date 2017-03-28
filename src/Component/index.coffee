@@ -28,28 +28,19 @@ type.definePrototype
 type.overrideMethods
 
   inherits: (kind) ->
-    if kind.componentType
-      kind = kind.componentType
-    @__super arguments
-
-  defineStatics: (statics) ->
-    assertType statics, Object
-    @_statics ?= {}
-    Object.assign @_statics, statics
-    return
+    kind = kind.componentType if kind.componentType
+    return @__super arguments
 
   build: ->
     componentType = @__super arguments
     elementType = ElementType componentType
-    if statics = @_statics
-      Object.assign elementType, statics
-      Object.assign componentType, statics
+    @_statics.apply elementType
     return elementType
 
   _defaultBaseCreator: do ->
     createInstance = Builder::_defaultBaseCreator
     return (args) ->
-      instance = createInstance args
+      instance = createInstance.apply this, args
       ReactComponent.apply instance, args
       return instance
 

@@ -1,11 +1,9 @@
 
 {AnimatedProps} = require "Animated"
-{ListenerMixin} = require "Event"
 
 requireNativeComponent = require "requireNativeComponent"
 React = require "react"
 Type = require "Type"
-sync = require "sync"
 
 Component = require "./Component"
 
@@ -45,7 +43,7 @@ module.exports = type.build()
 
 mixin = Component.Mixin()
 
-mixin.defineValues
+mixin.defineValues ->
 
   _isMounting: no
 
@@ -53,7 +51,7 @@ mixin.defineValues
 
   _queuedProps: null
 
-  _animatedProps: -> AnimatedProps @constructor.propTypes
+  _animatedProps: AnimatedProps @constructor.propTypes
 
 mixin.willMount ->
   @_isMounting = yes
