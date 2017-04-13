@@ -95,19 +95,16 @@ module.exports = do ->
 
     _watchProps: ->
 
-      frozen.define this, "_propWatchers",
-        value: watchers = Object.create null
-
-      @createValue "_propWatcher", ->
-        return PropWatcher()
+      frozen.define this, "_propWatcher",
+        value: watcher = PropWatcher()
 
       @defineListeners ->
-        @_propWatcher.start @props
+        watcher.start @props, this
 
       @willReceiveProps (props) ->
-        @_propWatcher.update props, this
+        watcher.update props, this
 
-      return watchers
+      return watcher
 
   return mixin.apply
 

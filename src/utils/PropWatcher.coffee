@@ -28,20 +28,27 @@ type.defineMethods
   start: (props, context) ->
     values = @_values
     sync.each @_listeners, (listener, key) ->
-      return unless value = props[key]
-      return unless value instanceof AnimatedValue
-      value.didSet (value) ->
-        listener.call context, value, values[key]
+      value = props[key]
+      return if value is undefined
+      if value instanceof AnimatedValue
+        values[key] = value.get()
+        value.didSet (value) ->
+          listener.call context, value, values[key]
+          values[key] = value
+          return
+      else
         values[key] = value
-        return
       return
     return
 
   update: (props, context) ->
+    values = @_values
+    listeners = @_listeners
     for key, value of props
-      continue unless listener = @_listeners[key]
-      listener.call context, value, @_values[key]
-      @_values[key] = value
+      continue unless listener = listeners[key]
+      continue if value is oldValue = values[key]
+      listener.call context, value, oldValue
+      values[key] = value
     return
 
 module.exports = type.build()
