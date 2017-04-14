@@ -21,7 +21,7 @@ type.overrideMethods
   build: ->
 
     name = @_name
-    render = @_render ? do ->
+    render = @_render or do ->
       componentType = requireNativeComponent name
       return (props) -> React.createElement componentType, props
 
