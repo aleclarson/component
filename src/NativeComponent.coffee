@@ -51,7 +51,7 @@ mixin.defineValues ->
 
   _queuedProps: null
 
-  _animatedProps: AnimatedProps @constructor.propTypes
+  _animatedProps: AnimatedProps @constructor.propTypes, @setNativeProps.bind this
 
 mixin.willMount ->
   @_isMounting = yes
@@ -59,9 +59,6 @@ mixin.willMount ->
 
 mixin.didMount ->
   @_isMounting = no
-
-mixin.defineListeners ->
-  @_animatedProps.didSet @setNativeProps
 
 mixin.willReceiveProps (nextProps) ->
   @_animatedProps.attach nextProps
