@@ -28,21 +28,11 @@ modx_Type.Builder = do ->
 
   type.inherits Type.Builder
 
-  type.trace()
-
-  type.defineValues
-
-    _componentType: ->
-      name = if @_name then @_name + "_View" else null
-      type = Component name
-      frozen.define type, "_delegate", {value: this}
-      return type
-
-  type.initInstance ->
-    # Define once per inheritance chain.
-    unless @_kind instanceof modx_Type
-      ViewModelMixin.apply this
-    return
+  type.createValue "_componentType", ->
+    name = if @_name then @_name + "_View" else null
+    type = Component name
+    frozen.define type, "_delegate", {value: this}
+    return type
 
   # Define the `_delegate` getter.
   type.initInstance do ->
@@ -52,22 +42,26 @@ modx_Type.Builder = do ->
 
     # We must attach the view to its delegate,
     # so the delegate can access it while rendering.
-    attachView = (args) ->
-      args[0].delegate._view = this
+    attachView = (props) ->
+      props.delegate._view = this
+      return
+
+    willBuild = ->
+
+      # Define once per inheritance chain.
+      return if @_kind instanceof modx_Type
+
+      ViewModelMixin.apply this
+
+      @_componentType.defineGetters getters
+      @_componentType.willBuild ->
+        # Attach the view as early as possible.
+        @_values.unshift attachView
+        return
       return
 
     return ->
-      componentType = @_componentType
-
-      # Define once per inheritance chain.
-      return if componentType._delegate._kind instanceof modx_Type
-
-      componentType.defineGetters getters
-      componentType.willBuild ->
-        # Attach the view as early as possible.
-        @_phases.init.unshift attachView
-        return
-      return
+      @willBuild willBuild
 
   type.overrideMethods
 
@@ -110,18 +104,6 @@ modx_Type.Builder = do ->
     # Proxy a 1-argument function.
     @definePrototype sync.map keys, (key) ->
       value: (arg) -> @_componentType[key] arg
-
-    keys = {
-      "_willMount"
-      "_didMount"
-      "_willUnmount"
-      "_willUpdate"
-      "_didUpdate"
-    }
-
-    # Proxy just the getter.
-    @definePrototype sync.map keys, (key) ->
-      get: -> @_componentType[key]
 
   return type.build()
 

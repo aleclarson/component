@@ -1,11 +1,9 @@
 
 {AnimatedProps} = require "Animated"
-{ListenerMixin} = require "Event"
 
 requireNativeComponent = require "requireNativeComponent"
 React = require "react"
 Type = require "Type"
-sync = require "sync"
 
 Component = require "./Component"
 
@@ -23,7 +21,7 @@ type.overrideMethods
   build: ->
 
     name = @_name
-    render = @_render ? do ->
+    render = @_render or do ->
       componentType = requireNativeComponent name
       return (props) -> React.createElement componentType, props
 
@@ -32,7 +30,7 @@ type.overrideMethods
         if @_isMounting
         then @_animatedProps.__getAllValues()
         else @_animatedProps.__getNonNativeValues()
-      props.ref = @_setChild
+      props.ref = @_setChild.bind this
       render.call this, props
 
     @__super arguments
@@ -45,7 +43,7 @@ module.exports = type.build()
 
 mixin = Component.Mixin()
 
-mixin.defineValues
+mixin.defineValues ->
 
   _isMounting: no
 
@@ -53,25 +51,26 @@ mixin.defineValues
 
   _queuedProps: null
 
-  _animatedProps: -> AnimatedProps @constructor.propTypes
+  _animatedProps: AnimatedProps @constructor.propTypes, @setNativeProps.bind this
 
 mixin.willMount ->
   @_isMounting = yes
   @_animatedProps.attach @props
+  return
 
 mixin.didMount ->
   @_isMounting = no
-
-mixin.defineListeners ->
-  @_animatedProps.didSet @setNativeProps
+  return
 
 mixin.willReceiveProps (nextProps) ->
   @_animatedProps.attach nextProps
+  return
 
 mixin.willUnmount ->
   @_animatedProps.detach()
+  return
 
-mixin.defineBoundMethods
+mixin.defineMethods
 
   setNativeProps: (newProps) ->
     if @_child is null

@@ -3,7 +3,8 @@
 
 {mutable, frozen} = require "Property"
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
 getProto = require "getProto"
@@ -12,13 +13,13 @@ inArray = require "in-array"
 has = require "has"
 
 PropValidator = require "../utils/PropValidator"
+PropWatcher = require "../utils/PropWatcher"
 
 module.exports = do ->
 
   mixin = Builder.Mixin()
 
   mixin.initInstance ->
-    @_phases.props = []
     @willBuild ->
       ViewMixin.apply this
     return
@@ -50,16 +51,26 @@ module.exports = do ->
       props.define propConfigs
       return
 
-    replaceProps: (func) ->
-      assertType func, Function
-      @_phases.props.unshift func
+    replaceProps: (callback) ->
+      assertType callback, Function
+      @_phases.unshift "props", callback
       return
 
-    initProps: (func) ->
-      assertType func, Function
-      @_phases.props.push (props) ->
-        func.call this, props
+    initProps: (callback) ->
+      assertType callback, Function
+      @_phases.push "props", (props) ->
+        callback.call this, props
         return props
+      return
+
+    watchProp: (key, callback) ->
+
+      watcher =
+        if @_needs "propWatcher"
+        then @_watchProps()
+        else @_propWatcher
+
+      watcher.add key, callback
       return
 
     _createProps: ->
@@ -67,19 +78,33 @@ module.exports = do ->
       frozen.define this, "_props",
         value: props = PropValidator()
 
-      # Expose 'propTypes' and 'propDefaults' on the instance constructor
-      @_delegate.defineStatics statics =
+      statics =
         propTypes: props.types
         propDefaults: props.defaults
         requiredProps: props.requiredKeys
 
-      # Expose them on the element constructor, too
-      if @_delegate isnt this
-        @defineStatics statics
+      for key, value of statics
+        statics[key] = {value}
+
+      @_delegate.defineStatics statics
+      @defineStatics statics if @_delegate isnt this
 
       # Validate props and set defaults.
-      @_phases.props.push props.validate
+      @_phases.push "props", props.validate
       return props
+
+    _watchProps: ->
+
+      frozen.define this, "_propWatcher",
+        value: watcher = PropWatcher()
+
+      @defineListeners ->
+        watcher.start @props, this
+
+      @willReceiveProps (props) ->
+        watcher.update props, this
+
+      return watcher
 
   return mixin.apply
 
@@ -124,25 +149,17 @@ ViewMixin = do ->
       return if has prototype, "_delegate"
       if getProto(prototype).constructor is ReactComponent
         mutable.define prototype, "_delegate", {get: -> this}
-      return
+        return
 
     attachProps = (props) ->
       if delegate = props.delegate
         delegate._props = props
-      return
+        return
 
     return ->
 
-      initProps = PropInitializer @_kind, @_phases.props
-      @didBuild (type) ->
-        frozen.define type, "initProps", {value: initProps}
-        setDefaultDelegate type.prototype
-        return
-
       # Attach the first props as early as possible.
-      @_phases.init.unshift (args) ->
-        attachProps args[0]
-        return
+      @_values.unshift attachProps
 
       # Updated props must be attached to the delegate.
       willReceiveProps = @_willReceiveProps or emptyFunction
@@ -150,7 +167,12 @@ ViewMixin = do ->
         attachProps props
         willReceiveProps.call this, props
         return
-      return
+
+      initProps = PropInitializer @_kind, @_phases.get "props"
+      @didBuild (type) ->
+        frozen.define type, "initProps", {value: initProps}
+        setDefaultDelegate type.prototype
+        return
 
   return mixin
 

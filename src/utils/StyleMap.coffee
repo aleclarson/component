@@ -5,7 +5,6 @@ require "isDev"
 
 cloneObject = require "cloneObject"
 emptyObject = require "emptyObject"
-PureObject = require "PureObject"
 assertType = require "assertType"
 OneOf = require "OneOf"
 Type = require "Type"
@@ -17,13 +16,13 @@ StylePresets = require "./StylePresets"
 
 type = Type "StyleMap"
 
-type.defineValues
+type.defineValues ->
 
-  _styleNames: PureObject.create
+  _styleNames: Object.create null
 
-  _constantStyles: PureObject.create
+  _constantStyles: Object.create null
 
-  _computedStyles: PureObject.create
+  _computedStyles: Object.create null
 
 type.initInstance (inherited) ->
 

@@ -23,8 +23,8 @@ type.defineProps
   suppressHighlighting: Boolean
   testID: String
 
-type.defineValues ->
-  _text: steal @props, "text"
+type.defineValues (props) ->
+  _text: steal props, "text"
 
 type.defineListeners ->
   if @_text instanceof AnimatedValue

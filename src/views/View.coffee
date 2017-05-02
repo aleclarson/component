@@ -25,7 +25,9 @@ type.defineProps
   onLayout: Function
   onResponderReject: Function
   onResponderGrant: Function
+  onResponderStart: Function
   onResponderMove: Function
+  onResponderEnd: Function
   onResponderRelease: Function
   onResponderTerminate: Function
   onResponderTerminationRequest: Function

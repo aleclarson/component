@@ -1,10 +1,10 @@
 
 {mutable} = require "Property"
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 emptyFunction = require "emptyFunction"
 assertType = require "assertType"
-applyChain = require "applyChain"
 Builder = require "Builder"
 
 # This is applied to the Component.Builder constructor
@@ -12,52 +12,47 @@ mixin = Builder.Mixin()
 
 mixin.defineMethods
 
-  render: (func) ->
-    assertType func, Function
-    mutable.define this, "_render", {value: func}
+  render: (callback) ->
+    assertType callback, Function
+    mutable.define this, "_render", {value: callback}
     return
 
-  shouldUpdate: (func) ->
-    assertType func, Function
-    mutable.define this, "_shouldUpdate", {value: func}
+  shouldUpdate: (callback) ->
+    assertType callback, Function
+    mutable.define this, "_shouldUpdate", {value: callback}
     return
 
-  willReceiveProps: (func) ->
-    assertType func, Function
-    mutable.define this, "_willReceiveProps", {value: func}
+  willReceiveProps: (callback) ->
+    assertType callback, Function
+    mutable.define this, "_willReceiveProps", {value: callback}
     return
 
-  willMount: (func) ->
-    assertType func, Function
-    @_phases.willMount.push func
+  willMount: (callback) ->
+    assertType callback, Function
+    @_phases.push "willMount", callback
     return
 
-  didMount: (func) ->
-    assertType func, Function
-    @_phases.didMount.push func
+  didMount: (callback) ->
+    assertType callback, Function
+    @_phases.push "didMount", callback
     return
 
-  willUpdate: (func) ->
-    assertType func, Function
-    @_phases.willUpdate.push func
+  willUpdate: (callback) ->
+    assertType callback, Function
+    @_phases.push "willUpdate", callback
     return
 
-  didUpdate: (func) ->
-    assertType func, Function
-    @_phases.didUpdate.push func
+  didUpdate: (callback) ->
+    assertType callback, Function
+    @_phases.push "didUpdate", callback
     return
 
-  willUnmount: (func) ->
-    assertType func, Function
-    @_phases.willUnmount.push func
+  willUnmount: (callback) ->
+    assertType callback, Function
+    @_phases.push "willUnmount", callback
     return
 
 mixin.initInstance ->
-  @_phases.willMount = []
-  @_phases.didMount = []
-  @_phases.willUpdate = []
-  @_phases.didUpdate = []
-  @_phases.willUnmount = []
   @addMixin instMixin.apply
 
 module.exports = mixin.apply
@@ -67,35 +62,22 @@ instMixin = Builder.Mixin()
 
 instMixin.willBuild ->
 
-  kind = @_kind
-  ownMethods = {}
-
-  if kind is ReactComponent
+  if @_kind is ReactComponent
     @defineMethods viewImpl
-    ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
-    ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
-    ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
-    @_delegate.defineMethods ownMethods
+    @_delegate.defineMethods
+      __render: @_render or emptyFunction.thatReturnsFalse
+      __shouldUpdate: @_shouldUpdate or emptyFunction.thatReturnsTrue
+      __willReceiveProps: @_willReceiveProps or emptyFunction
 
   else
-    @_render and ownMethods.__render = @_render
-    @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
-    @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
-    @_delegate.overrideMethods ownMethods
-    inheritArrays @_phases,
-      willMount: kind::__willMount
-      didMount: kind::__didMount
-      willUpdate: kind::__willUpdate
-      didUpdate: kind::__didUpdate
-      willUnmount: kind::__willUnmount
+    @_delegate.overrideMethods
+      __render: @_render
+      __shouldUpdate: @_shouldUpdate
+      __willReceiveProps: @_willReceiveProps
 
-  # Define the arrays on the view to avoid crowding the delegate namespace.
-  @definePrototype
-    __willMount: @_phases.willMount
-    __didMount: @_phases.didMount
-    __willUpdate: @_phases.willUpdate
-    __didUpdate: @_phases.didUpdate
-    __willUnmount: @_phases.willUnmount
+  listeners = getListeners @_phases, @_kind.prototype
+  @definePrototype listeners
+  return
 
 # This interface is shared by every component instance
 viewImpl =
@@ -110,34 +92,62 @@ viewImpl =
     @_delegate.__willReceiveProps nextProps
 
   componentWillMount: ->
-    applyChain @__willMount, @_delegate
+    runListeners this, "__willMount"
 
   componentDidMount: ->
-    applyChain @__didMount, @_delegate
+    runListeners this, "__didMount"
 
   componentWillUpdate: ->
-    applyChain @__willUpdate, @_delegate
+    runListeners this, "__willUpdate"
 
   componentDidUpdate: ->
-    applyChain @__didUpdate, @_delegate
+    runListeners this, "__didUpdate"
 
   componentWillUnmount: ->
-    applyChain @__willUnmount, @_delegate
+    runListeners this, "__willUnmount"
 
 #
 # Helpers
 #
 
-inheritArrays = (obj, arrayMap) ->
-  for key, array of arrayMap
-    if Array.isArray array
-      inheritArray obj, key, array
-  return
+phaseNames = [
+  "willMount"
+  "didMount"
+  "willUpdate"
+  "didUpdate"
+  "willUnmount"
+]
 
-inheritArray = (obj, key, inherited) ->
-  assertType inherited, Array
-  if obj[key].length
-    return if not inherited.length
-    obj[key] = inherited.concat obj[key]
-  else obj[key] = inherited
+pushAll = Function.apply.bind [].push
+
+getListeners = (phases, inherited) ->
+  map = {}
+
+  for phaseName in phaseNames
+    continue unless phases.has phaseName
+    key = "__" + phaseName
+
+    if inherited[key]
+      array = []
+      pushAll array, inherited[key]
+      pushAll array, phases.get phaseName
+      map[key] = array
+
+    else
+      map[key] = phases.get phaseName
+
+  return map
+
+runListeners = (instance, phase) ->
+
+  listeners = instance[phase]
+  return unless length = listeners?.length
+
+  if length is 1
+    listeners[0].call instance._delegate
+    return
+
+  index = -1
+  while ++index < length
+    listeners[index].call instance._delegate
   return

@@ -1,7 +1,7 @@
 
 {frozen} = require "Property"
 
-Event = require "Event"
+Event = require "eve"
 
 Mixin = require "./Mixin"
 
@@ -11,28 +11,30 @@ module.exports = (type) ->
 defineListeners = (createListeners) ->
 
   delegate = @_delegate
-  unless delegate._hasListeners
-    frozen.define delegate, "_hasListeners", {value: yes}
-    kind = delegate._kind
-    unless kind and kind::_hasListeners
-      mixin.apply delegate
+  if delegate._needs "listeners"
+    delegate.addMixin rootMixin
 
   # Create/start listeners in the `willMount` phase.
-  delegate.willMount (args) ->
+  delegate.willMount ->
+
     listeners = @__listeners
-    onAttach = (listener) -> listeners.push listener.start()
-    onAttach = Event.didAttach(onAttach).start()
-    createListeners.apply this, args
+    onAttach = Event.didAttach (listener) ->
+      listeners.push listener
+
+    createListeners.call this
     onAttach.detach()
+  return
 
-mixin = Mixin()
+rootMixin = do ->
 
-mixin.defineValues ->
-  __listeners: []
+  mixin = Mixin()
 
-mixin.willUnmount ->
-  listener.detach() for listener in @__listeners
-  @__listeners = []
+  mixin.defineValues ->
+    __listeners: []
 
-mixin.didBuild (type) ->
-  frozen.define type::, "_hasListeners", {value: yes}
+  mixin.willUnmount ->
+    listener.detach() for listener in @__listeners
+    @__listeners = []
+    return
+
+  return mixin.apply

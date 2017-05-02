@@ -1,5 +1,6 @@
 
-ReactComponent = require "ReactComponent"
+ReactComponent = require "react/lib/ReactComponent"
+
 assertType = require "assertType"
 Builder = require "Builder"
 Type = require "Type"
@@ -27,29 +28,22 @@ type.definePrototype
 type.overrideMethods
 
   inherits: (kind) ->
-    if kind.componentType
-      kind = kind.componentType
-    @__super arguments
-
-  defineStatics: (statics) ->
-    assertType statics, Object
-    @_statics ?= {}
-    Object.assign @_statics, statics
-    return
+    kind = kind.componentType if kind.componentType
+    return @__super arguments
 
   build: ->
     componentType = @__super arguments
     elementType = ElementType componentType
-    if statics = @_statics
-      Object.assign elementType, statics
-      Object.assign componentType, statics
+    @_statics.apply elementType
     return elementType
 
-  _defaultBaseCreator: do ->
-    createInstance = Builder::_defaultBaseCreator
-    return (args) ->
-      instance = createInstance args
-      ReactComponent.apply instance, args
+type.defineMethods
+
+  _defaultCreator: do ->
+    createInstance = Builder::_rootCreator
+    return ->
+      instance = createInstance()
+      ReactComponent.apply instance, arguments
       return instance
 
 type.addMixins [

@@ -1,11 +1,14 @@
 
-ReactCurrentOwner = require "ReactCurrentOwner"
+ReactCurrentOwner = require "react/lib/ReactCurrentOwner"
+ReactElement = require "react/lib/ReactElement"
+
 NamedFunction = require "NamedFunction"
-ReactElement = require "ReactElement"
 assertType = require "assertType"
 setType = require "setType"
 setKind = require "setKind"
 isType = require "isType"
+steal = require "steal"
+has = require "has"
 
 ElementType = NamedFunction "ElementType", (componentType) ->
   assertType componentType, Function.Kind
@@ -32,23 +35,17 @@ createType = (componentType) ->
   return createElement = (props, delegate) ->
 
     assertType props, Object.Maybe, "props"
-    if props?
+    if props? and not Object.isFrozen props
 
-      if Object.isFrozen props
-        throw Error "'props' cannot be frozen!"
-
-      key = props.key
-      if key?
+      if key = steal props, "key"
         delete props.key
         key = String key
 
-      ref = props.ref
-      if ref?
+      if ref = steal props, "ref"
         delete props.ref
         assertType ref, Function, "props.ref"
 
-      mixins = props.mixins
-      if mixins?
+      if mixins = steal props, "mixins"
         delete props.mixins
         assertType mixins, Array, "props.mixins"
         applyMixins mixins, props
@@ -56,7 +53,12 @@ createType = (componentType) ->
     else props = {}
 
     props = initProps props if initProps
-    props.delegate = delegate or null
+
+    if delegate
+      props.delegate = delegate
+
+    else if has props, "delegate"
+      props.delegate = null
 
     ReactElement.apply null, [
       componentType
