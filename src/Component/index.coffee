@@ -37,11 +37,13 @@ type.overrideMethods
     @_statics.apply elementType
     return elementType
 
-  _defaultBaseCreator: do ->
-    createInstance = Builder::_defaultBaseCreator
-    return (args) ->
-      instance = createInstance.apply this, args
-      ReactComponent.apply instance, args
+type.defineMethods
+
+  _defaultCreator: do ->
+    createInstance = Builder::_rootCreator
+    return ->
+      instance = createInstance()
+      ReactComponent.apply instance, arguments
       return instance
 
 type.addMixins [
