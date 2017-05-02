@@ -62,29 +62,20 @@ instMixin = Builder.Mixin()
 
 instMixin.willBuild ->
 
-  kind = @_kind
-  phases = @_phases
-  ownMethods = {}
-
-  if kind is ReactComponent
+  if @_kind is ReactComponent
     @defineMethods viewImpl
-    ownMethods.__render = @_render or emptyFunction.thatReturnsFalse
-    ownMethods.__shouldUpdate = @_shouldUpdate or emptyFunction.thatReturnsTrue
-    ownMethods.__willReceiveProps = @_willReceiveProps or emptyFunction
-    @_delegate.defineMethods ownMethods
+    @_delegate.defineMethods
+      __render: @_render or emptyFunction.thatReturnsFalse
+      __shouldUpdate: @_shouldUpdate or emptyFunction.thatReturnsTrue
+      __willReceiveProps: @_willReceiveProps or emptyFunction
 
   else
-    @_render and ownMethods.__render = @_render
-    @_shouldUpdate and ownMethods.__shouldUpdate = @_shouldUpdate
-    @_willReceiveProps and ownMethods.__willReceiveProps = @_willReceiveProps
-    @_delegate.overrideMethods ownMethods
-    inheritListeners kind, phases
+    @_delegate.overrideMethods
+      __render: @_render
+      __shouldUpdate: @_shouldUpdate
+      __willReceiveProps: @_willReceiveProps
 
-  listeners = {}
-  for phase, listenerName of listenersByPhase
-    if phases.has phase
-      listeners[listenerName] = phases.get phase
-
+  listeners = getListeners @_phases, @_kind.prototype
   @definePrototype listeners
   return
 
@@ -119,23 +110,44 @@ viewImpl =
 # Helpers
 #
 
-listenersByPhase =
-  willMount: "__willMount"
-  didMount: "__didMount"
-  willUpdate: "__willUpdate"
-  didUpdate: "__didUpdate"
-  willUnmount: "__willUnmount"
+phaseNames = [
+  "willMount"
+  "didMount"
+  "willUpdate"
+  "didUpdate"
+  "willUnmount"
+]
 
-inheritListeners = (kind, phases) ->
-  {prototype} = kind
-  for phase, listenerName of listenersByPhase
-    continue unless listeners = prototype[listenerName]
-    phases.push phase, listener for listener in listeners
-  return
+pushAll = Function.apply.bind [].push
+
+getListeners = (phases, inherited) ->
+  map = {}
+
+  for phaseName in phaseNames
+    continue unless phases.has phaseName
+    key = "__" + phaseName
+
+    if inherited[key]
+      array = []
+      pushAll array, inherited[key]
+      pushAll array, phases.get phaseName
+      map[key] = array
+
+    else
+      map[key] = phases.get phaseName
+
+  return map
 
 runListeners = (instance, phase) ->
-  if listeners = instance[phase]
-    delegate = instance._delegate
-    for listener in listeners
-      listener.call delegate
+
+  listeners = instance[phase]
+  return unless length = listeners?.length
+
+  if length is 1
+    listeners[0].call instance._delegate
+    return
+
+  index = -1
+  while ++index < length
+    listeners[index].call instance._delegate
   return

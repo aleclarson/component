@@ -149,20 +149,14 @@ ViewMixin = do ->
       return if has prototype, "_delegate"
       if getProto(prototype).constructor is ReactComponent
         mutable.define prototype, "_delegate", {get: -> this}
-      return
+        return
 
     attachProps = (props) ->
       if delegate = props.delegate
         delegate._props = props
-      return
+        return
 
     return ->
-
-      initProps = PropInitializer @_kind, @_phases.get "props"
-      @didBuild (type) ->
-        frozen.define type, "initProps", {value: initProps}
-        setDefaultDelegate type.prototype
-        return
 
       # Attach the first props as early as possible.
       @_values.unshift attachProps
@@ -173,7 +167,12 @@ ViewMixin = do ->
         attachProps props
         willReceiveProps.call this, props
         return
-      return
+
+      initProps = PropInitializer @_kind, @_phases.get "props"
+      @didBuild (type) ->
+        frozen.define type, "initProps", {value: initProps}
+        setDefaultDelegate type.prototype
+        return
 
   return mixin
 

@@ -30,10 +30,9 @@ defineReactions = (reactions) ->
   else delegate.addMixin animatedMixin, reactions
 
 # Applied once to each prototype chain.
-rootMixin = do ->
-  mixin = Mixin()
-  mixin.defineValue "__reactions", -> Object.create null
-  return mixin.apply
+rootMixin = (type) ->
+  type.createValue "__reactions", ->
+    return Object.create null
 
 # Captures any `Reaction` instances created within the `createReactions` function.
 # The reactions are created during the `didMount` component phase.

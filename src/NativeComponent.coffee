@@ -30,7 +30,7 @@ type.overrideMethods
         if @_isMounting
         then @_animatedProps.__getAllValues()
         else @_animatedProps.__getNonNativeValues()
-      props.ref = @_setChild
+      props.ref = @_setChild.bind this
       render.call this, props
 
     @__super arguments
@@ -56,17 +56,21 @@ mixin.defineValues ->
 mixin.willMount ->
   @_isMounting = yes
   @_animatedProps.attach @props
+  return
 
 mixin.didMount ->
   @_isMounting = no
+  return
 
 mixin.willReceiveProps (nextProps) ->
   @_animatedProps.attach nextProps
+  return
 
 mixin.willUnmount ->
   @_animatedProps.detach()
+  return
 
-mixin.defineBoundMethods
+mixin.defineMethods
 
   setNativeProps: (newProps) ->
     if @_child is null
