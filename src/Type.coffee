@@ -105,18 +105,6 @@ modx_Type.Builder = do ->
     @definePrototype sync.map keys, (key) ->
       value: (arg) -> @_componentType[key] arg
 
-    # keys = {
-    #   "_willMount"
-    #   "_didMount"
-    #   "_willUnmount"
-    #   "_willUpdate"
-    #   "_didUpdate"
-    # }
-    #
-    # # Proxy just the getter.
-    # @definePrototype sync.map keys, (key) ->
-    #   get: -> @_componentType[key]
-
   return type.build()
 
 ViewModelMixin = do ->
