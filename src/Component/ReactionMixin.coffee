@@ -91,15 +91,17 @@ defineReaction = (obj, key, config) ->
       get: bind.func config, obj
       didSet: (newValue) ->
         if newValue isnt value.get()
-          value._updateValue newValue
+          value._set newValue
+          return
 
   else if isType config, Object
     config.didSet = do ->
       didSet = config.didSet or emptyFunction
       return (newValue) ->
         if newValue isnt value.get()
-          value._updateValue newValue
+          value._set newValue
           didSet.call obj, newValue
+          return
 
   reaction = Reaction config
   reaction.keyPath ?= obj.constructor.name + "." + key

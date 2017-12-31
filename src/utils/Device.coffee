@@ -12,12 +12,18 @@ type.defineValues
 
   _window: Dimensions.get "window"
 
+  _screen: Dimensions.get "screen"
+
 type.createFrozenValue "isMobile", ->
   return yes if Platform.OS isnt "web"
   return /Mobi|iP(hone|od|ad)|Android|BlackBerry/.test navigator.userAgent
 
 if Platform.OS is "web"
+
   type.initInstance ->
+
+    # More information here: http://stackoverflow.com/a/9851769/2228559
+    @browser = @_getBrowser()
 
     if window.devicePixelRatio and devicePixelRatio >= 2
       border = document.createElement "div"
@@ -32,6 +38,15 @@ if Platform.OS is "web"
       return
     return
 
+  type.defineMethods
+
+    _getBrowser: ->
+      return "IE" if document.documentMode
+      return "Firefox" if window.InstallTrigger
+      return "Chrome" if window.chrome and chrome.webstore
+      return "Safari" if window.safari or /iP(hone|od|ad)/.test navigator.userAgent
+      return null
+
 type.defineGetters
 
   size: -> {@width, @height}
@@ -41,6 +56,10 @@ type.defineGetters
   height: -> @_window.height
 
   scale: -> @_window.scale
+
+  screenWidth: -> @_screen.width
+
+  screenHeight: -> @_screen.height
 
 type.defineMethods
 
@@ -80,5 +99,3 @@ registerDevices do ->
     iPhone5: [320, 568]
     iPhone6: [375, 667]
     iPhone6P: [414, 736]
-
-registerDevices
